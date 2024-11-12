@@ -290,7 +290,7 @@ var htmlUtility = (function () {
             return this;
         },
 
-        wrapSelection: function(wrapper, selection) {
+        wrapSelection: function (wrapper, selection) {
             if (!selection) {
                 selection = window.getSelection();
             }
@@ -330,21 +330,21 @@ var htmlUtility = (function () {
             return this;
         },
 
-        toggleFormat: function(tagName, selection) {
+        toggleFormat: function (tagName, selection) {
             if (!selection) {
                 selection = window.getSelection();
             }
             if (selection.rangeCount === 0) {
                 return this;
             }
-        
+
             var range = selection.getRangeAt(0);
-        
+
             // Check if the selection is within the formatting tag
             function isSelectionWithinTag(range, tagName) {
                 var startContainer = range.startContainer;
                 var endContainer = range.endContainer;
-        
+
                 function isNodeWithinTag(node) {
                     while (node && node !== document.body) {
                         if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === tagName.toLowerCase()) {
@@ -354,12 +354,12 @@ var htmlUtility = (function () {
                     }
                     return false;
                 }
-        
+
                 return isNodeWithinTag(startContainer) && isNodeWithinTag(endContainer);
             }
-        
+
             var isWrapped = isSelectionWithinTag(range, tagName);
-        
+
             if (isWrapped) {
                 // Unwrap the formatting tag from the selection
                 this.unwrapSelection(tagName, selection);
@@ -367,22 +367,45 @@ var htmlUtility = (function () {
                 // Wrap the selection with the formatting tag
                 this.wrapSelection('<' + tagName + '></' + tagName + '>', selection);
             }
-        
+
             return this;
         },
-        
-        
 
-        unwrapSelection: function(tagName, selection) {
+
+        removeEmptyFormattingElements: function(tagName, context) {
+            context = context || document.body;
+
+            function removeEmptyFormattingElements(node, tagName) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    var children = Array.from(node.childNodes);
+                    children.forEach(function(child) {
+                        if (child.nodeType === Node.ELEMENT_NODE) {
+                            // Recursively check child elements
+                            removeEmptyFormattingElements(child, tagName);
+                            // Remove the element if it matches the tagName and has no child nodes
+                            if (child.tagName.toLowerCase() === tagName.toLowerCase() && child.childNodes.length === 0) {
+                                child.parentNode.removeChild(child);
+                            }
+                        }
+                    });
+                }
+            }
+
+            removeEmptyFormattingElements(context, tagName);
+
+            return this;
+        },
+
+        unwrapSelection: function (tagName, selection) {
             if (!selection) {
                 selection = window.getSelection();
             }
             if (selection.rangeCount === 0) {
                 return this;
             }
-        
+
             var range = selection.getRangeAt(0);
-        
+
             // Find the formatting ancestor
             function getFormattingAncestor(node, tagName) {
                 while (node && node !== document.body) {
@@ -393,35 +416,35 @@ var htmlUtility = (function () {
                 }
                 return null;
             }
-        
+
             var formattingAncestor = getFormattingAncestor(range.commonAncestorContainer, tagName);
             if (!formattingAncestor) {
                 // No formatting tag found; nothing to unwrap
                 return this;
             }
-        
+
             var parent = formattingAncestor.parentNode;
-        
+
             // Save the selected content before modifying the DOM
             var selectedContent = range.extractContents();
-        
+
             // Now, create ranges for the content before and after the selection
             var preSelectionRange = document.createRange();
             preSelectionRange.setStartBefore(formattingAncestor.firstChild);
             preSelectionRange.setEnd(range.startContainer, range.startOffset);
-        
+
             var postSelectionRange = document.createRange();
             postSelectionRange.setStart(range.endContainer, range.endOffset);
             postSelectionRange.setEndAfter(formattingAncestor.lastChild);
-        
+
             // Extract the content before and after the selection
             var beforeFragment = preSelectionRange.extractContents();
             var afterFragment = postSelectionRange.extractContents();
-        
+
             // Clone the formatting element for the before and after fragments
             var beforeFormatting = formattingAncestor.cloneNode(false);
             var afterFormatting = formattingAncestor.cloneNode(false);
-        
+
             // Append the extracted content to the cloned formatting elements
             if (beforeFragment.childNodes.length > 0) {
                 beforeFormatting.appendChild(beforeFragment);
@@ -429,51 +452,41 @@ var htmlUtility = (function () {
             if (afterFragment.childNodes.length > 0) {
                 afterFormatting.appendChild(afterFragment);
             }
-        
+
             // Remove the original formatting element
             parent.removeChild(formattingAncestor);
-        
+
             // Insert the nodes back into the parent in the correct order
             var insertionPoint = parent.childNodes[range.startOffset] || null;
-        
+
             // Insert the before formatting element, if it has content
             if (beforeFormatting.childNodes.length > 0) {
                 parent.insertBefore(beforeFormatting, insertionPoint);
             }
-        
+
             // Insert the unformatted selected content
             if (selectedContent.childNodes.length > 0) {
                 parent.insertBefore(selectedContent, insertionPoint);
             }
-        
+
             // Insert the after formatting element, if it has content
             if (afterFormatting.childNodes.length > 0) {
                 parent.insertBefore(afterFormatting, insertionPoint);
             }
-        
+
             // Normalize the parent to merge adjacent text nodes
             parent.normalize();
-            this.removeEmptyFormattingElements(parent, tagName);
-        
+
+            // Remove any empty formatting elements
+            this.removeEmptyFormattingElements(tagName, parent);
+
             // Clear the selection
             selection.removeAllRanges();
-        
+
             return this;
         },
-        removeEmptyFormattingElements:function(node, tagName) {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                var children = Array.from(node.childNodes);
-                children.forEach(function(child) {
-                    if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === tagName.toLowerCase() && child.childNodes.length === 0) {
-                        child.parentNode.removeChild(child);
-                    } else {
-                        this.removeEmptyFormattingElements(child, tagName);
-                    }
-                });
-            }
-        },
-        
-        
+
+
         // Add these methods to htmlUtility.prototype
 
         applyStyle: function (styleObj, selection) {
@@ -612,6 +625,64 @@ var htmlUtility = (function () {
             // Normalize to merge text nodes
             tempDiv.parentNode.normalize();
 
+            return this;
+        },
+        simplifyNestedTags: function(tagName, context) {
+            context = context || document.body;
+    
+            // Simplify nested tags
+            var elements = context.querySelectorAll(tagName);
+    
+            elements.forEach(function(element) {
+                // Remove inner tags of the same type if they have no attributes or classes
+                var childElements = element.querySelectorAll(tagName);
+                childElements.forEach(function(child) {
+                    if (child !== element && child.parentElement === element) {
+                        if (child.attributes.length === 0 && child.classList.length === 0) {
+                            while (child.firstChild) {
+                                element.insertBefore(child.firstChild, child);
+                            }
+                            element.removeChild(child);
+                        }
+                    }
+                });
+            });
+    
+            // Combine adjacent similar tags
+            elements = context.querySelectorAll(tagName);
+    
+            elements.forEach(function(element) {
+                // Skip if the element has attributes or classes
+                if (element.attributes.length > 0 || element.classList.length > 0) {
+                    return;
+                }
+    
+                var nextSibling = element.nextSibling;
+                while (nextSibling && nextSibling.nodeType !== Node.ELEMENT_NODE) {
+                    nextSibling = nextSibling.nextSibling;
+                }
+    
+                while (nextSibling &&
+                       nextSibling.tagName.toLowerCase() === tagName.toLowerCase() &&
+                       nextSibling.attributes.length === 0 &&
+                       nextSibling.classList.length === 0) {
+    
+                    // Move all children from nextSibling into element
+                    while (nextSibling.firstChild) {
+                        element.appendChild(nextSibling.firstChild);
+                    }
+                    // Remove nextSibling from the DOM
+                    var toRemove = nextSibling;
+                    nextSibling = nextSibling.nextSibling;
+                    toRemove.parentNode.removeChild(toRemove);
+    
+                    // Update nextSibling to check if more adjacent tags can be combined
+                    while (nextSibling && nextSibling.nodeType !== Node.ELEMENT_NODE) {
+                        nextSibling = nextSibling.nextSibling;
+                    }
+                }
+            });
+    
             return this;
         },
     };
