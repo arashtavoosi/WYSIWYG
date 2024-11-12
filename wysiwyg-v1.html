@@ -23,18 +23,22 @@
     <script>
         document.getElementById('boldButton').addEventListener('click', function () {
             htmlUtility().toggleFormat('strong');
+            htmlUtility().simplifyAllFormattingTags();
         });
 
         document.getElementById('italicButton').addEventListener('click', function () {
             htmlUtility().toggleFormat('em');
+            htmlUtility().simplifyAllFormattingTags();
         });
 
         document.getElementById('underlineButton').addEventListener('click', function () {
             htmlUtility().toggleFormat('u');
+            htmlUtility().simplifyAllFormattingTags();
         });
 
         document.getElementById('removeFormatButton').addEventListener('click', function () {
             htmlUtility().clearFormatting();
+            htmlUtility().simplifyAllFormattingTags();
         });
     </script>
 </body>
