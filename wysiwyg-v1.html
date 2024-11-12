@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test HTML Utility</title>
+
+</head>
+
+<body>
+    <div id="toolbar">
+        <button id="boldButton">Bold</button>
+        <button id="italicButton">Italic</button>
+        <button id="underlineButton">Underline</button>
+        <button id="removeFormatButton">Clear Formatting</button>
+    </div>
+    <div id="editor" contenteditable="true">
+        This is some <strong>bold</strong> and <em>italic</em> text.
+    </div>
+
+    <script src="html-utility.js"></script>
+    <script>
+        document.getElementById('boldButton').addEventListener('click', function () {
+            htmlUtility().toggleFormat('strong');
+        });
+
+        document.getElementById('italicButton').addEventListener('click', function () {
+            htmlUtility().toggleFormat('em');
+        });
+
+        document.getElementById('underlineButton').addEventListener('click', function () {
+            htmlUtility().toggleFormat('u');
+        });
+
+        document.getElementById('removeFormatButton').addEventListener('click', function () {
+            htmlUtility().clearFormatting();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple WYSIWYG Editor</title>
+    <style>
+        #editor-toolbar button {
+            margin: 0 5px;
+        }
+
+        #editor-content {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 200px;
+            margin-top: 10px;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .underline {
+            text-decoration: underline;
+        }
+
+        /* Inverse styles */
+        .unbold {
+            font-weight: normal;
+        }
+
+        .unitalic {
+            font-style: normal;
+        }
+
+        .nounderline {
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="editor-toolbar">
+        <button onclick="formatText('bold')"><b>B</b></button>
+        <button onclick="formatText('italic')"><i>I</i></button>
+        <button onclick="formatText('underline')"><u>U</u></button>
+    </div>
+    <div id="editor-content" contenteditable="true">Start typing here...</div>
+    <script>
+        const editor = document.getElementById('editor-content');
+
+        // Command dictionary for className and inverseClass
+        const commandMap = {
+            'bold': { className: 'bold', inverseClass: 'unbold' },
+            'italic': { className: 'italic', inverseClass: 'unitalic' },
+            'underline': { className: 'underline', inverseClass: 'nounderline' }
+        };
+
+        function formatText(command) {
+            const selection = window.getSelection();
+            if (selection.rangeCount === 0) return;
+
+            const range = selection.getRangeAt(0);
+            convertTagsToSpans(range.startContainer.parentElement);  // Convert legacy tags to spans
+
+            const appliedStyles = textUtils.getSelectionStyles(range);
+
+
+
+            const commandInfo = commandMap[command];
+            if (!commandInfo) return;
+
+            const { className, inverseClass } = commandInfo;
+
+            let startContainer = range.startContainer;
+            // If selection is collapsed (cursor), toggle the style on the closest parent
+            if (range.collapsed) {
+                const parent = textUtils.getClosestParentWithClass(startContainer.parentElement, className);
+                if (parent && parent !== editor) {
+                    // Remove the style if the parent has it and ensure it's not the editor itself
+                    textUtils.removeClassFromNode(parent, className);
+                } else {
+                    // Apply the style to the current text node (wrap in a span if necessary), and not to the editor itself
+                    if (startContainer !== editor) {
+                        textUtils.addClassToNode(startContainer, className);
+                        textUtils.removeClassFromNode(startContainer, inverseClass);
+                    }
+                }
+            } else {
+                applyClass(range, className, inverseClass, appliedStyles.has(className));
+                // Handle selections that are partially or fully styled
+                // if (appliedStyles.has(className)) {
+                //     // Apply inverse class (e.g., unbold) to partially or fully remove the style
+                //     applyOrToggleClass(range, inverseClass);
+                // } else {
+                //     // Apply the style normally
+                //     applyOrToggleClass(range, className);
+                // }
+            }
+
+            restoreSelection(range);
+        }
+        function applyClass(range, className, inverseClass, negate) {
+            const fragment = range.cloneContents();
+            const tempDiv = document.createElement('div');
+            tempDiv.appendChild(fragment);
+
+            tempDiv.childNodes.forEach(node => {
+                if (node !== editor) {
+                    if (negate) {
+                        if(textUtils.hasClass(node, className)) {
+                            textUtils.removeClassFromNode(node, className);
+                        }
+                        else{
+                            textUtils.addClassToNode(node, inverseClass);
+                        }
+                    }else{
+                        if(textUtils.hasClass(node, inverseClass)) {
+                            textUtils.removeClassFromNode(node, inverseClass);
+                        }
+                        else{
+                            textUtils.addClassToNode(node, className);
+                        }
+                    }
+                    }
+            });
+
+            range.deleteContents();
+            range.insertNode(tempDiv);
+            textUtils.unwrapNode(tempDiv);
+                        
+        }
+        function applyOrToggleClass(range, className, inverseClass) {
+            const fragment = range.cloneContents();
+            const tempDiv = document.createElement('div');
+            tempDiv.appendChild(fragment);
+
+            tempDiv.childNodes.forEach(node => {
+                if (node !== editor) {
+                    if (!textUtils.hasClass(node, className)) {
+                        allHaveClass = false; // At least one node does not have the class
+                    } else {
+                        someHaveClass = true;
+                    }
+                }
+            });
+
+            tempDiv.childNodes.forEach(node => {
+                if (node !== editor) {
+                    if (allHaveClass) {
+                        textUtils.removeClassFromNode(node, className); // Remove the class
+                    } else if (someHaveClass) {
+                        textUtils.addClassToNode(node, inverseClass);
+                    } else {
+                        textUtils.addClassToNode(node, className); // Add the class
+                    }
+                }
+            });
+
+            range.deleteContents();
+            range.insertNode(tempDiv);
+            textUtils.unwrapNode(tempDiv);
+        }
+
+        function restoreSelection(range) {
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        // New convertTagsToSpans function to convert <strong>, <em>, <u> to spans with corresponding classes
+        function convertTagsToSpans(node) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.tagName === "STRONG") {
+                    node.classList.add("bold");
+                    replaceTagWithSpan(node);
+                } else if (node.tagName === "EM") {
+                    node.classList.add("italic");
+                    replaceTagWithSpan(node);
+                } else if (node.tagName === "U") {
+                    node.classList.add("underline");
+                    replaceTagWithSpan(node);
+                }
+            }
+        }
+
+        function replaceTagWithSpan(element) {
+            const span = document.createElement('span');
+            span.className = element.className;  // Copy over class names
+            span.innerHTML = element.innerHTML;  // Copy over the content
+            element.replaceWith(span);  // Replace original tag with span
+        }
+
+        const textUtils = {
+            hasClass(node, className) {
+                return node.classList && node.classList.contains(className);
+            },
+            // Add a class to a node, wrapping it in a span if necessary
+            addClassToNode(node, className) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const wrapper = document.createElement('span');
+                    wrapper.classList.add(className);
+                    wrapper.textContent = node.textContent;
+                    node.replaceWith(wrapper);
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    node.classList.add(className);
+                }
+            },
+
+            // Remove a class from a node, and unwrap if no classes are left
+            removeClassFromNode(node, className) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    node.classList.remove(className);
+                    if (!node.classList.length) {
+                        this.unwrapNode(node);
+                    }
+                }
+            },
+
+            // Unwrap a node by removing it and moving its children up a level
+            unwrapNode(node) {
+                const parent = node.parentNode;
+                while (node.firstChild) {
+                    parent.insertBefore(node.firstChild, node);
+                }
+                parent.removeChild(node);
+            },
+
+            // Get the closest parent node with a specific class
+            getClosestParentWithClass(node, className) {
+                while (node && node !== editor) {
+                    if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains(className)) {
+                        return node;
+                    }
+                    node = node.parentNode;
+                }
+                return null;
+            },
+
+            // Analyze a range and return applied classes
+            getSelectionStyles(range) {
+                let appliedStyles = new Set();
+
+                if (range.collapsed) {
+                    let parentNode = range.startContainer.parentElement;
+                    while (parentNode && parentNode !== editor) {
+                        parentNode.classList.forEach(cls => appliedStyles.add(cls));
+                        parentNode = parentNode.parentElement;
+                    }
+
+                    // Check computed styles directly from the original document
+                    if (appliedStyles.size === 0 && range.startContainer.parentElement) {
+                        const computedStyle = window.getComputedStyle(range.startContainer.parentElement);
+                        if (computedStyle.fontWeight === "bold" || computedStyle.fontWeight >= 700) {
+                            appliedStyles.add("bold");
+                        }
+                        if (computedStyle.fontStyle === "italic") {
+                            appliedStyles.add("italic");
+                        }
+                        if (computedStyle.textDecoration.includes("underline")) {
+                            appliedStyles.add("underline");
+                        }
+                    }
+                } else {
+                    // Non-collapsed range: Iterate through nodes in the range
+                    const startContainer = range.startContainer;
+                    const endContainer = range.endContainer;
+
+                    // Use TreeWalker to traverse only text nodes in the range
+                    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, {
+                        acceptNode: function (node) {
+                            return NodeFilter.FILTER_ACCEPT;
+                        }
+                    });
+
+                    let currentNode = walker.currentNode = startContainer;
+
+                    do {
+                        if (currentNode.parentElement) {
+                            const computedStyle = window.getComputedStyle(currentNode.parentElement);
+                            if (computedStyle.fontWeight === "bold" || computedStyle.fontWeight >= 700) {
+                                appliedStyles.add("bold");
+                            }
+                            if (computedStyle.fontStyle === "italic") {
+                                appliedStyles.add("italic");
+                            }
+                            if (computedStyle.textDecoration.includes("underline")) {
+                                appliedStyles.add("underline");
+                            }
+                        }
+                        currentNode = walker.nextNode();
+                    } while (currentNode && walker.currentNode !== endContainer);
+                }
+
+                return appliedStyles;
+            }
+        };
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>htmlUtility Test</title>
+</head>
+<body>
+    <button id="wrapButton">Wrap Selection</button>
+    <p id="para1">This is some <strong>sample</strong> text with <em>various</em> elements.</p>
+    <script src="html-utility.js"></script>
+    <script>
+        // When the user makes a selection and triggers an event (e.g., clicking a button)
+document.getElementById('wrapButton').addEventListener('click', function() {
+    htmlUtility().wrapSelection('<span class="highlight"></span>');
+});
+    </script>
+</body>
+</html>

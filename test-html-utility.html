@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test HTML Utility</title>
+
+</head>
+
+<body>
+    <p>This is a paragraph.</p>
+    <p>This is another paragraph.</p>
+    <div id="myDiv"></div>
+    <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+        <li>Item 3</li>
+    </ul>
+    <div id="elementToClone">
+        <p>This is the element to clone.</p>
+    </div>
+    <div id="targetDiv"></div>
+
+    <script src="html-utility.js"></script>
+    <script>
+        // Add a class to all paragraphs
+        htmlUtility('p').addClass('new-class');
+
+        // Append content to a div
+        htmlUtility('#myDiv').append('<span>New Content</span>');
+
+        // Clone an element and append it to another
+        htmlUtility('#elementToClone').clone().appendTo('#targetDiv');
+
+        // Wrap all list items with a div
+        htmlUtility('li').wrapAll('<div class="wrapper"></div>');
+
+        // Check if any element has a specific class
+        var hasClass = htmlUtility('.items').hasClass('active');
+
+        // Chain multiple methods
+        htmlUtility('p').addClass('text-large').parent().addClass('parent-class');
+
+    </script>
+</body>
+
+</html>
