@@ -372,13 +372,13 @@ var htmlUtility = (function () {
         },
 
 
-        removeEmptyFormattingElements: function(tagName, context) {
+        removeEmptyFormattingElements: function (tagName, context) {
             context = context || document.body;
 
             function removeEmptyFormattingElements(node, tagName) {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     var children = Array.from(node.childNodes);
-                    children.forEach(function(child) {
+                    children.forEach(function (child) {
                         if (child.nodeType === Node.ELEMENT_NODE) {
                             // Recursively check child elements
                             removeEmptyFormattingElements(child, tagName);
@@ -624,20 +624,20 @@ var htmlUtility = (function () {
             return this;
         },
 
-        simplifyNestedTags : function(tagNames, context) {
+        simplifyNestedTags: function (tagNames, context) {
             context = context || document.body;
             if (!Array.isArray(tagNames)) {
                 tagNames = [tagNames];
             }
-        
-            tagNames.forEach(function(tagName) {
+
+            tagNames.forEach(function (tagName) {
                 // Simplify nested tags
                 var elements = context.querySelectorAll(tagName);
-        
-                elements.forEach(function(element) {
+
+                elements.forEach(function (element) {
                     // Remove inner tags of the same type if they have no attributes or classes
                     var childElements = element.querySelectorAll(tagName);
-                    childElements.forEach(function(child) {
+                    childElements.forEach(function (child) {
                         if (child !== element && child.parentElement === element) {
                             if (child.attributes.length === 0 && child.classList.length === 0) {
                                 while (child.firstChild) {
@@ -648,23 +648,24 @@ var htmlUtility = (function () {
                         }
                     });
                 });
-        
+
                 // Combine adjacent similar tags, including acceptable whitespace
+
                 elements = context.querySelectorAll(tagName);
-        
-                elements.forEach(function(element) {
+
+                elements.forEach(function (element) {
                     // Skip if the element has attributes or classes
                     if (element.attributes.length > 0 || element.classList.length > 0) {
                         return;
                     }
-        
+
                     var nextSibling = element.nextSibling;
-        
+
                     // Continue merging while nextSibling is acceptable
                     while (nextSibling) {
                         // Flag to determine if we can continue merging
                         var canMerge = false;
-        
+
                         if (nextSibling.nodeType === Node.TEXT_NODE) {
                             // Check if text node contains only acceptable whitespace
                             if (/^[\s\t\n\r]*$/.test(nextSibling.textContent)) {
@@ -676,17 +677,26 @@ var htmlUtility = (function () {
                                 break;
                             }
                         } else if (nextSibling.nodeType === Node.ELEMENT_NODE &&
-                                   nextSibling.tagName.toLowerCase() === tagName.toLowerCase() &&
-                                   nextSibling.attributes.length === 0 &&
-                                   nextSibling.classList.length === 0) {
-                            // Merge the next formatting element
-                            element.appendChild(nextSibling);
+                            nextSibling.tagName.toLowerCase() === tagName.toLowerCase() &&
+                            nextSibling.attributes.length === 0 &&
+                            nextSibling.classList.length === 0) {
+
+                            // Merge the content of the next formatting element
+                            var siblingChildNodes = Array.from(nextSibling.childNodes);
+                            siblingChildNodes.forEach(function (child) {
+                                element.appendChild(child);
+                            });
+                            // Remove the now empty nextSibling element
+                            var toRemove = nextSibling;
+                            nextSibling = nextSibling.nextSibling;
+                            toRemove.parentNode.removeChild(toRemove);
+
                             canMerge = true;
                         } else {
                             // Encountered a different node; stop merging
                             break;
                         }
-        
+
                         // Update nextSibling to the following sibling
                         if (canMerge) {
                             nextSibling = element.nextSibling;
@@ -696,17 +706,15 @@ var htmlUtility = (function () {
                     }
                 });
             });
-        
+
             return this;
         },
 
-        simplifyAllFormattingTags : function(context) {
+        simplifyAllFormattingTags: function (context) {
             var tags = ['strong', 'em', 'u']; // Add other tags as needed
             context = context || document.body;
-            var self = this;
-            tags.forEach(function(tag) {
-                self.simplifyNestedTags(tag, context);
-            });
+            this.simplifyNestedTags(tags, context);
+            context.normalize();
             return this;
         }
     };
