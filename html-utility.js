@@ -581,46 +581,84 @@ var htmlUtility = (function () {
             return this;
         },
 
-        clearFormatting: function (selection) {
+        clearFormatting: function(selection) {
             if (!selection) {
                 selection = window.getSelection();
             }
-
+        
             if (selection.rangeCount === 0) {
                 return this;
             }
-
+        
             var range = selection.getRangeAt(0);
-
-            // Use document fragment to extract contents
-            var fragment = range.extractContents();
-
-            // Create a temporary div to hold the fragment
-            var tempDiv = document.createElement('div');
-            tempDiv.appendChild(fragment);
-
-            // Remove all element tags, keeping only text nodes
-            function removeAllFormatting(node) {
-                var childNodes = Array.from(node.childNodes);
-                childNodes.forEach(function (child) {
-                    if (child.nodeType === Node.ELEMENT_NODE) {
-                        removeAllFormatting(child);
-                        while (child.firstChild) {
-                            node.insertBefore(child.firstChild, child);
+        
+            // Collect nodes to unwrap
+            var nodesToUnwrap = [];
+        
+            // Use TreeWalker to traverse nodes within the selection
+            var walker = document.createTreeWalker(
+                range.commonAncestorContainer,
+                NodeFilter.SHOW_ELEMENT,
+                {
+                    acceptNode: function(node) {
+                        // Accept nodes that intersect with the range and are formatting elements
+                        if (range.intersectsNode(node) && ['STRONG', 'EM', 'U', 'B', 'I', 'SPAN'].includes(node.tagName)) {
+                            return NodeFilter.FILTER_ACCEPT;
                         }
-                        node.removeChild(child);
+                        return NodeFilter.FILTER_SKIP;
                     }
-                });
+                },
+                false
+            );
+        
+            walker.currentNode = range.commonAncestorContainer;
+        
+            var currentNode = walker.currentNode;
+        
+            while (currentNode) {
+                nodesToUnwrap.push(currentNode);
+                currentNode = walker.nextNode();
             }
-
-            removeAllFormatting(tempDiv);
-
-            // Insert the plain text back into the range position
-            range.insertNode(tempDiv);
-
-            // Normalize to merge text nodes
-            tempDiv.parentNode.normalize();
-
+        
+            // Unwrap formatting elements without modifying the DOM during traversal
+            nodesToUnwrap.forEach(function(node) {
+                var parent = node.parentNode;
+                if (parent) {
+                    while (node.firstChild) {
+                        parent.insertBefore(node.firstChild, node);
+                    }
+                    parent.removeChild(node);
+                }
+            });
+        
+            // Remove any empty formatting elements in the affected area
+            function removeEmptyFormattingElements(node) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    var childNodes = Array.from(node.childNodes);
+                    childNodes.forEach(function(child) {
+                        removeEmptyFormattingElements(child);
+                    });
+                    if (['STRONG', 'EM', 'U', 'B', 'I', 'SPAN'].includes(node.tagName) && node.childNodes.length === 0) {
+                        var parent = node.parentNode;
+                        if (parent) {
+                            parent.removeChild(node);
+                        }
+                    }
+                }
+            }
+        
+            removeEmptyFormattingElements(range.commonAncestorContainer);
+        
+            // Normalize the DOM to merge adjacent text nodes
+            if (range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE) {
+                range.commonAncestorContainer.normalize();
+            } else if (range.commonAncestorContainer.parentNode) {
+                range.commonAncestorContainer.parentNode.normalize();
+            }
+        
+            // Clear the selection
+            selection.removeAllRanges();
+        
             return this;
         },
 
