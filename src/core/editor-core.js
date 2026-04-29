@@ -3,16 +3,22 @@
         module.exports = factory(
             require('./selection-formatting'),
             require('./markup-normalization'),
-            require('./selection-state')
+            require('./selection-state'),
+            require('./linking'),
+            require('./block-structure'),
+            require('./embed-content')
         );
     } else {
         root.createEditorCore = factory(
             root.WysiwygSelectionFormatting,
             root.WysiwygMarkupNormalization,
-            root.WysiwygSelectionState
+            root.WysiwygSelectionState,
+            root.WysiwygLinking,
+            root.WysiwygBlockStructure,
+            root.WysiwygEmbedContent
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (selectionFormatting, markupNormalization, selectionState) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (selectionFormatting, markupNormalization, selectionState, linking, blockStructure, embedContent) {
     function normalizeInlineCommand(name) {
         var map = {
             bold: 'strong',
@@ -26,7 +32,7 @@
     function createEditorCore(rootNode, options) {
         var config = options || {};
 
-        if (!selectionFormatting || !markupNormalization || !selectionState) {
+        if (!selectionFormatting || !markupNormalization || !selectionState || !linking || !blockStructure || !embedContent) {
             throw new Error('Editor core dependencies are not available');
         }
 
@@ -64,16 +70,69 @@
                 return normalize();
             },
 
+            removeLink: function (selection) {
+                linking.removeLink(selection, { root: rootNode });
+                return normalize();
+            },
+
+            setBlock: function (type, options, selection) {
+                blockStructure.setBlock(type, selection, {
+                    level: options && options.level,
+                    root: rootNode
+                });
+                return api;
+            },
+
             setInlineStyle: function (propertyName, value, selection) {
                 var styleObj = {};
+
+                if (propertyName === 'lineHeight') {
+                    blockStructure.setBlockStyle(propertyName, value, selection, { root: rootNode });
+                    return api;
+                }
 
                 styleObj[propertyName] = value;
                 selectionFormatting.applyStyle(styleObj, selection);
                 return api;
             },
 
+            insertBreak: function (selection) {
+                blockStructure.insertBreak(selection);
+                return api;
+            },
+
+            insertImage: function (attributes, selection) {
+                embedContent.insertImage(attributes, selection);
+                return api;
+            },
+
+            insertRule: function (selection) {
+                blockStructure.insertRule(selection, { root: rootNode });
+                return api;
+            },
+
+            insertTable: function (config, selection) {
+                embedContent.insertTable(config, selection);
+                return api;
+            },
+
             toggleInline: function (name, selection) {
                 selectionFormatting.toggleFormat(normalizeInlineCommand(name), selection, getFormattingOptions());
+                return normalize();
+            },
+
+            toggleBlock: function (type, selection) {
+                blockStructure.toggleBlock(type, selection, { root: rootNode });
+                return api;
+            },
+
+            toggleList: function (type, selection) {
+                blockStructure.toggleList(type, selection, { root: rootNode });
+                return api;
+            },
+
+            upsertLink: function (attributes, selection) {
+                linking.upsertLink(attributes, selection, { root: rootNode });
                 return normalize();
             }
         };

@@ -61,6 +61,7 @@
         var blockElement;
         var listElement;
         var linkElement;
+        var imageElement;
         var quoteElement;
         var tableElement;
         var state;
@@ -71,6 +72,7 @@
                 bold: false,
                 color: '',
                 fontFamily: '',
+                image: false,
                 italic: false,
                 lineHeight: '',
                 link: null,
@@ -86,6 +88,7 @@
         blockElement = getClosestAnyTag(startElement, ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
         listElement = getClosestAnyTag(startElement, ['ul', 'ol'], rootNode);
         linkElement = getClosestTag(startElement, 'a', rootNode);
+        imageElement = getClosestTag(startElement, 'img', rootNode);
         quoteElement = getClosestTag(startElement, 'blockquote', rootNode);
         tableElement = getClosestTag(startElement, 'table', rootNode);
 
@@ -94,6 +97,7 @@
             bold: !!getClosestAnyTag(startElement, ['strong', 'b'], rootNode),
             color: getInlineStyleValue(startElement, 'color'),
             fontFamily: getInlineStyleValue(startElement, 'fontFamily'),
+            image: !!imageElement,
             italic: !!getClosestAnyTag(startElement, ['em', 'i'], rootNode),
             lineHeight: getInlineStyleValue(blockElement || startElement, 'lineHeight'),
             link: linkElement ? {

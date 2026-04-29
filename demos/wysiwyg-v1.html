@@ -84,6 +84,33 @@
             transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
         }
 
+        .toolbar label,
+        .toolbar select,
+        .toolbar input {
+            font: inherit;
+        }
+
+        .toolbar select,
+        .toolbar input[type="color"] {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--text);
+            min-height: 38px;
+            padding: 0 12px;
+        }
+
+        .toolbar input[type="color"] {
+            width: 44px;
+            padding: 4px;
+        }
+
+        .toolbar .control-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .toolbar button:hover {
             border-color: var(--accent);
             transform: translateY(-1px);
@@ -93,10 +120,6 @@
             border-color: var(--accent);
             background: var(--accent-soft);
             color: #7c2d12;
-        }
-
-        .toolbar button.is-clear {
-            margin-left: auto;
         }
 
         .editor {
@@ -124,10 +147,6 @@
                 padding: 18px 14px;
             }
 
-            .toolbar button.is-clear {
-                margin-left: 0;
-            }
-
             .status {
                 flex-direction: column;
                 gap: 6px;
@@ -146,18 +165,53 @@
 
         <div class="editor-frame">
             <div id="toolbar" class="toolbar">
-                <button type="button" data-command="bold">Bold</button>
-                <button type="button" data-command="italic">Italic</button>
-                <button type="button" data-command="underline">Underline</button>
-                <button type="button" id="removeFormatButton" class="is-clear">Clear Formatting</button>
+                <button type="button" data-inline="bold">Bold</button>
+                <button type="button" data-inline="italic">Italic</button>
+                <button type="button" data-inline="underline">Underline</button>
+                <button type="button" data-block="heading" data-level="2">H2</button>
+                <button type="button" data-block="blockquote">Quote</button>
+                <button type="button" data-list="ul">Bullets</button>
+                <button type="button" data-list="ol">Numbers</button>
+                <span class="control-group">
+                    <label for="colorControl">Color</label>
+                    <input id="colorControl" type="color" data-style="color" value="#000000">
+                </span>
+                <span class="control-group">
+                    <label for="fontControl">Font</label>
+                    <select id="fontControl" data-style="fontFamily">
+                        <option value="Georgia, 'Times New Roman', serif">Georgia</option>
+                        <option value="'Helvetica Neue', Arial, sans-serif">Helvetica</option>
+                        <option value="'Courier New', monospace">Courier</option>
+                    </select>
+                </span>
+                <span class="control-group">
+                    <label for="lineHeightControl">Line</label>
+                    <select id="lineHeightControl" data-style="lineHeight">
+                        <option value="1.4">1.4</option>
+                        <option value="1.6" selected>1.6</option>
+                        <option value="1.8">1.8</option>
+                        <option value="2">2.0</option>
+                    </select>
+                </span>
+                <button type="button" data-action="link">Link</button>
+                <button type="button" data-action="unlink">Unlink</button>
+                <button type="button" data-action="image">Image</button>
+                <button type="button" data-action="table">Table</button>
+                <button type="button" data-action="br">BR</button>
+                <button type="button" data-action="hr">HR</button>
+                <button type="button" data-action="clear">Clear Formatting</button>
             </div>
 
             <div id="editor" class="editor" contenteditable="true">
-                This is some <strong>bold</strong> and <em>italic</em> text.
+                <p>This is some <strong>bold</strong> and <em>italic</em> text.</p>
+                <p>Select part of this paragraph to create a <a href="https://example.com">link</a>, convert it into a heading, or turn it into a list.</p>
             </div>
 
             <div class="status">
                 <div>Block: <strong id="blockState">none</strong></div>
+                <div>List: <strong id="listState">none</strong></div>
+                <div>Link: <strong id="linkState">none</strong></div>
+                <div>Table: <strong id="tableState">none</strong></div>
                 <div>Active: <strong id="activeState">none</strong></div>
             </div>
         </div>
@@ -166,68 +220,24 @@
     <script src="../src/core/selection-formatting.js"></script>
     <script src="../src/core/markup-normalization.js"></script>
     <script src="../src/core/selection-state.js"></script>
+    <script src="../src/core/linking.js"></script>
+    <script src="../src/core/block-structure.js"></script>
+    <script src="../src/core/embed-content.js"></script>
     <script src="../src/core/editor-core.js"></script>
+    <script src="../src/ui/toolbar-view.js"></script>
+    <script src="../src/ui/editor-adapter.js"></script>
     <script>
-        var editorElement = document.getElementById('editor');
-        var toolbarElement = document.getElementById('toolbar');
-        var blockStateElement = document.getElementById('blockState');
-        var activeStateElement = document.getElementById('activeState');
-        var editor = createEditorCore(editorElement);
-
-        function syncToolbarState() {
-            var state = editor.getActiveFormats();
-            var active = [];
-
-            ['bold', 'italic', 'underline'].forEach(function (command) {
-                var button = toolbarElement.querySelector('[data-command="' + command + '"]');
-                var isActive = !!state[command];
-
-                if (button) {
-                    button.classList.toggle('is-active', isActive);
-                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-                }
-
-                if (isActive) {
-                    active.push(command);
-                }
-            });
-
-            blockStateElement.textContent = state.block || 'none';
-            activeStateElement.textContent = active.length ? active.join(', ') : 'none';
-        }
-
-        toolbarElement.addEventListener('mousedown', function (event) {
-            if (event.target.tagName === 'BUTTON') {
-                event.preventDefault();
+        createEditorAdapter({
+            editorElement: document.getElementById('editor'),
+            toolbarElement: document.getElementById('toolbar'),
+            statusElements: {
+                active: document.getElementById('activeState'),
+                block: document.getElementById('blockState'),
+                link: document.getElementById('linkState'),
+                list: document.getElementById('listState'),
+                table: document.getElementById('tableState')
             }
         });
-
-        toolbarElement.addEventListener('click', function (event) {
-            var button = event.target.closest('button');
-
-            if (!button) {
-                return;
-            }
-
-            editorElement.focus();
-
-            if (button.id === 'removeFormatButton') {
-                editor.clear();
-            } else {
-                editor.toggleInline(button.getAttribute('data-command'));
-            }
-
-            syncToolbarState();
-        });
-
-        document.addEventListener('selectionchange', function () {
-            if (document.activeElement === editorElement || editorElement.contains(document.activeElement)) {
-                syncToolbarState();
-            }
-        });
-
-        editor.normalize();
-        syncToolbarState();
     </script>
 </body>
 
