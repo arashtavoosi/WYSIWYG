@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Read the html-utility.js file as a string
-const htmlUtilityScript = fs.readFileSync(path.resolve(__dirname, '../html-utility.js'), 'utf8');
+const htmlUtilityScript = fs.readFileSync(path.resolve(__dirname, '../src/html-utility.js'), 'utf8');
 
 // Evaluate the script in the global context
 eval(htmlUtilityScript);

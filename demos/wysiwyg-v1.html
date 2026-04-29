@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WYSIWYG Core Baseline</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f5f1e8;
+            --panel: rgba(255, 252, 245, 0.95);
+            --line: #d5cab8;
+            --text: #1c1917;
+            --muted: #6b6257;
+            --accent: #b45309;
+            --accent-soft: #f3d7a8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 32px 20px;
+            background:
+                radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 32%),
+                linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
+            color: var(--text);
+            font-family: Georgia, 'Times New Roman', serif;
+        }
+
+        .shell {
+            max-width: 840px;
+            margin: 0 auto;
+        }
+
+        .heading {
+            margin: 0 0 18px;
+        }
+
+        .heading h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 3.4rem);
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+        }
+
+        .heading p {
+            margin: 10px 0 0;
+            color: var(--muted);
+            font-size: 1rem;
+        }
+
+        .editor-frame {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            overflow: hidden;
+            background: var(--panel);
+            box-shadow: 0 18px 60px rgba(28, 25, 23, 0.08);
+            backdrop-filter: blur(8px);
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 14px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 248, 238, 0.9);
+        }
+
+        .toolbar button {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 8px 14px;
+            background: #fff;
+            color: var(--text);
+            font: inherit;
+            cursor: pointer;
+            transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
+        }
+
+        .toolbar button:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .toolbar button.is-active {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: #7c2d12;
+        }
+
+        .toolbar button.is-clear {
+            margin-left: auto;
+        }
+
+        .editor {
+            min-height: 260px;
+            padding: 22px;
+            outline: none;
+            font-size: 1.05rem;
+            line-height: 1.7;
+        }
+
+        .status {
+            display: flex;
+            gap: 18px;
+            padding: 14px 22px 20px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .status strong {
+            color: var(--text);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 18px 14px;
+            }
+
+            .toolbar button.is-clear {
+                margin-left: 0;
+            }
+
+            .status {
+                flex-direction: column;
+                gap: 6px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="shell">
+        <div class="heading">
+            <h1>Core Baseline</h1>
+            <p>The smallest end-to-end demo now runs against <code>createEditorCore</code> directly.</p>
+        </div>
+
+        <div class="editor-frame">
+            <div id="toolbar" class="toolbar">
+                <button type="button" data-command="bold">Bold</button>
+                <button type="button" data-command="italic">Italic</button>
+                <button type="button" data-command="underline">Underline</button>
+                <button type="button" id="removeFormatButton" class="is-clear">Clear Formatting</button>
+            </div>
+
+            <div id="editor" class="editor" contenteditable="true">
+                This is some <strong>bold</strong> and <em>italic</em> text.
+            </div>
+
+            <div class="status">
+                <div>Block: <strong id="blockState">none</strong></div>
+                <div>Active: <strong id="activeState">none</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../src/core/selection-formatting.js"></script>
+    <script src="../src/core/markup-normalization.js"></script>
+    <script src="../src/core/selection-state.js"></script>
+    <script src="../src/core/editor-core.js"></script>
+    <script>
+        var editorElement = document.getElementById('editor');
+        var toolbarElement = document.getElementById('toolbar');
+        var blockStateElement = document.getElementById('blockState');
+        var activeStateElement = document.getElementById('activeState');
+        var editor = createEditorCore(editorElement);
+
+        function syncToolbarState() {
+            var state = editor.getActiveFormats();
+            var active = [];
+
+            ['bold', 'italic', 'underline'].forEach(function (command) {
+                var button = toolbarElement.querySelector('[data-command="' + command + '"]');
+                var isActive = !!state[command];
+
+                if (button) {
+                    button.classList.toggle('is-active', isActive);
+                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                }
+
+                if (isActive) {
+                    active.push(command);
+                }
+            });
+
+            blockStateElement.textContent = state.block || 'none';
+            activeStateElement.textContent = active.length ? active.join(', ') : 'none';
+        }
+
+        toolbarElement.addEventListener('mousedown', function (event) {
+            if (event.target.tagName === 'BUTTON') {
+                event.preventDefault();
+            }
+        });
+
+        toolbarElement.addEventListener('click', function (event) {
+            var button = event.target.closest('button');
+
+            if (!button) {
+                return;
+            }
+
+            editorElement.focus();
+
+            if (button.id === 'removeFormatButton') {
+                editor.clear();
+            } else {
+                editor.toggleInline(button.getAttribute('data-command'));
+            }
+
+            syncToolbarState();
+        });
+
+        document.addEventListener('selectionchange', function () {
+            if (document.activeElement === editorElement || editorElement.contains(document.activeElement)) {
+                syncToolbarState();
+            }
+        });
+
+        editor.normalize();
+        syncToolbarState();
+    </script>
+</body>
+
+</html>

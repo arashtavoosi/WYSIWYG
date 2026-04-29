@@ -2,7 +2,7 @@
   "name": "wysiwyg",
   "version": "1.0.0",
   "description": "",
-  "main": "html-utility-2.js",
+  "main": "src/html-utility-2.js",
   "scripts": {
     "test": "jest"
   },
