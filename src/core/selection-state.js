@@ -30,9 +30,13 @@
             return {
                 block: null,
                 bold: false,
+                canRedo: false,
+                canUndo: false,
                 collapsed: true,
                 color: '',
                 fontFamily: '',
+                fontSize: '',
+                highlightColor: '',
                 headingLevel: null,
                 image: false,
                 italic: false,
@@ -40,6 +44,10 @@
                 link: null,
                 list: null,
                 quote: false,
+                strikethrough: false,
+                subscript: false,
+                superscript: false,
+                textAlign: '',
                 table: false,
                 underline: false
             };
@@ -58,9 +66,13 @@
         state = {
             block: blockElement ? blockElement.tagName.toLowerCase() : null,
             bold: !!html.getClosestTag(startElement, ['strong', 'b'], rootNode),
+            canRedo: false,
+            canUndo: false,
             collapsed: range.collapsed,
             color: getInlineStyleValue(startElement, 'color'),
             fontFamily: getInlineStyleValue(startElement, 'fontFamily'),
+            fontSize: getInlineStyleValue(startElement, 'fontSize'),
+            highlightColor: getInlineStyleValue(startElement, 'backgroundColor'),
             headingLevel: blockElement && /^H[1-6]$/.test(blockElement.tagName) ? Number(blockElement.tagName.charAt(1)) : null,
             image: imageElement ? {
                 alt: imageElement.getAttribute('alt') || '',
@@ -78,6 +90,10 @@
             } : null,
             list: listElement ? listElement.tagName.toLowerCase() : null,
             quote: !!quoteElement,
+            strikethrough: !!html.getClosestTag(startElement, ['s', 'strike'], rootNode),
+            subscript: !!html.getClosestTag(startElement, 'sub', rootNode),
+            superscript: !!html.getClosestTag(startElement, 'sup', rootNode),
+            textAlign: getInlineStyleValue(blockElement || startElement, 'textAlign'),
             table: tableElement ? {
                 cellIndex: cellElement ? cellElement.cellIndex : null,
                 headerRow: !!tableElement.querySelector('thead'),

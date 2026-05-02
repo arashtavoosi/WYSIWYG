@@ -165,16 +165,34 @@
 
         <div class="editor-frame">
             <div id="toolbar" class="toolbar">
-                <button type="button" data-inline="bold">Bold</button>
-                <button type="button" data-inline="italic">Italic</button>
-                <button type="button" data-inline="underline">Underline</button>
+                <button type="button" data-action="undo">Undo</button>
+                <button type="button" data-action="redo">Redo</button>
+                <button type="button" data-block="paragraph">P</button>
+                <button type="button" data-block="heading" data-level="1">H1</button>
                 <button type="button" data-block="heading" data-level="2">H2</button>
+                <button type="button" data-block="heading" data-level="3">H3</button>
                 <button type="button" data-block="blockquote">Quote</button>
                 <button type="button" data-list="ul">Bullets</button>
                 <button type="button" data-list="ol">Numbers</button>
+                <button type="button" data-action="outdent">Outdent</button>
+                <button type="button" data-action="indent">Indent</button>
+                <button type="button" data-align="left">Left</button>
+                <button type="button" data-align="center">Center</button>
+                <button type="button" data-align="right">Right</button>
+                <button type="button" data-align="justify">Justify</button>
+                <button type="button" data-inline="bold">Bold</button>
+                <button type="button" data-inline="italic">Italic</button>
+                <button type="button" data-inline="underline">Underline</button>
+                <button type="button" data-inline="strikethrough">Strike</button>
+                <button type="button" data-inline="subscript">Sub</button>
+                <button type="button" data-inline="superscript">Sup</button>
                 <span class="control-group">
                     <label for="colorControl">Color</label>
                     <input id="colorControl" type="color" data-style="color" value="#000000">
+                </span>
+                <span class="control-group">
+                    <label for="highlightControl">Highlight</label>
+                    <input id="highlightControl" type="color" data-style="backgroundColor" value="#ffff00">
                 </span>
                 <span class="control-group">
                     <label for="fontControl">Font</label>
@@ -182,6 +200,17 @@
                         <option value="Georgia, 'Times New Roman', serif">Georgia</option>
                         <option value="'Helvetica Neue', Arial, sans-serif">Helvetica</option>
                         <option value="'Courier New', monospace">Courier</option>
+                    </select>
+                </span>
+                <span class="control-group">
+                    <label for="fontSizeControl">Size</label>
+                    <select id="fontSizeControl" data-style="fontSize">
+                        <option value="12px">12</option>
+                        <option value="14px">14</option>
+                        <option value="16px" selected>16</option>
+                        <option value="18px">18</option>
+                        <option value="24px">24</option>
+                        <option value="32px">32</option>
                     </select>
                 </span>
                 <span class="control-group">

@@ -211,7 +211,35 @@
         return block;
     }
 
+    function adjustIndent(direction, selection, options) {
+        var currentSelection = html.getCurrentSelection(selection);
+        var config = options || {};
+        var range;
+        var block;
+        var currentValue;
+        var nextValue;
+        var step = Number(config.indentStep) || 24;
+
+        if (!currentSelection || currentSelection.rangeCount === 0) {
+            return false;
+        }
+
+        range = currentSelection.getRangeAt(0);
+        block = ensureCurrentBlock(config.root, range);
+        currentValue = parseInt(block.style.marginLeft || '0', 10) || 0;
+        nextValue = direction === 'outdent' ? Math.max(0, currentValue - step) : currentValue + step;
+
+        if (nextValue) {
+            block.style.marginLeft = nextValue + 'px';
+        } else {
+            block.style.removeProperty('margin-left');
+        }
+
+        return block;
+    }
+
     return {
+        adjustIndent: adjustIndent,
         insertBreak: insertBreak,
         insertRule: insertRule,
         setBlockStyle: setBlockStyle,

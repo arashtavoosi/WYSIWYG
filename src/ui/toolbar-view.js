@@ -36,6 +36,15 @@
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
 
+    function setButtonDisabled(button, isDisabled) {
+        if (!button) {
+            return;
+        }
+
+        button.disabled = !!isDisabled;
+        button.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
+    }
+
     function createToolbarView(toolbarElement, statusElements) {
         var status = statusElements || {};
 
@@ -43,10 +52,12 @@
             sync: function (state) {
                 var active = [];
                 var colorInput = toolbarElement.querySelector('[data-style="color"]');
+                var highlightInput = toolbarElement.querySelector('[data-style="backgroundColor"]');
                 var fontSelect = toolbarElement.querySelector('[data-style="fontFamily"]');
+                var fontSizeSelect = toolbarElement.querySelector('[data-style="fontSize"]');
                 var lineHeightSelect = toolbarElement.querySelector('[data-style="lineHeight"]');
 
-                ['bold', 'italic', 'underline'].forEach(function (name) {
+                ['bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript'].forEach(function (name) {
                     var button = toolbarElement.querySelector('[data-inline="' + name + '"]');
 
                     setButtonState(button, state[name]);
@@ -57,24 +68,43 @@
                 });
 
                 setButtonState(toolbarElement.querySelector('[data-block="heading"]'), state.block === 'h2');
+                toolbarElement.querySelectorAll('[data-block="heading"]').forEach(function (button) {
+                    setButtonState(button, state.headingLevel === Number(button.getAttribute('data-level')));
+                });
+                setButtonState(toolbarElement.querySelector('[data-block="paragraph"]'), state.block === 'p');
                 setButtonState(toolbarElement.querySelector('[data-block="blockquote"]'), state.quote);
                 setButtonState(toolbarElement.querySelector('[data-list="ul"]'), state.list === 'ul');
                 setButtonState(toolbarElement.querySelector('[data-list="ol"]'), state.list === 'ol');
+                toolbarElement.querySelectorAll('[data-align]').forEach(function (button) {
+                    setButtonState(button, state.textAlign === button.getAttribute('data-align') || (!state.textAlign && button.getAttribute('data-align') === 'left'));
+                });
                 setButtonState(toolbarElement.querySelector('[data-action="link"]'), !!state.link);
                 setButtonState(toolbarElement.querySelector('[data-action="unlink"]'), !!state.link);
                 setButtonState(toolbarElement.querySelector('[data-action="update-image"]'), !!state.image);
                 setButtonState(toolbarElement.querySelector('[data-action="remove-image"]'), !!state.image);
                 setButtonState(toolbarElement.querySelector('[data-action="table"]'), !!state.table);
                 setButtonState(toolbarElement.querySelector('[data-action="table-header"]'), state.table && !!state.table.headerRow);
+                setButtonDisabled(toolbarElement.querySelector('[data-action="undo"]'), !state.canUndo);
+                setButtonDisabled(toolbarElement.querySelector('[data-action="redo"]'), !state.canRedo);
 
                 if (colorInput) {
                     colorInput.value = normalizeColorValue(state.color);
+                }
+
+                if (highlightInput) {
+                    highlightInput.value = normalizeColorValue(state.highlightColor);
                 }
 
                 if (fontSelect && state.fontFamily) {
                     fontSelect.value = Array.from(fontSelect.options).some(function (option) {
                         return option.value === state.fontFamily;
                     }) ? state.fontFamily : fontSelect.value;
+                }
+
+                if (fontSizeSelect && state.fontSize) {
+                    fontSizeSelect.value = Array.from(fontSizeSelect.options).some(function (option) {
+                        return option.value === state.fontSize;
+                    }) ? state.fontSize : fontSizeSelect.value;
                 }
 
                 if (lineHeightSelect && state.lineHeight) {

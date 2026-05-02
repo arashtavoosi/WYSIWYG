@@ -127,8 +127,8 @@
     function simplifyAllFormattingTags(context) {
         var root = context || document.body;
 
-        simplifyNestedTags(['strong', 'em', 'u'], root);
-        removeEmptyFormattingNodes(root, ['STRONG', 'EM', 'U', 'B', 'I', 'SPAN']);
+        simplifyNestedTags(['strong', 'em', 'u', 's', 'sub', 'sup'], root);
+        removeEmptyFormattingNodes(root, ['STRONG', 'EM', 'U', 'S', 'SUB', 'SUP', 'B', 'I', 'STRIKE', 'SPAN']);
         root.normalize();
 
         return root;

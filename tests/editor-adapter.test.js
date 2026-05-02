@@ -149,4 +149,41 @@ describe('editor adapter', () => {
 
         expect(event.defaultPrevented).toBe(false);
     });
+
+    test('toolbar undo and redo use adapter-recorded input snapshots', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar">',
+            '<button type="button" data-action="undo">Undo</button>',
+            '<button type="button" data-action="redo">Redo</button>',
+            '</div>',
+            '<div id="editor" contenteditable="true"><p>Start</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const toolbarElement = document.getElementById('toolbar');
+        const undoButton = toolbarElement.querySelector('[data-action="undo"]');
+        const redoButton = toolbarElement.querySelector('[data-action="redo"]');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: toolbarElement
+        });
+
+        expect(undoButton.disabled).toBe(true);
+        expect(redoButton.disabled).toBe(true);
+
+        editorElement.innerHTML = '<p>Typed</p>';
+        editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(undoButton.disabled).toBe(false);
+
+        undoButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.innerHTML).toBe('<p>Start</p>');
+        expect(redoButton.disabled).toBe(false);
+
+        redoButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.innerHTML).toBe('<p>Typed</p>');
+    });
 });

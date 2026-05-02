@@ -140,6 +140,7 @@
     }
 
     function toggleFormat(tagName, selection, options) {
+        var config = options || {};
         var currentSelection = html.getCurrentSelection(selection);
         var range;
 
@@ -147,16 +148,25 @@
             return false;
         }
 
+        if (config.expandCollapsedToWord) {
+            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, config.root);
+        }
+
         range = currentSelection.getRangeAt(0);
 
-        if (isSelectionWithinTag(range, tagName, options && options.root)) {
+        if (range.collapsed) {
+            return false;
+        }
+
+        if (isSelectionWithinTag(range, tagName, config.root)) {
             return unwrapSelection(tagName, currentSelection, options);
         }
 
         return wrapSelection('<' + tagName + '></' + tagName + '>', currentSelection);
     }
 
-    function applyStyle(styleObj, selection) {
+    function applyStyle(styleObj, selection, options) {
+        var config = options || {};
         var currentSelection = html.getCurrentSelection(selection);
         var range;
         var span;
@@ -166,6 +176,10 @@
 
         if (currentSelection.rangeCount === 0) {
             return false;
+        }
+
+        if (config.expandCollapsedToWord) {
+            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, config.root);
         }
 
         range = currentSelection.getRangeAt(0);
@@ -230,8 +244,9 @@
         var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
         var range;
-        var tags = config.tags || ['STRONG', 'EM', 'U', 'B', 'I', 'SPAN'];
+        var tags = config.tags || ['STRONG', 'EM', 'U', 'S', 'SUB', 'SUP', 'B', 'I', 'STRIKE', 'SPAN'];
         var nodesToUnwrap = [];
+        var ancestor;
         var walker;
         var currentNode;
 
@@ -239,7 +254,28 @@
             return false;
         }
 
+        if (config.expandCollapsedToWord) {
+            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, config.root);
+        }
+
         range = currentSelection.getRangeAt(0);
+
+        if (range.collapsed) {
+            return false;
+        }
+
+        ancestor = html.getElement(range.startContainer);
+
+        while (ancestor && ancestor !== config.root && ancestor.nodeType === Node.ELEMENT_NODE) {
+            if (
+                tags.indexOf(ancestor.tagName) !== -1 &&
+                (html.rangeSelectsElement(range, ancestor) || ancestor.textContent === range.toString())
+            ) {
+                nodesToUnwrap.push(ancestor);
+            }
+
+            ancestor = ancestor.parentNode;
+        }
 
         walker = document.createTreeWalker(
             range.commonAncestorContainer,
@@ -256,11 +292,17 @@
             false
         );
 
-        walker.currentNode = range.commonAncestorContainer;
-        currentNode = walker.currentNode;
+        if (range.commonAncestorContainer.nodeType !== Node.ELEMENT_NODE) {
+            currentNode = walker.nextNode();
+        } else {
+            walker.currentNode = range.commonAncestorContainer;
+            currentNode = walker.currentNode;
+        }
 
         while (currentNode) {
-            nodesToUnwrap.push(currentNode);
+            if (nodesToUnwrap.indexOf(currentNode) === -1) {
+                nodesToUnwrap.push(currentNode);
+            }
             currentNode = walker.nextNode();
         }
 

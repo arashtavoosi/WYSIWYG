@@ -131,6 +131,124 @@
         return nodes;
     }
 
+    function isWordCharacter(character) {
+        return /[A-Za-z0-9_]/.test(character || '');
+    }
+
+    function getCollapsedTextTarget(range) {
+        var container = range.startContainer;
+        var offset = range.startOffset;
+        var child;
+
+        if (container.nodeType === Node.TEXT_NODE) {
+            return {
+                node: container,
+                offset: offset
+            };
+        }
+
+        if (container.nodeType !== Node.ELEMENT_NODE) {
+            return null;
+        }
+
+        child = container.childNodes[offset];
+
+        if (child && child.nodeType === Node.TEXT_NODE) {
+            return {
+                node: child,
+                offset: 0
+            };
+        }
+
+        child = container.childNodes[offset - 1];
+
+        if (child && child.nodeType === Node.TEXT_NODE) {
+            return {
+                node: child,
+                offset: child.textContent.length
+            };
+        }
+
+        return null;
+    }
+
+    function expandCollapsedRangeToWord(range, rootNode) {
+        var target;
+        var text;
+        var offset;
+        var start;
+        var end;
+        var expandedRange;
+
+        if (!range || !range.collapsed) {
+            return range;
+        }
+
+        target = getCollapsedTextTarget(range);
+
+        if (!target || (rootNode && !rootNode.contains(target.node))) {
+            return range;
+        }
+
+        text = target.node.textContent || '';
+        offset = target.offset;
+
+        if (!text) {
+            return range;
+        }
+
+        if (offset > 0 && isWordCharacter(text.charAt(offset - 1))) {
+            start = offset - 1;
+            end = offset;
+        } else if (offset < text.length && isWordCharacter(text.charAt(offset))) {
+            start = offset;
+            end = offset + 1;
+        } else {
+            return range;
+        }
+
+        while (start > 0 && isWordCharacter(text.charAt(start - 1))) {
+            start -= 1;
+        }
+
+        while (end < text.length && isWordCharacter(text.charAt(end))) {
+            end += 1;
+        }
+
+        expandedRange = document.createRange();
+        expandedRange.setStart(target.node, start);
+        expandedRange.setEnd(target.node, end);
+
+        return expandedRange;
+    }
+
+    function expandCollapsedSelectionToWord(selection, rootNode) {
+        var currentSelection = getCurrentSelection(selection);
+        var range;
+        var expandedRange;
+
+        if (!currentSelection || currentSelection.rangeCount === 0) {
+            return currentSelection;
+        }
+
+        range = currentSelection.getRangeAt(0);
+
+        if (!range.collapsed) {
+            return currentSelection;
+        }
+
+        expandedRange = expandCollapsedRangeToWord(range, rootNode);
+
+        if (expandedRange === range) {
+            return currentSelection;
+        }
+
+        currentSelection.removeAllRanges();
+        currentSelection.addRange(expandedRange);
+
+        return currentSelection;
+    }
+
     function moveSelectionAfterNode(node, selection) {
         var currentSelection = getCurrentSelection(selection);
         var range = document.createRange();
@@ -239,6 +357,8 @@
 
     Object.assign(htmlUtility, {
         createWrapperElement: createWrapperElement,
+        expandCollapsedRangeToWord: expandCollapsedRangeToWord,
+        expandCollapsedSelectionToWord: expandCollapsedSelectionToWord,
         getClosestTag: getClosestTag,
         getContentNodes: getContentNodes,
         getCurrentSelection: getCurrentSelection,

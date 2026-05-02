@@ -8,6 +8,7 @@
     return {
         headingLevel: 2,
         imageAttributes: ['src', 'alt', 'title', 'width', 'height'],
+        indentStep: 24,
         prompts: {
             image: { label: 'Image URL', fallback: 'https://' },
             link: { label: 'Link URL', fallback: 'https://' },

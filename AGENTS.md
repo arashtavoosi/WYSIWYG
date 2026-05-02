@@ -8,7 +8,7 @@ The app is organized around these principles:
 
 1. Keep the core API separate from UI wiring.
 2. Keep output semantic where possible.
-3. Allow style-based output where the feature is inherently presentational, such as color, font family, and line height.
+3. Allow style-based output where the feature is inherently presentational, such as color, font family, font size, highlight color, alignment, indentation, and line height.
 4. Keep the implementation focused on the active core and UI modules.
 
 This file is the handoff document for future AI agents working on the app.
@@ -47,14 +47,18 @@ Current responsibilities:
 - bold
 - italic
 - underline
+- strikethrough
+- subscript
+- superscript
 - generic inline style application
 - clear formatting
+- collapsed inline command expansion to the current word through shared selection helpers
 
 3. `src/core/markup-normalization.js`
 DOM cleanup and simplification after edits.
 
 4. `src/core/html-utility.js`
-Shared DOM and selection helpers. Reuse this before adding module-local helpers for selection lookup, closest-tag traversal, caret placement, tag replacement, node unwrapping, or range/element comparisons.
+Shared DOM and selection helpers. Reuse this before adding module-local helpers for selection lookup, closest-tag traversal, caret placement, tag replacement, node unwrapping, range/element comparisons, or collapsed-range word-boundary expansion.
 
 5. `src/core/selection-state.js`
 Read-only state inspection for current selection and cursor context.
@@ -62,6 +66,7 @@ Current responsibilities:
 - active inline marks
 - active inline style values
 - active block and list detection
+- undo and redo availability as reported through the core facade
 - link, table, and image context detection
 - heading level instead of only raw block tag reporting
 - whether selection is collapsed or expanded
@@ -78,9 +83,12 @@ Link insertion and removal.
 Block-level transforms and structural insertions.
 Current responsibilities:
 - headings
+- paragraph conversion
 - blockquote
 - ordered list
 - unordered list
+- alignment styles
+- indentation styles
 - line break
 - horizontal rule
 - block-level style application for line height
@@ -88,7 +96,7 @@ Current responsibilities:
 Still missing or likely needed next:
 - paragraph normalization around inserted structural nodes
 - multi-block transforms instead of current single-block-oriented behavior
-- list item indent and outdent behavior
+- richer list item indent and outdent behavior beyond block margin indentation
 - list item split / merge behavior on enter and backspace boundaries
 - heading level changes beyond the current demo path
 - more robust blockquote wrapping and unwrapping across multi-node selections
@@ -151,21 +159,39 @@ The active core façade currently exposes methods including:
 9. `insertRule(selection)`
 10. `insertImage(attributes, selection)`
 11. `insertTable(config, selection)`
-12. `clear(selection)`
-13. `normalize()`
-14. `getActiveFormats(selection)`
-15. `getHtml()`
-16. `setHtml(html)`
-17. `updateImage(attributes, selection)`
-18. `removeImage(selection)`
-19. `insertTableRow(position, selection)`
-20. `removeTableRow(selection)`
-21. `insertTableColumn(position, selection)`
-22. `removeTableColumn(selection)`
-23. `toggleTableHeaderRow(selection)`
-24. `removeTable(selection)`
+12. `setBlockStyle(propertyName, value, selection)`
+13. `adjustIndent(direction, selection)`
+14. `clear(selection)`
+15. `normalize()`
+16. `recordSnapshot()`
+17. `undo()`
+18. `redo()`
+19. `canUndo()`
+20. `canRedo()`
+21. `getActiveFormats(selection)`
+22. `getHtml()`
+23. `setHtml(html)`
+24. `updateImage(attributes, selection)`
+25. `removeImage(selection)`
+26. `insertTableRow(position, selection)`
+27. `removeTableRow(selection)`
+28. `insertTableColumn(position, selection)`
+29. `removeTableColumn(selection)`
+30. `toggleTableHeaderRow(selection)`
+31. `removeTable(selection)`
 
-`getActiveFormats(selection)` also reports collapsed selection state, heading level, selected image attributes, and table cell context.
+`createEditorCore(rootNode, options)` accepts `initialHtml` and `historyLimit`. `historyLimit` defaults to 50 snapshots.
+
+`getActiveFormats(selection)` also reports collapsed selection state, heading level, selected image attributes, table cell context, and undo/redo availability.
+
+Collapsed selections are expanded to the current word for inline text commands only:
+
+1. inline marks
+2. inline style application
+3. link insertion/update
+4. clear formatting
+
+Block, list, image, table, rule, and break commands keep caret/block behavior.
 
 ## Supported Feature Scope
 
@@ -174,9 +200,14 @@ Minimum target scope for the app:
 1. Inline styling
 - color
 - font family
+- font size
+- highlight / background color
 - line height
+- text alignment
+- indentation
 
 2. Structural blocks
+- paragraphs
 - headings
 - hr
 - br
@@ -197,26 +228,38 @@ The current baseline demo already exposes:
 1. bold
 2. italic
 3. underline
-4. H2
-5. quote
-6. bullet list
-7. numbered list
-8. color
-9. font family
-10. line height
-11. link
-12. unlink
-13. image
-14. table
-15. br
-16. hr
-17. clear formatting
-18. image update
-19. image removal
-20. table row add/remove
-21. table column add/remove
-22. table header row toggle
-23. table removal
+4. strikethrough
+5. subscript
+6. superscript
+7. paragraph
+8. H1
+9. H2
+10. H3
+11. quote
+12. bullet list
+13. numbered list
+14. indent and outdent
+15. left, center, right, and justify alignment
+16. color
+17. highlight color
+18. font family
+19. font size
+20. line height
+21. undo
+22. redo
+23. link
+24. unlink
+25. image
+26. table
+27. br
+28. hr
+29. clear formatting
+30. image update
+31. image removal
+32. table row add/remove
+33. table column add/remove
+34. table header row toggle
+35. table removal
 
 ## Important Constraints
 
@@ -225,7 +268,7 @@ The current baseline demo already exposes:
 3. Keep UI modules free of content-manipulation logic beyond calling the core.
 4. Keep the demo as a thin shell over the adapter.
 5. Prefer semantic HTML for structure and meaning.
-6. Allow inline styles only where semantics are not a good fit, such as color, font family, and line height.
+6. Allow inline or block styles only where semantics are not a good fit, such as color, highlight color, font family, font size, alignment, indentation, and line height.
 7. Preserve the small-footprint goal. Avoid framework-heavy or build-heavy changes unless explicitly requested.
 8. Be cautious about file size. Prefer the smallest change that solves the behavior, reuse existing helpers before adding new ones, and avoid large abstractions unless they clearly reduce code.
 
@@ -237,6 +280,9 @@ Expected output conventions:
 - `strong`
 - `em`
 - `u`
+- `s`
+- `sub`
+- `sup`
 - `a`
 - `h1` to `h6`
 - `blockquote`
@@ -257,6 +303,15 @@ Expected output conventions:
 - `color`
 - `font-family`
 - `line-height`
+- `font-size`
+- `background-color`
+- `text-align`
+- `margin-left`
+
+3. History
+- undo/redo uses bounded HTML snapshots
+- direct contenteditable input should call `recordSnapshot()` through the adapter
+- new mutations after undo invalidate redo history
 
 ## Testing Status
 
@@ -284,6 +339,10 @@ Current coverage includes:
 11. table row/column/header/removal operations
 12. richer selection state
 13. toolbar selection preservation and native select behavior
+14. collapsed word-boundary inline commands
+15. bounded undo/redo snapshots
+16. extra inline marks and style controls
+17. adapter undo/redo state
 
 Important environment note:
 
@@ -300,17 +359,20 @@ There is update/remove support, but no caption or wrapper model yet.
 2. Table editing is intentionally basic.
 There are row, column, header-row, and table-removal commands, but no advanced merge/split or keyboard navigation model yet.
 
-3. Selection state reports useful context, but block capability reporting is still shallow.
+3. Selection state reports useful context and undo/redo availability, but block capability reporting is still shallow.
 
 4. Line-height currently applies to the current block, not a multi-block selection range.
 
-5. The UI adapter still contains command execution logic.
+5. The UI adapter still contains command routing logic.
 Only small toolbar metadata lives in `src/ui/toolbar-config.js`.
 
 6. The demo uses `window.prompt` for link, image, and table inputs.
 This is acceptable for now, but it is not the intended long-term UX.
 
 7. Block editing remains single-block-oriented in several paths.
+
+8. Undo/redo is snapshot-based, not operation-based.
+This is intentionally simple and robust for the current DOM mutation model, but large documents may need a more compact history strategy later.
 
 ## Recommended Next Steps
 
@@ -319,7 +381,7 @@ If continuing development, the highest-value next tasks are:
 1. Expand `block-structure.js`
 - improve multi-block transforms
 - add more reliable block splitting and merging behavior
-- add list indent/outdent behavior if the editor grows toward document-style editing
+- improve list-specific indent/outdent behavior if the editor grows toward document-style editing
 
 2. Improve style application behavior
 - smarter color/font wrapping

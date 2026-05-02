@@ -5,6 +5,18 @@
 const createEditorCore = require('../src/core/editor-core');
 
 describe('editor core', () => {
+    function selectCollapsed(textNode, offset) {
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.setStart(textNode, offset);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        return selection;
+    }
+
     test('toggles inline formatting and reports active state', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>This is some text.</p></div>';
 
@@ -268,5 +280,199 @@ describe('editor core', () => {
         expect(editorElement.querySelectorAll('table').length).toBe(1);
         expect(editorElement.querySelectorAll('th').length).toBe(3);
         expect(editorElement.querySelectorAll('td').length).toBe(6);
+    });
+
+    test('collapsed inline commands expand to the current word', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta gamma.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('p').firstChild;
+        const selection = selectCollapsed(textNode, textNode.textContent.indexOf('beta') + 2);
+
+        editor.toggleInline('bold', selection);
+
+        expect(editorElement.innerHTML).toBe('<p>Alpha <strong>beta</strong> gamma.</p>');
+    });
+
+    test('collapsed style and link commands expand to the current word', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta gamma.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        let textNode = editorElement.querySelector('p').firstChild;
+        let selection = selectCollapsed(textNode, textNode.textContent.indexOf('beta') + 1);
+
+        editor.setInlineStyle('backgroundColor', '#ffff00', selection);
+
+        expect(editorElement.innerHTML).toBe('<p>Alpha <span style="background-color: rgb(255, 255, 0);">beta</span> gamma.</p>');
+
+        textNode = editorElement.querySelector('p').lastChild;
+        selection = selectCollapsed(textNode, textNode.textContent.indexOf('gamma') + 2);
+
+        editor.upsertLink({ href: 'https://example.com' }, selection);
+
+        expect(editorElement.innerHTML).toBe('<p>Alpha <span style="background-color: rgb(255, 255, 0);">beta</span> <a href="https://example.com">gamma</a>.</p>');
+    });
+
+    test('collapsed word expansion handles boundaries and ignores whitespace', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('p').firstChild;
+        let selection = selectCollapsed(textNode, 0);
+
+        editor.toggleInline('italic', selection);
+
+        expect(editorElement.innerHTML).toBe('<p><em>Alpha</em> beta.</p>');
+
+        const paragraph = editorElement.querySelector('p');
+        selection = selectCollapsed(paragraph.lastChild, 0);
+
+        editor.toggleInline('underline', selection);
+
+        expect(editorElement.innerHTML).toBe('<p><em>Alpha</em> beta.</p>');
+    });
+
+    test('collapsed clear formatting expands to the current formatted word', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p><strong>Alpha</strong> beta.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('strong').firstChild;
+
+        editor.clear(selectCollapsed(textNode, 2));
+
+        expect(editorElement.innerHTML).toBe('<p>Alpha beta.</p>');
+    });
+
+    test('supports additional inline commands and inline style controls', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Marks size.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        let textNode = editorElement.querySelector('p').firstChild;
+        let selection = selectCollapsed(textNode, 1);
+
+        editor.toggleInline('strikethrough', selection);
+
+        textNode = editorElement.querySelector('p').lastChild;
+        selection = selectCollapsed(textNode, textNode.textContent.indexOf('size') + 1);
+        editor.setInlineStyle('fontSize', '24px', selection);
+
+        expect(editorElement.innerHTML).toBe('<p><s>Marks</s> <span style="font-size: 24px;">size</span>.</p>');
+
+        const stateRange = document.createRange();
+        const stateSelection = window.getSelection();
+        const strikeText = editorElement.querySelector('s').firstChild;
+
+        stateRange.setStart(strikeText, 0);
+        stateRange.setEnd(strikeText, strikeText.length);
+        stateSelection.removeAllRanges();
+        stateSelection.addRange(stateRange);
+
+        expect(editor.getActiveFormats(stateSelection).strikethrough).toBe(true);
+    });
+
+    test('supports collapsed subscript and superscript commands', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>H2O</p><p>squared</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        let textNode = editorElement.querySelector('p').firstChild;
+
+        editor.toggleInline('subscript', selectCollapsed(textNode, 1));
+
+        textNode = editorElement.querySelectorAll('p')[1].firstChild;
+        editor.toggleInline('superscript', selectCollapsed(textNode, textNode.textContent.indexOf('squared') + 2));
+
+        expect(editorElement.innerHTML).toBe('<p><sub>H2O</sub></p><p><sup>squared</sup></p>');
+    });
+
+    test('sets block alignment and indentation styles', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Aligned text</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('p').firstChild;
+        const selection = selectCollapsed(textNode, 3);
+
+        editor.setInlineStyle('textAlign', 'center', selection);
+        editor.adjustIndent('indent', selection);
+        editor.adjustIndent('outdent', selection);
+
+        expect(editorElement.innerHTML).toBe('<p style="text-align: center;">Aligned text</p>');
+    });
+
+    test('tracks bounded undo and redo snapshots', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement, { historyLimit: 2 });
+        const textNode = editorElement.querySelector('p').firstChild;
+
+        editor.toggleInline('bold', selectCollapsed(textNode, 1));
+        editor.setInlineStyle('color', '#ff0000', selectCollapsed(editorElement.querySelector('p').lastChild, 2));
+
+        expect(editor.canUndo()).toBe(true);
+        expect(editor.canRedo()).toBe(false);
+
+        editor.undo();
+
+        expect(editorElement.innerHTML).toBe('<p><strong>Alpha</strong> beta.</p>');
+        expect(editor.canRedo()).toBe(true);
+
+        editor.redo();
+
+        expect(editorElement.querySelector('span').style.color).toBe('rgb(255, 0, 0)');
+
+        editor.undo();
+        editor.toggleInline('italic', selectCollapsed(editorElement.querySelector('strong').firstChild, 2));
+
+        expect(editor.canRedo()).toBe(false);
+
+        editor.undo();
+        expect(editorElement.innerHTML).toBe('<p><strong>Alpha</strong> beta.</p>');
+        editor.undo();
+        expect(editorElement.innerHTML).toBe('<p><strong>Alpha</strong> beta.</p>');
+    });
+
+    test('records setHtml and direct input snapshots', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Start</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+
+        editor.setHtml('<p>Loaded</p>');
+        editorElement.innerHTML = '<p>Typed</p>';
+        editor.recordSnapshot();
+
+        editor.undo();
+        expect(editorElement.innerHTML).toBe('<p>Loaded</p>');
+
+        editor.undo();
+        expect(editorElement.innerHTML).toBe('<p>Start</p>');
+    });
+
+    test('undo and redo cover embedded content insertion', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Embed</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const paragraph = editorElement.querySelector('p');
+        const selection = selectCollapsed(paragraph.firstChild, paragraph.firstChild.length);
+
+        editor.insertImage({ src: 'https://example.com/image.png' }, selection);
+
+        expect(editorElement.querySelector('img')).not.toBeNull();
+
+        editor.undo();
+
+        expect(editorElement.querySelector('img')).toBeNull();
+
+        editor.redo();
+
+        expect(editorElement.querySelector('img').getAttribute('src')).toBe('https://example.com/image.png');
     });
 });

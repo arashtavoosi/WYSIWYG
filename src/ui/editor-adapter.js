@@ -64,6 +64,7 @@
             var blockName = button.getAttribute('data-block');
             var listName = button.getAttribute('data-list');
             var actionName = button.getAttribute('data-action');
+            var alignValue = button.getAttribute('data-align');
             var href;
             var src;
             var rows;
@@ -72,13 +73,40 @@
 
             restoreSelection();
 
+            if (actionName === 'undo') {
+                editor.undo();
+                saveSelection();
+                return sync();
+            }
+
+            if (actionName === 'redo') {
+                editor.redo();
+                saveSelection();
+                return sync();
+            }
+
             if (inlineName) {
                 editor.toggleInline(inlineName);
                 return sync();
             }
 
+            if (alignValue) {
+                editor.setInlineStyle('textAlign', alignValue);
+                return sync();
+            }
+
+            if (actionName === 'indent' || actionName === 'outdent') {
+                editor.adjustIndent(actionName);
+                return sync();
+            }
+
             if (blockName === 'heading') {
                 editor.setBlock('heading', { level: Number(button.getAttribute('data-level') || toolbarSettings.headingLevel || '2') });
+                return sync();
+            }
+
+            if (blockName === 'paragraph') {
+                editor.setBlock('paragraph');
                 return sync();
             }
 
@@ -260,6 +288,7 @@
 
         editorElement.addEventListener('input', function () {
             saveSelection();
+            editor.recordSnapshot();
             sync();
         });
 

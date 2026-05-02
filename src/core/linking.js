@@ -43,6 +43,10 @@
             return false;
         }
 
+        if (config.expandCollapsedToWord) {
+            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, config.root);
+        }
+
         range = currentSelection.getRangeAt(0);
         anchor = getActiveAnchor(currentSelection, config.root);
 
