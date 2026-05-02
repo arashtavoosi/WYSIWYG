@@ -106,6 +106,16 @@
                 return api;
             },
 
+            updateImage: function (attributes, selection) {
+                embedContent.updateImage(attributes, selection);
+                return api;
+            },
+
+            removeImage: function (selection) {
+                embedContent.removeImage(selection);
+                return api;
+            },
+
             insertRule: function (selection) {
                 blockStructure.insertRule(selection, { root: rootNode });
                 return api;
@@ -113,6 +123,36 @@
 
             insertTable: function (config, selection) {
                 embedContent.insertTable(config, selection);
+                return api;
+            },
+
+            insertTableRow: function (position, selection) {
+                embedContent.insertTableRow(position, selection);
+                return api;
+            },
+
+            removeTableRow: function (selection) {
+                embedContent.removeTableRow(selection);
+                return api;
+            },
+
+            insertTableColumn: function (position, selection) {
+                embedContent.insertTableColumn(position, selection);
+                return api;
+            },
+
+            removeTableColumn: function (selection) {
+                embedContent.removeTableColumn(selection);
+                return api;
+            },
+
+            toggleTableHeaderRow: function (selection) {
+                embedContent.toggleTableHeaderRow(selection);
+                return api;
+            },
+
+            removeTable: function (selection) {
+                embedContent.removeTable(selection);
                 return api;
             },
 

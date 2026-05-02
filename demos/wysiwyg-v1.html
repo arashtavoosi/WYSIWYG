@@ -196,7 +196,15 @@
                 <button type="button" data-action="link">Link</button>
                 <button type="button" data-action="unlink">Unlink</button>
                 <button type="button" data-action="image">Image</button>
+                <button type="button" data-action="update-image">Image URL</button>
+                <button type="button" data-action="remove-image">Remove Image</button>
                 <button type="button" data-action="table">Table</button>
+                <button type="button" data-action="table-row-before">Row +</button>
+                <button type="button" data-action="remove-table-row">Row -</button>
+                <button type="button" data-action="table-col-after">Col +</button>
+                <button type="button" data-action="remove-table-col">Col -</button>
+                <button type="button" data-action="table-header">Header Row</button>
+                <button type="button" data-action="remove-table">Remove Table</button>
                 <button type="button" data-action="br">BR</button>
                 <button type="button" data-action="hr">HR</button>
                 <button type="button" data-action="clear">Clear Formatting</button>
@@ -217,6 +225,7 @@
         </div>
     </div>
 
+    <script src="../src/core/html-utility.js"></script>
     <script src="../src/core/selection-formatting.js"></script>
     <script src="../src/core/markup-normalization.js"></script>
     <script src="../src/core/selection-state.js"></script>
@@ -224,6 +233,7 @@
     <script src="../src/core/block-structure.js"></script>
     <script src="../src/core/embed-content.js"></script>
     <script src="../src/core/editor-core.js"></script>
+    <script src="../src/ui/toolbar-config.js"></script>
     <script src="../src/ui/toolbar-view.js"></script>
     <script src="../src/ui/editor-adapter.js"></script>
     <script>

@@ -1,14 +1,10 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory(require('./html-utility'));
     } else {
-        root.WysiwygSelectionFormatting = factory();
+        root.WysiwygSelectionFormatting = factory(root.WysiwygHtmlUtility);
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-    function getCurrentSelection(selection) {
-        return selection || window.getSelection();
-    }
-
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     function createWrapperElement(wrapper) {
         var wrapperElement;
 
@@ -25,24 +21,42 @@
         return wrapperElement;
     }
 
-    function getFormattingAncestor(node, tagName, rootNode) {
-        var boundary = rootNode || document.body;
+    function isSelectionWithinTag(range, tagName, rootNode) {
+        return !!(
+            html.getClosestTag(range.startContainer, tagName, rootNode) &&
+            html.getClosestTag(range.endContainer, tagName, rootNode)
+        );
+    }
 
-        while (node && node !== boundary) {
-            if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === tagName.toLowerCase()) {
-                return node;
-            }
+    function getFullySelectedStyleSpan(range) {
+        var node = range.commonAncestorContainer;
+        var selectedText = range.toString();
+
+        while (node && node.nodeType !== Node.ELEMENT_NODE) {
             node = node.parentNode;
         }
 
-        return null;
-    }
+        while (node) {
+            if (
+                node.nodeType === Node.ELEMENT_NODE &&
+                node.tagName === 'SPAN' &&
+                (html.rangeSelectsElement(range, node) || node.textContent === selectedText)
+            ) {
+                return node;
+            }
 
-    function isSelectionWithinTag(range, tagName, rootNode) {
-        return !!(
-            getFormattingAncestor(range.startContainer, tagName, rootNode) &&
-            getFormattingAncestor(range.endContainer, tagName, rootNode)
-        );
+            node = node.parentNode;
+        }
+
+        node = range.commonAncestorContainer;
+
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            return Array.from(node.querySelectorAll('span')).find(function (span) {
+                return html.rangeSelectsElement(range, span) || span.textContent === selectedText;
+            }) || null;
+        }
+
+        return null;
     }
 
     function getSelectedNodes(range) {
@@ -66,7 +80,7 @@
     }
 
     function wrapSelection(wrapper, selection) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
 
         if (currentSelection.rangeCount === 0) {
             return false;
@@ -93,7 +107,7 @@
     }
 
     function unwrapSelection(tagName, selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
 
         if (currentSelection.rangeCount === 0) {
@@ -101,7 +115,7 @@
         }
 
         var range = currentSelection.getRangeAt(0);
-        var formattingAncestor = getFormattingAncestor(range.commonAncestorContainer, tagName, config.root);
+        var formattingAncestor = html.getClosestTag(range.commonAncestorContainer, tagName, config.root);
 
         if (!formattingAncestor) {
             return false;
@@ -162,7 +176,7 @@
     }
 
     function toggleFormat(tagName, selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var range;
 
         if (currentSelection.rangeCount === 0) {
@@ -179,8 +193,12 @@
     }
 
     function applyStyle(styleObj, selection) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var range;
+        var span;
+        var fragment;
+        var selectedSpan;
+        var restoredRange;
 
         if (currentSelection.rangeCount === 0) {
             return false;
@@ -188,23 +206,43 @@
 
         range = currentSelection.getRangeAt(0);
 
-        getSelectedNodes(range).forEach(function (node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                var span = document.createElement('span');
+        if (range.collapsed) {
+            return false;
+        }
 
-                Object.assign(span.style, styleObj);
-                node.parentNode.insertBefore(span, node);
-                span.appendChild(node);
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                Object.assign(node.style, styleObj);
-            }
-        });
+        selectedSpan = getFullySelectedStyleSpan(range);
+
+        if (selectedSpan) {
+            Object.assign(selectedSpan.style, styleObj);
+            restoredRange = document.createRange();
+            restoredRange.selectNodeContents(selectedSpan);
+            currentSelection.removeAllRanges();
+            currentSelection.addRange(restoredRange);
+            return true;
+        }
+
+        span = document.createElement('span');
+        Object.assign(span.style, styleObj);
+
+        fragment = range.extractContents();
+
+        if (fragment.childNodes.length === 0) {
+            return false;
+        }
+
+        span.appendChild(fragment);
+        range.insertNode(span);
+        span.parentNode.normalize();
+        restoredRange = document.createRange();
+        restoredRange.selectNodeContents(span);
+        currentSelection.removeAllRanges();
+        currentSelection.addRange(restoredRange);
 
         return true;
     }
 
     function removeStyle(styleProps, selection) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var range;
 
         if (currentSelection.rangeCount === 0) {
@@ -225,7 +263,7 @@
     }
 
     function clearFormatting(selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
         var range;
         var tags = config.tags || ['STRONG', 'EM', 'U', 'B', 'I', 'SPAN'];

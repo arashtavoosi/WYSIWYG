@@ -1,83 +1,12 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory(require('./html-utility'));
     } else {
-        root.WysiwygBlockStructure = factory();
+        root.WysiwygBlockStructure = factory(root.WysiwygHtmlUtility);
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-    function getCurrentSelection(selection) {
-        return selection || window.getSelection();
-    }
-
-    function getElement(node) {
-        if (!node) {
-            return null;
-        }
-
-        return node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-    }
-
-    function getClosestTag(node, tagNames, rootNode) {
-        var boundary = rootNode || document.body;
-        var names = Array.isArray(tagNames) ? tagNames : [tagNames];
-        var normalized = names.map(function (name) {
-            return name.toLowerCase();
-        });
-
-        while (node && node !== boundary) {
-            if (node.nodeType === Node.ELEMENT_NODE && normalized.indexOf(node.tagName.toLowerCase()) !== -1) {
-                return node;
-            }
-            node = node.parentNode;
-        }
-
-        return null;
-    }
-
-    function placeCaretInside(node) {
-        var target = node;
-        var range = document.createRange();
-        var selection = window.getSelection();
-
-        while (target && target.firstChild && target.firstChild.nodeType === Node.ELEMENT_NODE) {
-            target = target.firstChild;
-        }
-
-        if (target && target.firstChild && target.firstChild.nodeType === Node.TEXT_NODE) {
-            range.setStart(target.firstChild, 0);
-        } else {
-            range.selectNodeContents(target || node);
-            range.collapse(true);
-        }
-
-        selection.removeAllRanges();
-        selection.addRange(range);
-    }
-
-    function replaceTag(element, tagName) {
-        var replacement;
-
-        if (!element || element.tagName.toLowerCase() === tagName.toLowerCase()) {
-            return element;
-        }
-
-        replacement = document.createElement(tagName);
-
-        Array.from(element.attributes).forEach(function (attribute) {
-            replacement.setAttribute(attribute.name, attribute.value);
-        });
-
-        while (element.firstChild) {
-            replacement.appendChild(element.firstChild);
-        }
-
-        element.parentNode.replaceChild(replacement, element);
-
-        return replacement;
-    }
-
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     function ensureCurrentBlock(rootNode, range) {
-        var block = getClosestTag(getElement(range.startContainer), ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
+        var block = html.getClosestTag(html.getElement(range.startContainer), ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
         var paragraph;
 
         if (block && block !== rootNode) {
@@ -99,20 +28,8 @@
         return paragraph;
     }
 
-    function unwrapNode(node) {
-        var parent = node.parentNode;
-        var reference = node;
-
-        while (node.firstChild) {
-            parent.insertBefore(node.firstChild, reference);
-        }
-
-        parent.removeChild(node);
-        parent.normalize();
-    }
-
     function setBlock(type, selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
         var range;
         var block;
@@ -133,14 +50,14 @@
             targetTag = type;
         }
 
-        block = replaceTag(block, targetTag);
-        placeCaretInside(block);
+        block = html.replaceTag(block, targetTag);
+        html.placeCaretInside(block);
 
         return block;
     }
 
     function toggleBlock(type, selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
         var range;
         var block;
@@ -157,24 +74,24 @@
             return false;
         }
 
-        wrapper = getClosestTag(block, 'blockquote', config.root);
+        wrapper = html.getClosestTag(block, 'blockquote', config.root);
 
         if (wrapper) {
-            unwrapNode(wrapper);
-            placeCaretInside(block);
+            html.unwrapNode(wrapper);
+            html.placeCaretInside(block);
             return true;
         }
 
         wrapper = document.createElement('blockquote');
         block.parentNode.insertBefore(wrapper, block);
         wrapper.appendChild(block);
-        placeCaretInside(block);
+        html.placeCaretInside(block);
 
         return true;
     }
 
     function toggleList(listType, selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
         var range;
         var block;
@@ -189,7 +106,7 @@
 
         range = currentSelection.getRangeAt(0);
         block = ensureCurrentBlock(config.root, range);
-        currentList = getClosestTag(block, ['ul', 'ol'], config.root);
+        currentList = html.getClosestTag(block, ['ul', 'ol'], config.root);
 
         if (currentList && currentList.tagName.toLowerCase() === listType.toLowerCase()) {
             parent = currentList.parentNode;
@@ -210,7 +127,7 @@
         }
 
         if (currentList) {
-            replaceTag(currentList, listType);
+            html.replaceTag(currentList, listType);
             return true;
         }
 
@@ -223,13 +140,13 @@
 
         list.appendChild(item);
         block.parentNode.replaceChild(list, block);
-        placeCaretInside(item);
+        html.placeCaretInside(item);
 
         return true;
     }
 
     function insertBreak(selection) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var range;
         var br;
 
@@ -241,13 +158,13 @@
         range.deleteContents();
         br = document.createElement('br');
         range.insertNode(br);
-        placeCaretInside(br.parentNode);
+        html.placeCaretInside(br.parentNode);
 
         return br;
     }
 
     function insertRule(selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
         var range;
         var block;
@@ -272,13 +189,13 @@
             block.parentNode.appendChild(paragraph);
         }
 
-        placeCaretInside(paragraph);
+        html.placeCaretInside(paragraph);
 
         return hr;
     }
 
     function setBlockStyle(propertyName, value, selection, options) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
         var range;
         var block;

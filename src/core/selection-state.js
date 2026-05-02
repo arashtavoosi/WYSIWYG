@@ -1,51 +1,10 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory(require('./html-utility'));
     } else {
-        root.WysiwygSelectionState = factory();
+        root.WysiwygSelectionState = factory(root.WysiwygHtmlUtility);
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-    function getCurrentSelection(selection) {
-        return selection || window.getSelection();
-    }
-
-    function getElement(node) {
-        if (!node) {
-            return null;
-        }
-
-        return node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-    }
-
-    function getClosestTag(node, tagName, rootNode) {
-        var boundary = rootNode || document.body;
-
-        while (node && node !== boundary) {
-            if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === tagName.toLowerCase()) {
-                return node;
-            }
-            node = node.parentNode;
-        }
-
-        return null;
-    }
-
-    function getClosestAnyTag(node, tagNames, rootNode) {
-        var boundary = rootNode || document.body;
-        var names = tagNames.map(function (name) {
-            return name.toLowerCase();
-        });
-
-        while (node && node !== boundary) {
-            if (node.nodeType === Node.ELEMENT_NODE && names.indexOf(node.tagName.toLowerCase()) !== -1) {
-                return node;
-            }
-            node = node.parentNode;
-        }
-
-        return null;
-    }
-
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     function getInlineStyleValue(element, propertyName) {
         if (!element) {
             return '';
@@ -55,7 +14,7 @@
     }
 
     function getActiveFormats(selection, rootNode) {
-        var currentSelection = getCurrentSelection(selection);
+        var currentSelection = html.getCurrentSelection(selection);
         var range;
         var startElement;
         var blockElement;
@@ -64,14 +23,17 @@
         var imageElement;
         var quoteElement;
         var tableElement;
+        var cellElement;
         var state;
 
         if (!currentSelection || currentSelection.rangeCount === 0) {
             return {
                 block: null,
                 bold: false,
+                collapsed: true,
                 color: '',
                 fontFamily: '',
+                headingLevel: null,
                 image: false,
                 italic: false,
                 lineHeight: '',
@@ -84,21 +46,30 @@
         }
 
         range = currentSelection.getRangeAt(0);
-        startElement = getElement(range.startContainer);
-        blockElement = getClosestAnyTag(startElement, ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
-        listElement = getClosestAnyTag(startElement, ['ul', 'ol'], rootNode);
-        linkElement = getClosestTag(startElement, 'a', rootNode);
-        imageElement = getClosestTag(startElement, 'img', rootNode);
-        quoteElement = getClosestTag(startElement, 'blockquote', rootNode);
-        tableElement = getClosestTag(startElement, 'table', rootNode);
+        startElement = html.getElement(range.startContainer);
+        blockElement = html.getClosestTag(startElement, ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
+        listElement = html.getClosestTag(startElement, ['ul', 'ol'], rootNode);
+        linkElement = html.getClosestTag(startElement, 'a', rootNode);
+        imageElement = html.getSelectedElement(range, 'img') || html.getClosestTag(startElement, 'img', rootNode);
+        quoteElement = html.getClosestTag(startElement, 'blockquote', rootNode);
+        cellElement = html.getClosestTag(startElement, ['td', 'th'], rootNode);
+        tableElement = html.getSelectedElement(range, 'table') || html.getClosestTag(startElement, 'table', rootNode);
 
         state = {
             block: blockElement ? blockElement.tagName.toLowerCase() : null,
-            bold: !!getClosestAnyTag(startElement, ['strong', 'b'], rootNode),
+            bold: !!html.getClosestTag(startElement, ['strong', 'b'], rootNode),
+            collapsed: range.collapsed,
             color: getInlineStyleValue(startElement, 'color'),
             fontFamily: getInlineStyleValue(startElement, 'fontFamily'),
-            image: !!imageElement,
-            italic: !!getClosestAnyTag(startElement, ['em', 'i'], rootNode),
+            headingLevel: blockElement && /^H[1-6]$/.test(blockElement.tagName) ? Number(blockElement.tagName.charAt(1)) : null,
+            image: imageElement ? {
+                alt: imageElement.getAttribute('alt') || '',
+                height: imageElement.getAttribute('height') || '',
+                src: imageElement.getAttribute('src') || '',
+                title: imageElement.getAttribute('title') || '',
+                width: imageElement.getAttribute('width') || ''
+            } : false,
+            italic: !!html.getClosestTag(startElement, ['em', 'i'], rootNode),
             lineHeight: getInlineStyleValue(blockElement || startElement, 'lineHeight'),
             link: linkElement ? {
                 href: linkElement.getAttribute('href') || '',
@@ -107,8 +78,12 @@
             } : null,
             list: listElement ? listElement.tagName.toLowerCase() : null,
             quote: !!quoteElement,
-            table: !!tableElement,
-            underline: !!getClosestTag(startElement, 'u', rootNode)
+            table: tableElement ? {
+                cellIndex: cellElement ? cellElement.cellIndex : null,
+                headerRow: !!tableElement.querySelector('thead'),
+                rowIndex: cellElement ? html.getClosestTag(cellElement, 'tr', rootNode).rowIndex : null
+            } : false,
+            underline: !!html.getClosestTag(startElement, 'u', rootNode)
         };
 
         return state;

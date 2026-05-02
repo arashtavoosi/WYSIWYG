@@ -5,6 +5,20 @@
         root.WysiwygMarkupNormalization = factory();
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+    function hasMeaningfulContent(node) {
+        return Array.from(node.childNodes).some(function (child) {
+            if (child.nodeType === Node.TEXT_NODE) {
+                return child.textContent.length > 0;
+            }
+
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                return hasMeaningfulContent(child);
+            }
+
+            return true;
+        });
+    }
+
     function removeEmptyFormattingElements(tagName, context) {
         var root = context || document.body;
 
@@ -15,7 +29,7 @@
 
             Array.from(node.childNodes).forEach(visit);
 
-            if (node !== root && node.tagName.toLowerCase() === tagName.toLowerCase() && node.childNodes.length === 0) {
+            if (node !== root && node.tagName.toLowerCase() === tagName.toLowerCase() && !hasMeaningfulContent(node)) {
                 node.parentNode.removeChild(node);
             }
         }
@@ -33,7 +47,7 @@
             removeEmptyFormattingNodes(child, tagNames);
         });
 
-        if (tagNames.indexOf(node.tagName) !== -1 && node.childNodes.length === 0 && node.parentNode) {
+        if (tagNames.indexOf(node.tagName) !== -1 && !hasMeaningfulContent(node) && node.parentNode) {
             node.parentNode.removeChild(node);
         }
     }
@@ -114,6 +128,7 @@
         var root = context || document.body;
 
         simplifyNestedTags(['strong', 'em', 'u'], root);
+        removeEmptyFormattingNodes(root, ['STRONG', 'EM', 'U', 'B', 'I', 'SPAN']);
         root.normalize();
 
         return root;

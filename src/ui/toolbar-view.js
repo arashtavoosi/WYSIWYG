@@ -62,7 +62,10 @@
                 setButtonState(toolbarElement.querySelector('[data-list="ol"]'), state.list === 'ol');
                 setButtonState(toolbarElement.querySelector('[data-action="link"]'), !!state.link);
                 setButtonState(toolbarElement.querySelector('[data-action="unlink"]'), !!state.link);
+                setButtonState(toolbarElement.querySelector('[data-action="update-image"]'), !!state.image);
+                setButtonState(toolbarElement.querySelector('[data-action="remove-image"]'), !!state.image);
                 setButtonState(toolbarElement.querySelector('[data-action="table"]'), !!state.table);
+                setButtonState(toolbarElement.querySelector('[data-action="table-header"]'), state.table && !!state.table.headerRow);
 
                 if (colorInput) {
                     colorInput.value = normalizeColorValue(state.color);
