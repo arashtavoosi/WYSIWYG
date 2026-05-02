@@ -35,6 +35,38 @@
         return value;
     }
 
+    function resolveRenderValue(value, context) {
+        if (typeof value === 'function') {
+            return value(context);
+        }
+
+        return value;
+    }
+
+    function priorityFor(node) {
+        var priority = node && Number(node.priority);
+
+        return Number.isFinite(priority) ? priority : 0;
+    }
+
+    function sortedNodeKeys(nodes) {
+        return Object.keys(nodes || {}).map(function (key, index) {
+            return {
+                key: key,
+                index: index,
+                priority: priorityFor(nodes[key])
+            };
+        }).sort(function (left, right) {
+            if (left.priority === right.priority) {
+                return left.index - right.index;
+            }
+
+            return left.priority - right.priority;
+        }).map(function (entry) {
+            return entry.key;
+        });
+    }
+
     function setButtonState(button, isActive) {
         if (!button) {
             return;
@@ -237,6 +269,14 @@
             var group;
             var id;
             var element;
+            var children = [];
+
+            if (resolveRenderValue(node.hide, Object.assign({}, renderContext, {
+                node: node,
+                key: key
+            }))) {
+                return null;
+            }
 
             if (type === 'group') {
                 group = createElement('div', 'toolbar-group');
@@ -249,8 +289,20 @@
                     group.classList.add(node.className);
                 }
 
-                Object.keys(node.children || {}).forEach(function (childKey) {
-                    group.appendChild(renderNode(node.children[childKey], childKey));
+                sortedNodeKeys(node.children).forEach(function (childKey) {
+                    var child = renderNode(node.children[childKey], childKey);
+
+                    if (child) {
+                        children.push(child);
+                    }
+                });
+
+                if (!children.length) {
+                    return null;
+                }
+
+                children.forEach(function (child) {
+                    group.appendChild(child);
                 });
 
                 return group;
@@ -290,8 +342,12 @@
             entries = {};
             counter = 0;
 
-            Object.keys(toolbar).forEach(function (key) {
-                toolbarElement.appendChild(renderNode(toolbar[key], key));
+            sortedNodeKeys(toolbar).forEach(function (key) {
+                var node = renderNode(toolbar[key], key);
+
+                if (node) {
+                    toolbarElement.appendChild(node);
+                }
             });
         }
 

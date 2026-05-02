@@ -48,6 +48,77 @@ describe('editor adapter', () => {
         expect(document.querySelector('input[type="color"]').value).toBe('#123456');
     });
 
+    test('renders toolbar groups and items by priority and skips hidden nodes', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Text</p></div>'
+        ].join('');
+
+        createEditorAdapter({
+            editorElement: document.getElementById('editor'),
+            toolbarElement: document.getElementById('toolbar'),
+            toolbar: {
+                lateGroup: {
+                    title: 'Late',
+                    priority: 20,
+                    children: {
+                        lateButton: {
+                            title: 'Late Button',
+                            priority: 20,
+                            onCommand: function () {}
+                        },
+                        earlyButton: {
+                            title: 'Early Button',
+                            priority: 10,
+                            onCommand: function () {}
+                        },
+                        hiddenButton: {
+                            title: 'Hidden Button',
+                            priority: 5,
+                            hide: true,
+                            onCommand: function () {}
+                        }
+                    }
+                },
+                hiddenGroup: {
+                    title: 'Hidden Group',
+                    priority: 5,
+                    hide: function (context) {
+                        return !!context.editor;
+                    },
+                    children: {
+                        hiddenGroupButton: {
+                            title: 'Hidden Group Button',
+                            priority: 10,
+                            onCommand: function () {}
+                        }
+                    }
+                },
+                earlyGroup: {
+                    title: 'Early',
+                    priority: 10,
+                    children: {
+                        first: {
+                            title: 'First Group Button',
+                            priority: 10,
+                            onCommand: function () {}
+                        }
+                    }
+                }
+            }
+        });
+
+        const groups = Array.from(document.querySelectorAll('.toolbar-group')).map(function (group) {
+            return group.getAttribute('aria-label');
+        });
+        const buttons = Array.from(document.querySelectorAll('button')).map(function (button) {
+            return button.textContent;
+        });
+
+        expect(groups).toEqual(['Early', 'Late']);
+        expect(buttons).toEqual(['First Group Button', 'Early Button', 'Late Button']);
+    });
+
     test('custom render and onUpdate receive toolbar context', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
