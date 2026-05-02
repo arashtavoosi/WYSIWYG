@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="wysiwyg-icon-undo" viewBox="0 0 32 32">
+        <path d="M13 8 6 15l7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M7 15h13.5a6.5 6.5 0 1 1-3.8 11.7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-redo" viewBox="0 0 32 32">
+        <path d="m19 8 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M25 15H11.5a6.5 6.5 0 1 0 3.8 11.7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-paragraph" viewBox="0 0 32 32">
+        <path d="M22 6H13a5.2 5.2 0 0 0 0 10.4h9" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" />
+        <path d="M17 6v21M22 6v21" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-heading-1" viewBox="0 0 32 32">
+        <path d="M8 7v18M24 7v18M8 16h16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-heading-2" viewBox="0 0 32 32">
+        <path d="M8 7v18M24 7v18M8 16h16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-heading-3" viewBox="0 0 32 32">
+        <path d="M8 7v18M24 7v18M8 16h16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-quote" viewBox="0 0 32 32">
+        <text x="6" y="22" fill="currentColor" stroke="none" font-family="Georgia, serif" font-size="19" font-weight="400">66</text>
+    </symbol>
+    <symbol id="wysiwyg-icon-bold" viewBox="0 0 32 32">
+        <text x="9" y="23" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="22" font-weight="400">B</text>
+    </symbol>
+    <symbol id="wysiwyg-icon-italic" viewBox="0 0 32 32">
+        <text x="11" y="23" fill="currentColor" stroke="none" font-family="Georgia, serif" font-size="22" font-style="italic">I</text>
+    </symbol>
+    <symbol id="wysiwyg-icon-underline" viewBox="0 0 32 32">
+        <text x="8" y="22" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="22">U</text>
+        <path d="M8 26h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-strikethrough" viewBox="0 0 32 32">
+        <text x="9" y="22.5" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="22">S</text>
+        <path d="M6 16h20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-subscript" viewBox="0 0 32 32">
+        <text x="6" y="20" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="21">X</text>
+        <text x="21" y="26" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="11">2</text>
+    </symbol>
+    <symbol id="wysiwyg-icon-superscript" viewBox="0 0 32 32">
+        <text x="6" y="24" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="21">X</text>
+        <text x="21" y="11" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="11">2</text>
+    </symbol>
+    <symbol id="wysiwyg-icon-text-color" viewBox="0 0 32 32">
+        <text x="7" y="22" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="23">A</text>
+        <path d="M6 26h20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-highlight" viewBox="0 0 32 32">
+        <path d="m9 21 4.2-1 10-10-3.2-3.2-10 10z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="m17.8 9 3.2 3.2M7 26h18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-font-family" viewBox="0 0 32 32">
+        <text x="4" y="22" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="19">Aa</text>
+        <path d="m23 13 3 3 3-3" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-font-size" viewBox="0 0 32 32">
+        <text x="5" y="23" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="25">A</text>
+        <path d="M24 7v18M21 10l3-3 3 3M21 22l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-line-height" viewBox="0 0 32 32">
+        <path d="M22 8h6M22 16h6M22 24h6M9 5v22M5 9l4-4 4 4M5 23l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-bullets" viewBox="0 0 32 32">
+        <circle cx="7" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="2" />
+        <circle cx="7" cy="16" r="2" fill="none" stroke="currentColor" stroke-width="2" />
+        <circle cx="7" cy="24" r="2" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M14 8h13M14 16h13M14 24h13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-numbers" viewBox="0 0 32 32">
+        <text x="4" y="10" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="9">1</text>
+        <text x="4" y="18" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="9">2</text>
+        <text x="4" y="27" fill="currentColor" stroke="none" font-family="Arial, sans-serif" font-size="9">3</text>
+        <path d="M14 8h13M14 16h13M14 24h13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-outdent" viewBox="0 0 32 32">
+        <path d="M19 8h8M19 24h8M14 10l-6 6 6 6M9 16h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M25 8v16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-indent" viewBox="0 0 32 32">
+        <path d="M13 8H5M13 24H5M18 10l6 6-6 6M7 16h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M7 8v16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-align-left" viewBox="0 0 32 32">
+        <path d="M6 8h19M6 13.5h14M6 19h19M6 24.5h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-align-center" viewBox="0 0 32 32">
+        <path d="M6 8h20M10 13.5h12M6 19h20M10 24.5h12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-align-right" viewBox="0 0 32 32">
+        <path d="M7 8h19M12 13.5h14M7 19h19M12 24.5h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-justify" viewBox="0 0 32 32">
+        <path d="M6 8h20M6 13.5h20M6 19h20M6 24.5h20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-link" viewBox="0 0 32 32">
+        <path d="m13.4 12.2-2.6 2.6a5 5 0 0 0 7.1 7.1l2.6-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        <path d="m18.6 19.8 2.6-2.6a5 5 0 0 0-7.1-7.1l-2.6 2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-unlink" viewBox="0 0 32 32">
+        <path d="m12.8 12.6-2 2a5 5 0 0 0 5.2 8.2M19.2 19.4l2-2a5 5 0 0 0-5.2-8.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        <path d="M8 8l16 16M20 7v4M25 12h-4M7 20h4M12 25v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-image" viewBox="0 0 32 32">
+        <rect x="6" y="7" width="20" height="18" rx="1.8" fill="none" stroke="currentColor" stroke-width="2.2" />
+        <path d="M10 22l5-5 3.2 3.3 2.4-2.5L25 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-image-edit" viewBox="0 0 32 32">
+        <rect x="4.8" y="7" width="18" height="18" rx="1.8" fill="none" stroke="currentColor" stroke-width="2.1" />
+        <path d="M8.5 21l4.5-4.5 3.1 3.1 2.4-2.4 3 3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="m20.5 25.5 1.2-5.4 5.2-5.2 4.2 4.2-5.2 5.2zM24 16.7l4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-image-remove" viewBox="0 0 32 32">
+        <rect x="5" y="7" width="20" height="18" rx="1.8" fill="none" stroke="currentColor" stroke-width="2.1" />
+        <path d="M9 21l4.5-4.5 3 3 2.4-2.3 4 4M22 21l6 6M28 21l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="10.5" cy="11.5" r="1.6" fill="currentColor" stroke="none" />
+    </symbol>
+    <symbol id="wysiwyg-icon-table" viewBox="0 0 32 32">
+        <rect x="6" y="6" width="20" height="20" rx="1" fill="none" stroke="currentColor" stroke-width="2.2" />
+        <path d="M6 12.7h20M6 19.3h20M12.7 6v20M19.3 6v20" fill="none" stroke="currentColor" stroke-width="2" />
+    </symbol>
+    <symbol id="wysiwyg-icon-row-before" viewBox="0 0 32 32">
+        <path d="M9 13h18v13H9zM9 19.5h18M15 13v13M21 13v13" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M8 7h6M11 4v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-row-after" viewBox="0 0 32 32">
+        <path d="M9 13h18v13H9zM9 19.5h18M15 13v13M21 13v13" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M8 7h6M11 4v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-row-remove" viewBox="0 0 32 32">
+        <path d="M8 11h20v16H8zM8 19h20M15 11v16M22 11v16" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M12 6h12" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-column-before" viewBox="0 0 32 32">
+        <path d="M8 11h18v15H8zM14 11v15M20 11v15" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M22 7h6M25 4v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-column-after" viewBox="0 0 32 32">
+        <path d="M8 11h18v15H8zM14 11v15M20 11v15" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M22 7h6M25 4v6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-column-remove" viewBox="0 0 32 32">
+        <path d="M6 11h20v16H6zM12.7 11v16M19.3 11v16" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M14 6h10" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-header-row" viewBox="0 0 32 32">
+        <rect x="6" y="6" width="20" height="20" rx="1" fill="none" stroke="currentColor" stroke-width="2.2" />
+        <path d="M6 12h20M6 19h20M12.7 6v20M19.3 6v20" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M8 9h16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-table-remove" viewBox="0 0 32 32">
+        <rect x="5" y="6" width="20" height="20" rx="1" fill="none" stroke="currentColor" stroke-width="2.1" />
+        <path d="M5 12.5h20M11.7 6v20M18.3 6v20M22 22l6 6M28 22l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-line-break" viewBox="0 0 32 32">
+        <path d="M6 16h20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-rule" viewBox="0 0 32 32">
+        <path d="M6 16h20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="wysiwyg-icon-clear-formatting" viewBox="0 0 32 32">
+        <path d="M7 24 15 6l7 16M10.5 17h8" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="m21 26 6-6 3 3-6 6h-3zM25.2 21.8l3 3" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+</svg>

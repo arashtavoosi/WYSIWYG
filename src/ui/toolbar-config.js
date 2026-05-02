@@ -35,6 +35,8 @@
         headingLevel: 2,
         imageAttributes: ['src', 'alt', 'title', 'width', 'height'],
         indentStep: 24,
+        iconPrefix: 'wysiwyg-icon-',
+        iconSpritePath: '',
         prompts: {
             image: { label: 'Image URL', fallback: 'https://' },
             link: { label: 'Link URL', fallback: 'https://' },
@@ -48,7 +50,7 @@
                 children: {
                     undo: {
                         title: 'Undo',
-                        icon: '<',
+                        iconId: 'undo', icon: '<',
                         priority: 10,
                         disabled: function (state) { return !state.canUndo; },
                         onCommand: function (context) {
@@ -58,7 +60,7 @@
                     },
                     redo: {
                         title: 'Redo',
-                        icon: '>',
+                        iconId: 'redo', icon: '>',
                         priority: 20,
                         disabled: function (state) { return !state.canRedo; },
                         onCommand: function (context) {
@@ -74,7 +76,7 @@
                 children: {
                     paragraph: {
                         title: 'Paragraph',
-                        icon: 'P',
+                        iconId: 'paragraph', icon: 'P',
                         priority: 10,
                         active: function (state) { return state.block === 'p'; },
                         onCommand: function (context) {
@@ -83,7 +85,7 @@
                     },
                     h1: {
                         title: 'Heading 1',
-                        icon: 'H1',
+                        iconId: 'heading-1', icon: 'H1',
                         priority: 20,
                         active: function (state) { return state.headingLevel === 1; },
                         onCommand: function (context) {
@@ -92,7 +94,7 @@
                     },
                     h2: {
                         title: 'Heading 2',
-                        icon: 'H2',
+                        iconId: 'heading-2', icon: 'H2',
                         priority: 30,
                         active: function (state) { return state.headingLevel === 2; },
                         onCommand: function (context) {
@@ -101,7 +103,7 @@
                     },
                     h3: {
                         title: 'Heading 3',
-                        icon: 'H3',
+                        iconId: 'heading-3', icon: 'H3',
                         priority: 40,
                         active: function (state) { return state.headingLevel === 3; },
                         onCommand: function (context) {
@@ -110,7 +112,7 @@
                     },
                     quote: {
                         title: 'Quote',
-                        icon: '"',
+                        iconId: 'quote', icon: '"',
                         priority: 50,
                         active: function (state) { return !!state.quote; },
                         onCommand: function (context) {
@@ -123,12 +125,12 @@
                 title: 'Inline',
                 priority: 30,
                 children: {
-                    bold: { title: 'Bold', icon: 'B', priority: 10, active: inlineActive('bold'), onCommand: inlineCommand('bold') },
-                    italic: { title: 'Italic', icon: 'I', priority: 20, active: inlineActive('italic'), onCommand: inlineCommand('italic') },
-                    underline: { title: 'Underline', icon: 'U', priority: 30, active: inlineActive('underline'), onCommand: inlineCommand('underline') },
-                    strikethrough: { title: 'Strikethrough', icon: 'S', priority: 40, active: inlineActive('strikethrough'), onCommand: inlineCommand('strikethrough') },
-                    subscript: { title: 'Subscript', icon: 'x2', priority: 50, active: inlineActive('subscript'), onCommand: inlineCommand('subscript') },
-                    superscript: { title: 'Superscript', icon: 'x^2', priority: 60, active: inlineActive('superscript'), onCommand: inlineCommand('superscript') }
+                    bold: { title: 'Bold', iconId: 'bold', icon: 'B', priority: 10, active: inlineActive('bold'), onCommand: inlineCommand('bold') },
+                    italic: { title: 'Italic', iconId: 'italic', icon: 'I', priority: 20, active: inlineActive('italic'), onCommand: inlineCommand('italic') },
+                    underline: { title: 'Underline', iconId: 'underline', icon: 'U', priority: 30, active: inlineActive('underline'), onCommand: inlineCommand('underline') },
+                    strikethrough: { title: 'Strikethrough', iconId: 'strikethrough', icon: 'S', priority: 40, active: inlineActive('strikethrough'), onCommand: inlineCommand('strikethrough') },
+                    subscript: { title: 'Subscript', iconId: 'subscript', icon: 'x2', priority: 50, active: inlineActive('subscript'), onCommand: inlineCommand('subscript') },
+                    superscript: { title: 'Superscript', iconId: 'superscript', icon: 'x^2', priority: 60, active: inlineActive('superscript'), onCommand: inlineCommand('superscript') }
                 }
             },
             style: {
@@ -138,6 +140,7 @@
                     fontFamily: {
                         type: 'dropdown',
                         title: 'Font',
+                        iconId: 'font-family',
                         priority: 10,
                         value: function (state) { return state.fontFamily; },
                         options: [
@@ -150,6 +153,7 @@
                     fontSize: {
                         type: 'dropdown',
                         title: 'Size',
+                        iconId: 'font-size',
                         priority: 20,
                         value: function (state) { return state.fontSize; },
                         options: [
@@ -165,6 +169,7 @@
                     lineHeight: {
                         type: 'dropdown',
                         title: 'Line',
+                        iconId: 'line-height',
                         priority: 30,
                         value: function (state) { return state.lineHeight; },
                         options: [
@@ -180,6 +185,7 @@
                     color: {
                         type: 'colorpicker',
                         title: 'Text color',
+                        iconId: 'text-color',
                         priority: 40,
                         value: function (state) { return state.color; },
                         fallback: '#000000',
@@ -188,6 +194,7 @@
                     highlight: {
                         type: 'colorpicker',
                         title: 'Highlight',
+                        iconId: 'highlight',
                         priority: 50,
                         value: function (state) { return state.highlightColor; },
                         fallback: '#ffff00',
@@ -201,7 +208,7 @@
                 children: {
                     bullets: {
                         title: 'Bullets',
-                        icon: '*',
+                        iconId: 'bullets', icon: '*',
                         priority: 10,
                         active: function (state) { return state.list === 'ul'; },
                         onCommand: function (context) {
@@ -210,7 +217,7 @@
                     },
                     numbers: {
                         title: 'Numbers',
-                        icon: '1.',
+                        iconId: 'numbers', icon: '1.',
                         priority: 20,
                         active: function (state) { return state.list === 'ol'; },
                         onCommand: function (context) {
@@ -219,7 +226,7 @@
                     },
                     outdent: {
                         title: 'Outdent',
-                        icon: '<-',
+                        iconId: 'outdent', icon: '<-',
                         priority: 30,
                         onCommand: function (context) {
                             context.editor.adjustIndent('outdent');
@@ -227,7 +234,7 @@
                     },
                     indent: {
                         title: 'Indent',
-                        icon: '->',
+                        iconId: 'indent', icon: '->',
                         priority: 40,
                         onCommand: function (context) {
                             context.editor.adjustIndent('indent');
@@ -241,7 +248,7 @@
                 children: {
                     left: {
                         title: 'Align left',
-                        icon: 'L',
+                        iconId: 'align-left', icon: 'L',
                         priority: 10,
                         active: function (state) { return state.textAlign === 'left' || !state.textAlign; },
                         onCommand: function (context) {
@@ -250,7 +257,7 @@
                     },
                     center: {
                         title: 'Align center',
-                        icon: 'C',
+                        iconId: 'align-center', icon: 'C',
                         priority: 20,
                         active: function (state) { return state.textAlign === 'center'; },
                         onCommand: function (context) {
@@ -259,7 +266,7 @@
                     },
                     right: {
                         title: 'Align right',
-                        icon: 'R',
+                        iconId: 'align-right', icon: 'R',
                         priority: 30,
                         active: function (state) { return state.textAlign === 'right'; },
                         onCommand: function (context) {
@@ -268,7 +275,7 @@
                     },
                     justify: {
                         title: 'Justify',
-                        icon: 'J',
+                        iconId: 'justify', icon: 'J',
                         priority: 40,
                         active: function (state) { return state.textAlign === 'justify'; },
                         onCommand: function (context) {
@@ -283,7 +290,7 @@
                 children: {
                     link: {
                         title: 'Link',
-                        icon: 'Link',
+                        iconId: 'link', icon: 'Link',
                         priority: 10,
                         active: function (state) { return !!state.link; },
                         onCommand: function (context) {
@@ -297,7 +304,7 @@
                     },
                     unlink: {
                         title: 'Unlink',
-                        icon: 'Unlink',
+                        iconId: 'unlink', icon: 'Unlink',
                         priority: 20,
                         active: function (state) { return !!state.link; },
                         disabled: function (state) { return !state.link; },
@@ -307,7 +314,7 @@
                     },
                     image: {
                         title: 'Image',
-                        icon: 'Img',
+                        iconId: 'image', icon: 'Img',
                         priority: 30,
                         onCommand: function (context) {
                             var src = promptValue(context, context.settings.prompts.image);
@@ -319,7 +326,7 @@
                     },
                     updateImage: {
                         title: 'Update image URL',
-                        icon: 'Img+',
+                        iconId: 'image-edit', icon: 'Img+',
                         priority: 40,
                         active: function (state) { return !!state.image; },
                         disabled: function (state) { return !state.image; },
@@ -334,7 +341,7 @@
                     },
                     removeImage: {
                         title: 'Remove image',
-                        icon: 'Img-',
+                        iconId: 'image-remove', icon: 'Img-',
                         priority: 50,
                         disabled: function (state) { return !state.image; },
                         onCommand: function (context) {
@@ -343,7 +350,7 @@
                     },
                     br: {
                         title: 'Line break',
-                        icon: 'BR',
+                        iconId: 'line-break', icon: 'BR',
                         priority: 60,
                         onCommand: function (context) {
                             context.editor.insertBreak();
@@ -351,7 +358,7 @@
                     },
                     hr: {
                         title: 'Rule',
-                        icon: 'HR',
+                        iconId: 'rule', icon: 'HR',
                         priority: 70,
                         onCommand: function (context) {
                             context.editor.insertRule();
@@ -365,7 +372,7 @@
                 children: {
                     insertTable: {
                         title: 'Table',
-                        icon: 'Tbl',
+                        iconId: 'table', icon: 'Tbl',
                         priority: 10,
                         active: function (state) { return !!state.table; },
                         onCommand: function (context) {
@@ -378,7 +385,7 @@
                     },
                     rowBefore: {
                         title: 'Row before',
-                        icon: 'R+',
+                        iconId: 'row-before', icon: 'R+',
                         priority: 20,
                         disabled: tableDisabled,
                         onCommand: function (context) {
@@ -387,7 +394,7 @@
                     },
                     rowAfter: {
                         title: 'Row after',
-                        icon: '+R',
+                        iconId: 'row-after', icon: '+R',
                         priority: 30,
                         disabled: tableDisabled,
                         onCommand: function (context) {
@@ -396,7 +403,7 @@
                     },
                     removeRow: {
                         title: 'Remove row',
-                        icon: 'R-',
+                        iconId: 'row-remove', icon: 'R-',
                         priority: 40,
                         disabled: tableDisabled,
                         onCommand: function (context) {
@@ -405,7 +412,7 @@
                     },
                     colBefore: {
                         title: 'Column before',
-                        icon: 'C+',
+                        iconId: 'column-before', icon: 'C+',
                         priority: 50,
                         disabled: tableDisabled,
                         onCommand: function (context) {
@@ -414,7 +421,7 @@
                     },
                     colAfter: {
                         title: 'Column after',
-                        icon: '+C',
+                        iconId: 'column-after', icon: '+C',
                         priority: 60,
                         disabled: tableDisabled,
                         onCommand: function (context) {
@@ -423,7 +430,7 @@
                     },
                     removeCol: {
                         title: 'Remove column',
-                        icon: 'C-',
+                        iconId: 'column-remove', icon: 'C-',
                         priority: 70,
                         disabled: tableDisabled,
                         onCommand: function (context) {
@@ -432,7 +439,7 @@
                     },
                     headerRow: {
                         title: 'Header row',
-                        icon: 'TH',
+                        iconId: 'header-row', icon: 'TH',
                         priority: 80,
                         active: function (state) { return state.table && !!state.table.headerRow; },
                         disabled: tableDisabled,
@@ -442,7 +449,7 @@
                     },
                     removeTable: {
                         title: 'Remove table',
-                        icon: 'Tbl-',
+                        iconId: 'table-remove', icon: 'Tbl-',
                         priority: 90,
                         disabled: tableDisabled,
                         onCommand: function (context) {
@@ -457,7 +464,7 @@
                 children: {
                     clear: {
                         title: 'Clear formatting',
-                        icon: 'A-',
+                        iconId: 'clear-formatting', icon: 'A-',
                         priority: 10,
                         onCommand: function (context) {
                             context.editor.clear();

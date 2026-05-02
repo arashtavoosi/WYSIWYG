@@ -103,7 +103,29 @@
         return element;
     }
 
-    function appendNodeText(element, node) {
+    function createSvgIcon(node, settings) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        var iconId = (settings.iconPrefix || 'wysiwyg-icon-') + node.iconId;
+        var spritePath = settings.iconSpritePath || '';
+        var href = spritePath + '#' + iconId;
+
+        svg.classList.add('toolbar-button-icon');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        use.setAttribute('href', href);
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+        svg.appendChild(use);
+
+        return svg;
+    }
+
+    function appendNodeContent(element, node, settings) {
+        if (node.iconId) {
+            element.appendChild(createSvgIcon(node, settings || {}));
+            return;
+        }
+
         element.textContent = node.icon || node.title || '';
     }
 
@@ -121,17 +143,29 @@
         }
     }
 
-    function renderButton(node, id) {
+    function renderButton(node, id, settings) {
         var button = createElement('button', 'toolbar-button');
 
         button.type = 'button';
         applyCommonAttributes(button, node, id, 'button');
-        appendNodeText(button, node);
+        appendNodeContent(button, node, settings);
 
         return button;
     }
 
-    function renderDropdown(node, id) {
+    function appendControlIcon(wrapper, node, settings) {
+        var icon;
+
+        if (!node.iconId) {
+            return;
+        }
+
+        icon = createElement('span', 'toolbar-control-icon');
+        icon.appendChild(createSvgIcon(node, settings || {}));
+        wrapper.appendChild(icon);
+    }
+
+    function renderDropdown(node, id, settings) {
         var wrapper = createElement('label', 'toolbar-control toolbar-dropdown');
         var label = createElement('span', 'toolbar-control-label');
         var select = document.createElement('select');
@@ -147,13 +181,14 @@
             select.appendChild(optionElement);
         });
 
+        appendControlIcon(wrapper, node, settings);
         wrapper.appendChild(label);
         wrapper.appendChild(select);
 
         return wrapper;
     }
 
-    function renderColorPicker(node, id) {
+    function renderColorPicker(node, id, settings) {
         var wrapper = createElement('label', 'toolbar-control toolbar-color');
         var label = createElement('span', 'toolbar-control-label');
         var input = document.createElement('input');
@@ -163,6 +198,7 @@
         input.value = node.fallback || '#000000';
         applyCommonAttributes(input, node, id, 'colorpicker');
 
+        appendControlIcon(wrapper, node, settings);
         wrapper.appendChild(label);
         wrapper.appendChild(input);
 
@@ -270,6 +306,7 @@
             var id;
             var element;
             var children = [];
+            var settings = renderContext.settings || {};
 
             if (resolveRenderValue(node.hide, Object.assign({}, renderContext, {
                 node: node,
@@ -325,11 +362,11 @@
                     applyCommonAttributes(element, node, id, type);
                 }
             } else if (type === 'dropdown') {
-                element = renderDropdown(node, id);
+                element = renderDropdown(node, id, settings);
             } else if (type === 'colorpicker') {
-                element = renderColorPicker(node, id);
+                element = renderColorPicker(node, id, settings);
             } else {
-                element = renderButton(node, id);
+                element = renderButton(node, id, settings);
             }
 
             register(node, element, element.querySelector ? (element.querySelector('[data-toolbar-id="' + id + '"]') || element) : element, type, key);

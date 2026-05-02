@@ -119,6 +119,27 @@ describe('editor adapter', () => {
         expect(buttons).toEqual(['First Group Button', 'Early Button', 'Late Button']);
     });
 
+    test('renders sprite icons when toolbar nodes provide icon IDs', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Text</p></div>'
+        ].join('');
+
+        createEditorAdapter({
+            editorElement: document.getElementById('editor'),
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                iconSpritePath: '/assets/toolbar-icons.svg'
+            }
+        });
+
+        const boldUse = document.querySelector('button[title="Bold"] use');
+        const fontUse = document.querySelector('.toolbar-dropdown use');
+
+        expect(boldUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-bold');
+        expect(fontUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-font-family');
+    });
+
     test('custom render and onUpdate receive toolbar context', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
