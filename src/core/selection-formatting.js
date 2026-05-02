@@ -5,22 +5,6 @@
         root.WysiwygSelectionFormatting = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
-    function createWrapperElement(wrapper) {
-        var wrapperElement;
-
-        if (typeof wrapper === 'string') {
-            var temp = document.createElement('div');
-            temp.innerHTML = wrapper.trim();
-            wrapperElement = temp.firstChild;
-        } else if (wrapper instanceof Node) {
-            wrapperElement = wrapper.cloneNode(true);
-        } else {
-            throw new Error('Invalid wrapper provided');
-        }
-
-        return wrapperElement;
-    }
-
     function isSelectionWithinTag(range, tagName, rootNode) {
         return !!(
             html.getClosestTag(range.startContainer, tagName, rootNode) &&
@@ -59,26 +43,6 @@
         return null;
     }
 
-    function getSelectedNodes(range) {
-        var selectedNodes = [];
-        var node = range.startContainer;
-        var endNode = range.endContainer;
-
-        if (node === endNode) {
-            selectedNodes.push(node);
-            return selectedNodes;
-        }
-
-        while (node && node !== endNode) {
-            selectedNodes.push(node);
-            node = node.nextSibling;
-        }
-
-        selectedNodes.push(endNode);
-
-        return selectedNodes;
-    }
-
     function wrapSelection(wrapper, selection) {
         var currentSelection = html.getCurrentSelection(selection);
 
@@ -87,7 +51,7 @@
         }
 
         var range = currentSelection.getRangeAt(0);
-        var wrapperElement = createWrapperElement(wrapper);
+        var wrapperElement = html.createWrapperElement(wrapper);
         var newRange = range.cloneRange();
 
         try {
@@ -251,7 +215,7 @@
 
         range = currentSelection.getRangeAt(0);
 
-        getSelectedNodes(range).forEach(function (node) {
+        html.getSelectedNodes(range).forEach(function (node) {
             if (node.nodeType === Node.ELEMENT_NODE) {
                 styleProps.forEach(function (prop) {
                     node.style[prop] = '';

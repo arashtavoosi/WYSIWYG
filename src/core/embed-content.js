@@ -11,17 +11,6 @@
         return cell;
     }
 
-    function replaceCellTag(cell, tagName) {
-        var replacement = document.createElement(tagName);
-
-        while (cell.firstChild) {
-            replacement.appendChild(cell.firstChild);
-        }
-
-        cell.parentNode.replaceChild(replacement, cell);
-        return replacement;
-    }
-
     function insertImage(attributes, selection) {
         var currentSelection = html.getCurrentSelection(selection);
         var range;
@@ -145,7 +134,7 @@
         }
 
         newRow = row.cloneNode(false);
-        Array.from(row.children).forEach(function (rowCell) {
+        html.toArray(row.children).forEach(function (rowCell) {
             newRow.appendChild(createTableCell(rowCell.tagName.toLowerCase()));
         });
 
@@ -186,7 +175,7 @@
             return false;
         }
 
-        Array.from(table.rows).forEach(function (row) {
+        html.toArray(table.rows).forEach(function (row) {
             var reference = row.cells[position === 'before' ? index : index + 1] || null;
             row.insertBefore(createTableCell(row.parentNode.tagName === 'THEAD' ? 'th' : 'td'), reference);
         });
@@ -205,7 +194,7 @@
             return false;
         }
 
-        Array.from(table.rows).forEach(function (row) {
+        html.toArray(table.rows).forEach(function (row) {
             if (row.cells[index]) {
                 row.removeChild(row.cells[index]);
             }
@@ -233,16 +222,16 @@
 
         if (thead) {
             row = thead.rows[0];
-            Array.from(row.cells).forEach(function (cell) {
-                replaceCellTag(cell, 'td');
+            html.toArray(row.cells).forEach(function (cell) {
+                html.replaceTag(cell, 'td');
             });
             tbody.insertBefore(row, tbody.firstChild);
             table.removeChild(thead);
         } else if (tbody.rows[0]) {
             thead = document.createElement('thead');
             row = tbody.rows[0];
-            Array.from(row.cells).forEach(function (cell) {
-                replaceCellTag(cell, 'th');
+            html.toArray(row.cells).forEach(function (cell) {
+                html.replaceTag(cell, 'th');
             });
             thead.appendChild(row);
             table.insertBefore(thead, tbody);

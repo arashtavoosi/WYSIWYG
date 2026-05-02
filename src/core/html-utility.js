@@ -5,6 +5,58 @@
         root.WysiwygHtmlUtility = factory();
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+    function toArray(list) {
+        return Array.prototype.slice.call(list || []);
+    }
+
+    function unique(elements) {
+        return elements.filter(function (element, index, list) {
+            return list.indexOf(element) === index;
+        });
+    }
+
+    function parseSelectorOrElements(input, context) {
+        if (!input) {
+            return [];
+        }
+
+        if (typeof input === 'string') {
+            return toArray((context || document).querySelectorAll(input));
+        }
+
+        if (input instanceof Node) {
+            return [input];
+        }
+
+        if (input instanceof NodeList || Array.isArray(input)) {
+            return toArray(input);
+        }
+
+        return input.elements ? toArray(input.elements) : [];
+    }
+
+    function getContentNodes(content) {
+        var temp;
+
+        if (typeof content === 'string') {
+            temp = document.createElement('div');
+            temp.innerHTML = content.trim();
+            return toArray(temp.childNodes);
+        }
+
+        return parseSelectorOrElements(content);
+    }
+
+    function createWrapperElement(wrapper) {
+        var nodes = getContentNodes(wrapper);
+
+        if (nodes[0]) {
+            return nodes[0].cloneNode(true);
+        }
+
+        throw new Error('Invalid wrapper provided');
+    }
+
     function getCurrentSelection(selection) {
         return selection || window.getSelection();
     }
@@ -51,6 +103,23 @@
         }
 
         return getClosestTag(getElement(node), tagName);
+    }
+
+    function getSelectedNodes(range) {
+        var nodes = [];
+        var node = range.startContainer;
+
+        if (node === range.endContainer) {
+            return [node];
+        }
+
+        while (node && node !== range.endContainer) {
+            nodes.push(node);
+            node = node.nextSibling;
+        }
+
+        nodes.push(range.endContainer);
+        return nodes;
     }
 
     function moveSelectionAfterNode(node, selection) {
@@ -144,15 +213,21 @@
     }
 
     return {
+        createWrapperElement: createWrapperElement,
         getClosestTag: getClosestTag,
+        getContentNodes: getContentNodes,
         getCurrentSelection: getCurrentSelection,
         getElement: getElement,
         getSelectedElement: getSelectedElement,
+        getSelectedNodes: getSelectedNodes,
         moveSelectionAfterNode: moveSelectionAfterNode,
         moveSelectionToNodeStart: moveSelectionToNodeStart,
+        parseSelectorOrElements: parseSelectorOrElements,
         placeCaretInside: placeCaretInside,
         rangeSelectsElement: rangeSelectsElement,
         replaceTag: replaceTag,
+        toArray: toArray,
+        unique: unique,
         unwrapNode: unwrapNode
     };
 }));
