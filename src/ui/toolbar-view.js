@@ -5,11 +5,11 @@
         root.createToolbarView = factory();
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-    function normalizeColorValue(color) {
+    function normalizeColorValue(color, fallback) {
         var match;
 
         if (!color) {
-            return '#000000';
+            return fallback || '#000000';
         }
 
         if (color.charAt(0) === '#') {
@@ -19,12 +19,20 @@
         match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
 
         if (!match) {
-            return '#000000';
+            return fallback || '#000000';
         }
 
         return '#' + [match[1], match[2], match[3]].map(function (value) {
             return Number(value).toString(16).padStart(2, '0');
         }).join('');
+    }
+
+    function resolveValue(value, context) {
+        if (typeof value === 'function') {
+            return value(context.state, context);
+        }
+
+        return value;
     }
 
     function setButtonState(button, isActive) {
@@ -36,102 +44,289 @@
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
 
-    function setButtonDisabled(button, isDisabled) {
-        if (!button) {
+    function setControlDisabled(control, isDisabled) {
+        if (!control) {
             return;
         }
 
-        button.disabled = !!isDisabled;
-        button.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
+        control.disabled = !!isDisabled;
+        control.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
     }
 
-    function createToolbarView(toolbarElement, statusElements) {
+    function nodeType(node) {
+        if (node.children) {
+            return 'group';
+        }
+
+        return node.type || 'button';
+    }
+
+    function createElement(tagName, className) {
+        var element = document.createElement(tagName);
+
+        if (className) {
+            element.className = className;
+        }
+
+        return element;
+    }
+
+    function appendNodeText(element, node) {
+        element.textContent = node.icon || node.title || '';
+    }
+
+    function applyCommonAttributes(element, node, id, type) {
+        element.setAttribute('data-toolbar-id', id);
+        element.setAttribute('data-toolbar-type', type);
+
+        if (node.title) {
+            element.setAttribute('title', node.title);
+            element.setAttribute('aria-label', node.title);
+        }
+
+        if (node.className) {
+            element.classList.add(node.className);
+        }
+    }
+
+    function renderButton(node, id) {
+        var button = createElement('button', 'toolbar-button');
+
+        button.type = 'button';
+        applyCommonAttributes(button, node, id, 'button');
+        appendNodeText(button, node);
+
+        return button;
+    }
+
+    function renderDropdown(node, id) {
+        var wrapper = createElement('label', 'toolbar-control toolbar-dropdown');
+        var label = createElement('span', 'toolbar-control-label');
+        var select = document.createElement('select');
+
+        label.textContent = node.title || '';
+        applyCommonAttributes(select, node, id, 'dropdown');
+        (node.options || []).forEach(function (option) {
+            var optionElement = document.createElement('option');
+
+            optionElement.value = option.value;
+            optionElement.textContent = option.title || option.label || option.value;
+            optionElement.selected = !!option.selected;
+            select.appendChild(optionElement);
+        });
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(select);
+
+        return wrapper;
+    }
+
+    function renderColorPicker(node, id) {
+        var wrapper = createElement('label', 'toolbar-control toolbar-color');
+        var label = createElement('span', 'toolbar-control-label');
+        var input = document.createElement('input');
+
+        label.textContent = node.title || '';
+        input.type = 'color';
+        input.value = node.fallback || '#000000';
+        applyCommonAttributes(input, node, id, 'colorpicker');
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(input);
+
+        return wrapper;
+    }
+
+    function updateButton(element, node, context) {
+        setButtonState(element, resolveValue(node.active, context));
+        setControlDisabled(element, resolveValue(node.disabled, context));
+    }
+
+    function updateDropdown(element, node, context) {
+        var value = resolveValue(node.value, context);
+        var hasValue;
+
+        setControlDisabled(element, resolveValue(node.disabled, context));
+
+        if (!value) {
+            return;
+        }
+
+        hasValue = Array.from(element.options).some(function (option) {
+            return option.value === value;
+        });
+
+        if (hasValue) {
+            element.value = value;
+        }
+    }
+
+    function updateColorPicker(element, node, context) {
+        setControlDisabled(element, resolveValue(node.disabled, context));
+        element.value = normalizeColorValue(resolveValue(node.value, context), node.fallback);
+    }
+
+    function defaultUpdate(entry, context) {
+        if (entry.type === 'button') {
+            updateButton(entry.control, entry.node, context);
+        }
+
+        if (entry.type === 'dropdown') {
+            updateDropdown(entry.control, entry.node, context);
+        }
+
+        if (entry.type === 'colorpicker') {
+            updateColorPicker(entry.control, entry.node, context);
+        }
+    }
+
+    function updateStatus(status, state) {
+        var active = [];
+
+        ['bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript'].forEach(function (name) {
+            if (state[name]) {
+                active.push(name);
+            }
+        });
+
+        if (status.block) {
+            status.block.textContent = state.block || 'none';
+        }
+
+        if (status.list) {
+            status.list.textContent = state.list || 'none';
+        }
+
+        if (status.link) {
+            status.link.textContent = state.link ? (state.link.href || 'set') : 'none';
+        }
+
+        if (status.table) {
+            status.table.textContent = state.table ? 'inside' : 'none';
+        }
+
+        if (status.active) {
+            status.active.textContent = active.length ? active.join(', ') : 'none';
+        }
+    }
+
+    function createToolbarView(toolbarElement, statusElements, options) {
         var status = statusElements || {};
+        var entries = {};
+        var counter = 0;
+        var toolbar = (options || {}).toolbar || {};
+        var renderContext = (options || {}).context || {};
+
+        function register(node, element, control, type, key) {
+            var id = 'toolbar-node-' + (++counter);
+
+            entries[id] = {
+                id: id,
+                key: key,
+                node: node,
+                element: element,
+                control: control || element,
+                type: type
+            };
+
+            return id;
+        }
+
+        function renderNode(node, key) {
+            var type = nodeType(node);
+            var group;
+            var id;
+            var element;
+
+            if (type === 'group') {
+                group = createElement('div', 'toolbar-group');
+
+                if (node.title) {
+                    group.setAttribute('aria-label', node.title);
+                }
+
+                if (node.className) {
+                    group.classList.add(node.className);
+                }
+
+                Object.keys(node.children || {}).forEach(function (childKey) {
+                    group.appendChild(renderNode(node.children[childKey], childKey));
+                });
+
+                return group;
+            }
+
+            id = 'toolbar-node-' + (counter + 1);
+
+            if (node.render) {
+                element = node.render(Object.assign({}, renderContext, {
+                    node: node,
+                    key: key,
+                    id: id
+                }));
+
+                if (!element) {
+                    element = document.createTextNode('');
+                }
+
+                if (element.setAttribute && !element.hasAttribute('data-toolbar-id')) {
+                    applyCommonAttributes(element, node, id, type);
+                }
+            } else if (type === 'dropdown') {
+                element = renderDropdown(node, id);
+            } else if (type === 'colorpicker') {
+                element = renderColorPicker(node, id);
+            } else {
+                element = renderButton(node, id);
+            }
+
+            register(node, element, element.querySelector ? (element.querySelector('[data-toolbar-id="' + id + '"]') || element) : element, type, key);
+
+            return element;
+        }
+
+        function render() {
+            toolbarElement.innerHTML = '';
+            entries = {};
+            counter = 0;
+
+            Object.keys(toolbar).forEach(function (key) {
+                toolbarElement.appendChild(renderNode(toolbar[key], key));
+            });
+        }
+
+        render();
 
         return {
-            sync: function (state) {
-                var active = [];
-                var colorInput = toolbarElement.querySelector('[data-style="color"]');
-                var highlightInput = toolbarElement.querySelector('[data-style="backgroundColor"]');
-                var fontSelect = toolbarElement.querySelector('[data-style="fontFamily"]');
-                var fontSizeSelect = toolbarElement.querySelector('[data-style="fontSize"]');
-                var lineHeightSelect = toolbarElement.querySelector('[data-style="lineHeight"]');
+            sync: function (state, baseContext) {
+                var context = Object.assign({}, baseContext || {}, { state: state });
 
-                ['bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript'].forEach(function (name) {
-                    var button = toolbarElement.querySelector('[data-inline="' + name + '"]');
+                Object.keys(entries).forEach(function (id) {
+                    var entry = entries[id];
+                    var updateContext = Object.assign({}, context, {
+                        element: entry.control,
+                        wrapper: entry.element,
+                        node: entry.node,
+                        key: entry.key
+                    });
 
-                    setButtonState(button, state[name]);
+                    defaultUpdate(entry, updateContext);
 
-                    if (state[name]) {
-                        active.push(name);
+                    if (entry.node.onUpdate) {
+                        entry.node.onUpdate(updateContext);
                     }
                 });
 
-                setButtonState(toolbarElement.querySelector('[data-block="heading"]'), state.block === 'h2');
-                toolbarElement.querySelectorAll('[data-block="heading"]').forEach(function (button) {
-                    setButtonState(button, state.headingLevel === Number(button.getAttribute('data-level')));
-                });
-                setButtonState(toolbarElement.querySelector('[data-block="paragraph"]'), state.block === 'p');
-                setButtonState(toolbarElement.querySelector('[data-block="blockquote"]'), state.quote);
-                setButtonState(toolbarElement.querySelector('[data-list="ul"]'), state.list === 'ul');
-                setButtonState(toolbarElement.querySelector('[data-list="ol"]'), state.list === 'ol');
-                toolbarElement.querySelectorAll('[data-align]').forEach(function (button) {
-                    setButtonState(button, state.textAlign === button.getAttribute('data-align') || (!state.textAlign && button.getAttribute('data-align') === 'left'));
-                });
-                setButtonState(toolbarElement.querySelector('[data-action="link"]'), !!state.link);
-                setButtonState(toolbarElement.querySelector('[data-action="unlink"]'), !!state.link);
-                setButtonState(toolbarElement.querySelector('[data-action="update-image"]'), !!state.image);
-                setButtonState(toolbarElement.querySelector('[data-action="remove-image"]'), !!state.image);
-                setButtonState(toolbarElement.querySelector('[data-action="table"]'), !!state.table);
-                setButtonState(toolbarElement.querySelector('[data-action="table-header"]'), state.table && !!state.table.headerRow);
-                setButtonDisabled(toolbarElement.querySelector('[data-action="undo"]'), !state.canUndo);
-                setButtonDisabled(toolbarElement.querySelector('[data-action="redo"]'), !state.canRedo);
+                updateStatus(status, state);
+            },
+            getEntryForElement: function (element) {
+                var control = element && element.closest ? element.closest('[data-toolbar-id]') : null;
 
-                if (colorInput) {
-                    colorInput.value = normalizeColorValue(state.color);
+                if (!control) {
+                    return null;
                 }
 
-                if (highlightInput) {
-                    highlightInput.value = normalizeColorValue(state.highlightColor);
-                }
-
-                if (fontSelect && state.fontFamily) {
-                    fontSelect.value = Array.from(fontSelect.options).some(function (option) {
-                        return option.value === state.fontFamily;
-                    }) ? state.fontFamily : fontSelect.value;
-                }
-
-                if (fontSizeSelect && state.fontSize) {
-                    fontSizeSelect.value = Array.from(fontSizeSelect.options).some(function (option) {
-                        return option.value === state.fontSize;
-                    }) ? state.fontSize : fontSizeSelect.value;
-                }
-
-                if (lineHeightSelect && state.lineHeight) {
-                    lineHeightSelect.value = Array.from(lineHeightSelect.options).some(function (option) {
-                        return option.value === state.lineHeight;
-                    }) ? state.lineHeight : lineHeightSelect.value;
-                }
-
-                if (status.block) {
-                    status.block.textContent = state.block || 'none';
-                }
-
-                if (status.list) {
-                    status.list.textContent = state.list || 'none';
-                }
-
-                if (status.link) {
-                    status.link.textContent = state.link ? (state.link.href || 'set') : 'none';
-                }
-
-                if (status.table) {
-                    status.table.textContent = state.table ? 'inside' : 'none';
-                }
-
-                if (status.active) {
-                    status.active.textContent = active.length ? active.join(', ') : 'none';
-                }
+                return entries[control.getAttribute('data-toolbar-id')] || null;
             }
         };
     }

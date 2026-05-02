@@ -8,13 +8,15 @@
     <style>
         :root {
             color-scheme: light;
-            --bg: #f5f1e8;
-            --panel: rgba(255, 252, 245, 0.95);
-            --line: #d5cab8;
-            --text: #1c1917;
-            --muted: #6b6257;
-            --accent: #b45309;
-            --accent-soft: #f3d7a8;
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --line: #d7dce3;
+            --line-strong: #b9c1cc;
+            --text: #1f2933;
+            --muted: #637083;
+            --accent: #2563eb;
+            --accent-soft: #dbeafe;
+            --toolbar: #eef2f7;
         }
 
         * {
@@ -25,11 +27,9 @@
             margin: 0;
             min-height: 100vh;
             padding: 32px 20px;
-            background:
-                radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 32%),
-                linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
+            background: var(--bg);
             color: var(--text);
-            font-family: Georgia, 'Times New Roman', serif;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
 
         .shell {
@@ -43,9 +43,9 @@
 
         .heading h1 {
             margin: 0;
-            font-size: clamp(2rem, 4vw, 3.4rem);
-            line-height: 0.95;
-            letter-spacing: -0.04em;
+            font-size: 2rem;
+            line-height: 1.1;
+            letter-spacing: 0;
         }
 
         .heading p {
@@ -56,70 +56,116 @@
 
         .editor-frame {
             border: 1px solid var(--line);
-            border-radius: 20px;
+            border-radius: 8px;
             overflow: hidden;
             background: var(--panel);
-            box-shadow: 0 18px 60px rgba(28, 25, 23, 0.08);
-            backdrop-filter: blur(8px);
+            box-shadow: 0 18px 42px rgba(31, 41, 51, 0.08);
         }
 
         .toolbar {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            padding: 14px;
+            gap: 0;
+            align-items: stretch;
+            padding: 6px;
             border-bottom: 1px solid var(--line);
-            background: rgba(255, 248, 238, 0.9);
+            background: var(--toolbar);
         }
 
-        .toolbar button {
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            padding: 8px 14px;
-            background: #fff;
-            color: var(--text);
-            font: inherit;
-            cursor: pointer;
-            transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
-        }
-
-        .toolbar label,
-        .toolbar select,
-        .toolbar input {
-            font: inherit;
-        }
-
-        .toolbar select,
-        .toolbar input[type="color"] {
-            border: 1px solid var(--line);
-            border-radius: 999px;
-            background: #fff;
-            color: var(--text);
-            min-height: 38px;
-            padding: 0 12px;
-        }
-
-        .toolbar input[type="color"] {
-            width: 44px;
-            padding: 4px;
-        }
-
-        .toolbar .control-group {
+        .toolbar-group {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 2px;
+            min-height: 34px;
+            padding: 0 7px;
+            border-right: 1px solid var(--line-strong);
         }
 
-        .toolbar button:hover {
-            border-color: var(--accent);
-            transform: translateY(-1px);
+        .toolbar-group:last-child {
+            border-right: 0;
         }
 
-        .toolbar button.is-active {
-            border-color: var(--accent);
+        .toolbar-button {
+            min-width: 30px;
+            height: 30px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            padding: 0 7px;
+            background: transparent;
+            color: var(--text);
+            font: 600 0.82rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
+            cursor: pointer;
+            transition: background-color 120ms ease, border-color 120ms ease;
+        }
+
+        .toolbar-button:hover,
+        .toolbar-control select:hover,
+        .toolbar-color input:hover {
+            border-color: var(--line-strong);
+            background: #fff;
+        }
+
+        .toolbar-button.is-active {
+            border-color: #93b4f8;
             background: var(--accent-soft);
-            color: #7c2d12;
+            color: #174ea6;
+        }
+
+        .toolbar-button:disabled,
+        .toolbar-control select:disabled,
+        .toolbar-color input:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .toolbar-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin: 0 2px;
+        }
+
+        .toolbar-control-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        .toolbar-control select {
+            height: 30px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--text);
+            font: 500 0.82rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
+            padding: 0 24px 0 8px;
+        }
+
+        .toolbar-color input {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 3px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .toolbar-color input::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .toolbar-color input::-webkit-color-swatch {
+            border: 0;
+            border-radius: 2px;
+        }
+
+        .toolbar-color input::-moz-color-swatch {
+            border: 0;
+            border-radius: 2px;
         }
 
         .editor {
@@ -164,80 +210,7 @@
         </div>
 
         <div class="editor-frame">
-            <div id="toolbar" class="toolbar">
-                <button type="button" data-action="undo">Undo</button>
-                <button type="button" data-action="redo">Redo</button>
-                <button type="button" data-block="paragraph">P</button>
-                <button type="button" data-block="heading" data-level="1">H1</button>
-                <button type="button" data-block="heading" data-level="2">H2</button>
-                <button type="button" data-block="heading" data-level="3">H3</button>
-                <button type="button" data-block="blockquote">Quote</button>
-                <button type="button" data-list="ul">Bullets</button>
-                <button type="button" data-list="ol">Numbers</button>
-                <button type="button" data-action="outdent">Outdent</button>
-                <button type="button" data-action="indent">Indent</button>
-                <button type="button" data-align="left">Left</button>
-                <button type="button" data-align="center">Center</button>
-                <button type="button" data-align="right">Right</button>
-                <button type="button" data-align="justify">Justify</button>
-                <button type="button" data-inline="bold">Bold</button>
-                <button type="button" data-inline="italic">Italic</button>
-                <button type="button" data-inline="underline">Underline</button>
-                <button type="button" data-inline="strikethrough">Strike</button>
-                <button type="button" data-inline="subscript">Sub</button>
-                <button type="button" data-inline="superscript">Sup</button>
-                <span class="control-group">
-                    <label for="colorControl">Color</label>
-                    <input id="colorControl" type="color" data-style="color" value="#000000">
-                </span>
-                <span class="control-group">
-                    <label for="highlightControl">Highlight</label>
-                    <input id="highlightControl" type="color" data-style="backgroundColor" value="#ffff00">
-                </span>
-                <span class="control-group">
-                    <label for="fontControl">Font</label>
-                    <select id="fontControl" data-style="fontFamily">
-                        <option value="Georgia, 'Times New Roman', serif">Georgia</option>
-                        <option value="'Helvetica Neue', Arial, sans-serif">Helvetica</option>
-                        <option value="'Courier New', monospace">Courier</option>
-                    </select>
-                </span>
-                <span class="control-group">
-                    <label for="fontSizeControl">Size</label>
-                    <select id="fontSizeControl" data-style="fontSize">
-                        <option value="12px">12</option>
-                        <option value="14px">14</option>
-                        <option value="16px" selected>16</option>
-                        <option value="18px">18</option>
-                        <option value="24px">24</option>
-                        <option value="32px">32</option>
-                    </select>
-                </span>
-                <span class="control-group">
-                    <label for="lineHeightControl">Line</label>
-                    <select id="lineHeightControl" data-style="lineHeight">
-                        <option value="1.4">1.4</option>
-                        <option value="1.6" selected>1.6</option>
-                        <option value="1.8">1.8</option>
-                        <option value="2">2.0</option>
-                    </select>
-                </span>
-                <button type="button" data-action="link">Link</button>
-                <button type="button" data-action="unlink">Unlink</button>
-                <button type="button" data-action="image">Image</button>
-                <button type="button" data-action="update-image">Image URL</button>
-                <button type="button" data-action="remove-image">Remove Image</button>
-                <button type="button" data-action="table">Table</button>
-                <button type="button" data-action="table-row-before">Row +</button>
-                <button type="button" data-action="remove-table-row">Row -</button>
-                <button type="button" data-action="table-col-after">Col +</button>
-                <button type="button" data-action="remove-table-col">Col -</button>
-                <button type="button" data-action="table-header">Header Row</button>
-                <button type="button" data-action="remove-table">Remove Table</button>
-                <button type="button" data-action="br">BR</button>
-                <button type="button" data-action="hr">HR</button>
-                <button type="button" data-action="clear">Clear Formatting</button>
-            </div>
+            <div id="toolbar" class="toolbar"></div>
 
             <div id="editor" class="editor" contenteditable="true">
                 <p>This is some <strong>bold</strong> and <em>italic</em> text.</p>

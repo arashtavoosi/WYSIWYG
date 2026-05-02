@@ -5,18 +5,139 @@
 const createEditorAdapter = require('../src/ui/editor-adapter');
 
 describe('editor adapter', () => {
+    test('renders nested toolbar groups, default buttons, dropdowns, and color pickers', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Text</p></div>'
+        ].join('');
+
+        createEditorAdapter({
+            editorElement: document.getElementById('editor'),
+            toolbarElement: document.getElementById('toolbar'),
+            toolbar: {
+                group: {
+                    title: 'Group',
+                    children: {
+                        plainButton: {
+                            title: 'Plain Button',
+                            onCommand: function () {}
+                        },
+                        dropdown: {
+                            type: 'dropdown',
+                            title: 'Choice',
+                            options: [
+                                { title: 'One', value: '1' },
+                                { title: 'Two', value: '2' }
+                            ],
+                            onCommand: function () {}
+                        },
+                        color: {
+                            type: 'colorpicker',
+                            title: 'Color',
+                            fallback: '#123456',
+                            onCommand: function () {}
+                        }
+                    }
+                }
+            }
+        });
+
+        expect(document.querySelectorAll('.toolbar-group')).toHaveLength(1);
+        expect(document.querySelector('button').textContent).toBe('Plain Button');
+        expect(document.querySelector('select').getAttribute('title')).toBe('Choice');
+        expect(document.querySelector('input[type="color"]').value).toBe('#123456');
+    });
+
+    test('custom render and onUpdate receive toolbar context', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p><strong>Text</strong></p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('strong').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbar: {
+                group: {
+                    children: {
+                        custom: {
+                            title: 'Custom',
+                            render: function (context) {
+                                const button = document.createElement('button');
+
+                                expect(context.editor).toBeTruthy();
+                                button.type = 'button';
+                                button.textContent = 'Custom';
+
+                                return button;
+                            },
+                            onUpdate: function (context) {
+                                context.element.textContent = context.state.bold ? 'Bold on' : 'Bold off';
+                            },
+                            onCommand: function () {}
+                        }
+                    }
+                }
+            }
+        });
+
+        const button = document.querySelector('button[title="Custom"]');
+
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, textNode.textContent.length);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(button.textContent).toBe('Bold on');
+    });
+
+    test('built-in button commands run and update active state', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Make this a heading.</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, 4);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        const headingButton = document.querySelector('button[title="Heading 1"]');
+        headingButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.innerHTML).toBe('<h1>Make this a heading.</h1>');
+        expect(headingButton.classList.contains('is-active')).toBe(true);
+        expect(headingButton.getAttribute('aria-pressed')).toBe('true');
+    });
+
     test('restores the editor selection before applying color from the toolbar', () => {
         document.body.innerHTML = [
-            '<div id="toolbar">',
-            '<input id="colorControl" type="color" data-style="color" value="#000000">',
-            '</div>',
+            '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true">',
             '<p>Select part of this paragraph to create a <a href="https://example.com">link</a>, convert it into a heading, or turn it into a list.</p>',
             '</div>'
         ].join('');
 
         const editorElement = document.getElementById('editor');
-        const colorControl = document.getElementById('colorControl');
         const paragraph = editorElement.querySelector('p');
         const textNode = paragraph.childNodes[2];
         const range = document.createRange();
@@ -28,6 +149,8 @@ describe('editor adapter', () => {
             editorElement: editorElement,
             toolbarElement: document.getElementById('toolbar')
         });
+
+        const colorControl = document.querySelector('input[title="Text color"]');
 
         range.setStart(textNode, startOffset);
         range.setEnd(textNode, startOffset + selectedText.length);
@@ -48,17 +171,13 @@ describe('editor adapter', () => {
 
     test('saves the current selection when toolbar color interaction starts', () => {
         document.body.innerHTML = [
-            '<div id="toolbar">',
-            '<input id="colorControl" type="color" data-style="color" value="#000000">',
-            '</div>',
+            '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true">',
             '<p>Color only this word.</p>',
             '</div>'
         ].join('');
 
         const editorElement = document.getElementById('editor');
-        const toolbarElement = document.getElementById('toolbar');
-        const colorControl = document.getElementById('colorControl');
         const textNode = editorElement.querySelector('p').firstChild;
         const range = document.createRange();
         const selection = window.getSelection();
@@ -67,8 +186,10 @@ describe('editor adapter', () => {
 
         createEditorAdapter({
             editorElement: editorElement,
-            toolbarElement: toolbarElement
+            toolbarElement: document.getElementById('toolbar')
         });
+
+        const colorControl = document.querySelector('input[title="Text color"]');
 
         range.setStart(textNode, startOffset);
         range.setEnd(textNode, startOffset + selectedText.length);
@@ -87,17 +208,13 @@ describe('editor adapter', () => {
 
     test('continuous color input updates one span without nesting', () => {
         document.body.innerHTML = [
-            '<div id="toolbar">',
-            '<input id="colorControl" type="color" data-style="color" value="#000000">',
-            '</div>',
+            '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true">',
             '<p>Color only this word.</p>',
             '</div>'
         ].join('');
 
         const editorElement = document.getElementById('editor');
-        const toolbarElement = document.getElementById('toolbar');
-        const colorControl = document.getElementById('colorControl');
         const textNode = editorElement.querySelector('p').firstChild;
         const range = document.createRange();
         const selection = window.getSelection();
@@ -106,8 +223,10 @@ describe('editor adapter', () => {
 
         createEditorAdapter({
             editorElement: editorElement,
-            toolbarElement: toolbarElement
+            toolbarElement: document.getElementById('toolbar')
         });
+
+        const colorControl = document.querySelector('input[title="Text color"]');
 
         range.setStart(textNode, startOffset);
         range.setEnd(textNode, startOffset + selectedText.length);
@@ -129,12 +248,7 @@ describe('editor adapter', () => {
 
     test('does not prevent native select controls from opening', () => {
         document.body.innerHTML = [
-            '<div id="toolbar">',
-            '<select data-style="fontFamily">',
-            '<option value="Georgia">Georgia</option>',
-            '<option value="Arial">Arial</option>',
-            '</select>',
-            '</div>',
+            '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true"><p>Text</p></div>'
         ].join('');
 
@@ -145,29 +259,26 @@ describe('editor adapter', () => {
 
         const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
 
-        document.querySelector('select').dispatchEvent(event);
+        document.querySelector('select[title="Font"]').dispatchEvent(event);
 
         expect(event.defaultPrevented).toBe(false);
     });
 
     test('toolbar undo and redo use adapter-recorded input snapshots', () => {
         document.body.innerHTML = [
-            '<div id="toolbar">',
-            '<button type="button" data-action="undo">Undo</button>',
-            '<button type="button" data-action="redo">Redo</button>',
-            '</div>',
+            '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true"><p>Start</p></div>'
         ].join('');
 
         const editorElement = document.getElementById('editor');
-        const toolbarElement = document.getElementById('toolbar');
-        const undoButton = toolbarElement.querySelector('[data-action="undo"]');
-        const redoButton = toolbarElement.querySelector('[data-action="redo"]');
 
         createEditorAdapter({
             editorElement: editorElement,
-            toolbarElement: toolbarElement
+            toolbarElement: document.getElementById('toolbar')
         });
+
+        const undoButton = document.querySelector('button[title="Undo"]');
+        const redoButton = document.querySelector('button[title="Redo"]');
 
         expect(undoButton.disabled).toBe(true);
         expect(redoButton.disabled).toBe(true);
