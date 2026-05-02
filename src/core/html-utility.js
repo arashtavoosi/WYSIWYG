@@ -5,6 +5,15 @@
         root.WysiwygHtmlUtility = factory();
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+    function htmlUtility(selector, context) {
+        if (!(this instanceof htmlUtility)) {
+            return new htmlUtility(selector, context);
+        }
+
+        this.prevElements = [];
+        this.elements = selector ? parseSelectorOrElements(selector, context) : [];
+    }
+
     function toArray(list) {
         return Array.prototype.slice.call(list || []);
     }
@@ -32,7 +41,7 @@
             return toArray(input);
         }
 
-        return input.elements ? toArray(input.elements) : [];
+        return input instanceof htmlUtility ? toArray(input.elements) : [];
     }
 
     function getContentNodes(content) {
@@ -212,7 +221,23 @@
         return matches;
     }
 
-    return {
+    htmlUtility.prototype = {
+        constructor: htmlUtility,
+
+        each: function (callback) {
+            this.elements.forEach(function (element, index) {
+                callback.call(element, index, element);
+            });
+            return this;
+        },
+
+        add: function (selector, context) {
+            this.elements = unique(this.elements.concat(parseSelectorOrElements(selector, context)));
+            return this;
+        }
+    };
+
+    Object.assign(htmlUtility, {
         createWrapperElement: createWrapperElement,
         getClosestTag: getClosestTag,
         getContentNodes: getContentNodes,
@@ -229,5 +254,7 @@
         toArray: toArray,
         unique: unique,
         unwrapNode: unwrapNode
-    };
+    });
+
+    return htmlUtility;
 }));
