@@ -456,4 +456,50 @@ describe('editor adapter', () => {
         expect(document.querySelector('wysiwyg-modal')).toBe(null);
         expect(document.querySelector('img').getAttribute('src')).toBe('https://example.org/image.png');
     });
+
+    test('table command uses a popup grid picker', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Insert here.</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const paragraph = editorElement.querySelector('p');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        window.prompt = jest.fn();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.selectNodeContents(paragraph);
+        range.collapse(false);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        document.querySelector('button[title="Table"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const popup = document.querySelector('wysiwyg-popup');
+        const cell = popup.querySelector('[data-row="3"][data-col="4"]');
+
+        expect(popup.open).toBe(true);
+        expect(window.prompt).not.toHaveBeenCalled();
+
+        cell.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        expect(popup.querySelector('.wysiwyg-table-picker-label').textContent).toBe('4x3 Table');
+
+        cell.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(document.querySelector('wysiwyg-popup')).toBe(null);
+        expect(editorElement.querySelectorAll('thead th')).toHaveLength(4);
+        expect(editorElement.querySelectorAll('tbody tr')).toHaveLength(3);
+        expect(editorElement.querySelectorAll('tbody td')).toHaveLength(12);
+    });
 });

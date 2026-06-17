@@ -388,9 +388,24 @@
                         priority: 10,
                         active: function (state) { return !!state.table; },
                         onCommand: function (context) {
-                            var prompts = context.settings.prompts;
-                            var rows = Number(promptValue(context, prompts.tableRows)) || 2;
-                            var cols = Number(promptValue(context, prompts.tableCols)) || 2;
+                            var picked = context.showTablePicker && context.showTablePicker(context.element);
+                            var prompts;
+                            var rows;
+                            var cols;
+
+                            if (picked && typeof picked.then === 'function') {
+                                return picked.then(function (config) {
+                                    if (config) {
+                                        context.restoreSelection();
+                                        context.editor.insertTable({ rows: config.rows, cols: config.cols, headerRow: true });
+                                        context.saveSelection();
+                                    }
+                                });
+                            }
+
+                            prompts = context.settings.prompts;
+                            rows = Number(promptValue(context, prompts.tableRows)) || 2;
+                            cols = Number(promptValue(context, prompts.tableCols)) || 2;
 
                             context.editor.insertTable({ rows: rows, cols: cols, headerRow: true });
                         }

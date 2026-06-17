@@ -104,4 +104,39 @@ describe('web components', () => {
 
         expect(popup.getAttribute('data-position')).toBe('top');
     });
+
+    test('popup supports aligned preferred positions', () => {
+        document.body.innerHTML = '';
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 });
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 });
+
+        const popup = document.createElement('wysiwyg-popup');
+        const anchor = {
+            bottom: 120,
+            height: 20,
+            left: 100,
+            right: 180,
+            top: 100,
+            width: 80
+        };
+
+        document.body.appendChild(popup);
+        popup.shadowRoot.querySelector('.panel').getBoundingClientRect = function () {
+            return { width: 120, height: 50 };
+        };
+
+        popup.preferredPosition = 'bottom-start';
+        popup.showFor(anchor);
+
+        expect(popup.getAttribute('data-position')).toBe('bottom-start');
+        expect(popup.style.left).toBe('100px');
+        expect(popup.style.top).toBe('128px');
+
+        popup.preferredPosition = 'right-end';
+        popup.updatePosition();
+
+        expect(popup.getAttribute('data-position')).toBe('right-end');
+        expect(popup.style.left).toBe('188px');
+        expect(popup.style.top).toBe('70px');
+    });
 });

@@ -255,7 +255,6 @@
                 var gap = 8;
                 var margin = 8;
                 var position;
-                var points;
                 var point;
 
                 if (!this.open || !this.isConnected) {
@@ -274,21 +273,38 @@
                 viewportWidth = window.innerWidth || document.documentElement.clientWidth;
                 viewportHeight = window.innerHeight || document.documentElement.clientHeight;
                 position = this._bestPosition(rect, width, height, viewportWidth, viewportHeight);
-                points = {
-                    top: { left: rect.left + (rect.width - width) / 2, top: rect.top - height - gap },
-                    right: { left: rect.right + gap, top: rect.top + (rect.height - height) / 2 },
-                    bottom: { left: rect.left + (rect.width - width) / 2, top: rect.bottom + gap },
-                    left: { left: rect.left - width - gap, top: rect.top + (rect.height - height) / 2 }
-                };
-                point = points[position];
+                point = this._pointForPosition(position, rect, width, height, gap);
 
                 this.style.left = html.clampNumber(point.left, margin, viewportWidth - width - margin) + 'px';
                 this.style.top = html.clampNumber(point.top, margin, viewportHeight - height - margin) + 'px';
                 this.setAttribute('data-position', position);
             }
 
+            _pointForPosition(position, rect, width, height, gap) {
+                var parts = position.split('-');
+                var side = parts[0];
+                var align = parts[1] || 'center';
+                var crossStart = side === 'top' || side === 'bottom' ? rect.left : rect.top;
+                var crossSize = side === 'top' || side === 'bottom' ? rect.width : rect.height;
+                var popupCrossSize = side === 'top' || side === 'bottom' ? width : height;
+                var cross = align === 'start' ? crossStart : align === 'end' ? crossStart + crossSize - popupCrossSize : crossStart + (crossSize - popupCrossSize) / 2;
+                var main = {
+                    top: rect.top - height - gap,
+                    right: rect.right + gap,
+                    bottom: rect.bottom + gap,
+                    left: rect.left - width - gap
+                };
+
+                if (side === 'top' || side === 'bottom') {
+                    return { left: cross, top: main[side] };
+                }
+
+                return { left: main[side], top: cross };
+            }
+
             _bestPosition(rect, width, height, viewportWidth, viewportHeight) {
                 var preferred = this.preferredPosition;
+                var side = preferred.split('-')[0];
                 var space = {
                     top: rect.top,
                     right: viewportWidth - rect.right,
@@ -297,7 +313,7 @@
                 };
                 var order = ['bottom', 'top', 'right', 'left'];
 
-                if (['top', 'right', 'bottom', 'left'].indexOf(preferred) !== -1) {
+                if (['top', 'right', 'bottom', 'left'].indexOf(side) !== -1) {
                     return preferred;
                 }
 

@@ -32,7 +32,7 @@ Main methods:
 `src/ui/web-components.js` defines two no-build custom elements:
 
 - `<wysiwyg-modal>` supports `open`, `show-close-button`, `click-outside-to-close`, `moveable`, `resizable`, and header/content/footer templates or slots.
-- `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
+- `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"` plus `-start` and `-end` aligned variants such as `bottom-start`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
 
 Template attributes accept selectors or inline HTML:
 

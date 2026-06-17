@@ -128,6 +128,110 @@
             });
         }
 
+        function showTablePicker(anchor) {
+            var popup;
+            var label;
+            var grid;
+            var maxCols = 10;
+            var maxRows = 10;
+            var resolved = false;
+
+            if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-popup')) {
+                return null;
+            }
+
+            popup = document.createElement('wysiwyg-popup');
+            popup.preferredPosition = 'bottom-start';
+            popup.innerHTML = [
+                '<style>',
+                '.wysiwyg-table-picker-label{margin:0 0 8px;font:500 12px/1.2 sans-serif;color:#111827}',
+                '.wysiwyg-table-picker-grid{display:grid;grid-template-columns:repeat(10,18px);gap:3px}',
+                '.wysiwyg-table-picker-cell{width:18px;height:18px;border:1px solid #9ca3af;background:#fff;padding:0;cursor:pointer}',
+                '.wysiwyg-table-picker-cell.is-active{border-color:#2563eb;background:#dbeafe}',
+                '</style>',
+                '<div class="wysiwyg-table-picker-label">1x1 Table</div>',
+                '<div class="wysiwyg-table-picker-grid"></div>'
+            ].join('');
+            document.body.appendChild(popup);
+
+            label = popup.querySelector('.wysiwyg-table-picker-label');
+            grid = popup.querySelector('.wysiwyg-table-picker-grid');
+
+            Array.from({ length: maxRows }).forEach(function (_, rowIndex) {
+                Array.from({ length: maxCols }).forEach(function (_, colIndex) {
+                    var button = document.createElement('button');
+
+                    button.type = 'button';
+                    button.className = 'wysiwyg-table-picker-cell';
+                    button.setAttribute('data-row', rowIndex + 1);
+                    button.setAttribute('data-col', colIndex + 1);
+                    button.setAttribute('aria-label', (rowIndex + 1) + ' by ' + (colIndex + 1) + ' table');
+                    grid.appendChild(button);
+                });
+            });
+
+            return new Promise(function (resolve) {
+                function setSize(rows, cols) {
+                    label.textContent = cols + 'x' + rows + ' Table';
+                    Array.from(grid.children).forEach(function (cell) {
+                        cell.classList.toggle('is-active', Number(cell.getAttribute('data-row')) <= rows && Number(cell.getAttribute('data-col')) <= cols);
+                    });
+                }
+
+                function finish(value) {
+                    if (resolved) {
+                        return;
+                    }
+
+                    resolved = true;
+                    html.off(document, 'click', outside);
+                    html.off(document, 'keydown', keydown);
+                    popup.remove();
+                    restoreSelection();
+                    resolve(value);
+                }
+
+                function cellFromEvent(event) {
+                    return event.target.closest && event.target.closest('.wysiwyg-table-picker-cell');
+                }
+
+                function outside(event) {
+                    if (!popup.contains(event.target) && (!anchor || !anchor.contains(event.target))) {
+                        finish(null);
+                    }
+                }
+
+                function keydown(event) {
+                    if (event.key === 'Escape') {
+                        finish(null);
+                    }
+                }
+
+                html.on(grid, 'mouseover', function (event) {
+                    var cell = cellFromEvent(event);
+
+                    if (cell) {
+                        setSize(Number(cell.getAttribute('data-row')), Number(cell.getAttribute('data-col')));
+                    }
+                });
+                html.on(grid, 'click', function (event) {
+                    var cell = cellFromEvent(event);
+
+                    if (cell) {
+                        finish({
+                            rows: Number(cell.getAttribute('data-row')),
+                            cols: Number(cell.getAttribute('data-col'))
+                        });
+                    }
+                });
+                html.on(document, 'click', outside);
+                html.on(document, 'keydown', keydown);
+
+                popup.showFor(anchor);
+                setSize(1, 1);
+            });
+        }
+
         function createContext(entry, event, value) {
             var state = editor.getActiveFormats();
 
@@ -145,6 +249,7 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showTablePicker: showTablePicker,
                 settings: toolbarSettings
             };
         }
@@ -158,6 +263,7 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showTablePicker: showTablePicker,
                 settings: toolbarSettings
             });
         }
@@ -203,6 +309,7 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showTablePicker: showTablePicker,
                 settings: toolbarSettings
             }
         });
