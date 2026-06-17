@@ -27,10 +27,6 @@
         return context.prompt(promptConfig.label, fallback === undefined ? promptConfig.fallback : fallback);
     }
 
-    function tableDisabled(state) {
-        return !state.table;
-    }
-
     return {
         headingLevel: 2,
         imageAttributes: ['src', 'alt', 'title', 'width', 'height'],
@@ -388,10 +384,16 @@
                         priority: 10,
                         active: function (state) { return !!state.table; },
                         onCommand: function (context) {
-                            var picked = context.showTablePicker && context.showTablePicker(context.element);
+                            var picked;
                             var prompts;
                             var rows;
                             var cols;
+
+                            if (context.state.table) {
+                                return;
+                            }
+
+                            picked = context.showTablePicker && context.showTablePicker(context.element);
 
                             if (picked && typeof picked.then === 'function') {
                                 return picked.then(function (config) {
@@ -408,79 +410,6 @@
                             cols = Number(promptValue(context, prompts.tableCols)) || 2;
 
                             context.editor.insertTable({ rows: rows, cols: cols, headerRow: true });
-                        }
-                    },
-                    rowBefore: {
-                        title: 'Row before',
-                        iconId: 'row-before', icon: 'R+',
-                        priority: 20,
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.insertTableRow('before');
-                        }
-                    },
-                    rowAfter: {
-                        title: 'Row after',
-                        iconId: 'row-after', icon: '+R',
-                        priority: 30,
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.insertTableRow('after');
-                        }
-                    },
-                    removeRow: {
-                        title: 'Remove row',
-                        iconId: 'row-remove', icon: 'R-',
-                        priority: 40,
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.removeTableRow();
-                        }
-                    },
-                    colBefore: {
-                        title: 'Column before',
-                        iconId: 'column-before', icon: 'C+',
-                        priority: 50,
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.insertTableColumn('before');
-                        }
-                    },
-                    colAfter: {
-                        title: 'Column after',
-                        iconId: 'column-after', icon: '+C',
-                        priority: 60,
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.insertTableColumn('after');
-                        }
-                    },
-                    removeCol: {
-                        title: 'Remove column',
-                        iconId: 'column-remove', icon: 'C-',
-                        priority: 70,
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.removeTableColumn();
-                        }
-                    },
-                    headerRow: {
-                        title: 'Header row',
-                        iconId: 'header-row', icon: 'TH',
-                        priority: 80,
-                        active: function (state) { return state.table && !!state.table.headerRow; },
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.toggleTableHeaderRow();
-                        }
-                    },
-                    removeTable: {
-                        title: 'Remove table',
-                        iconId: 'table-remove', icon: 'Tbl-',
-                        priority: 90,
-                        disabled: tableDisabled,
-                        onCommand: function (context) {
-                            context.editor.removeTable();
                         }
                     }
                 }

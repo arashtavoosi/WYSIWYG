@@ -22,6 +22,7 @@
         var toolbarElement = config.toolbarElement;
         var editor = createEditorCore(editorElement, config.editorOptions);
         var savedRange = null;
+        var tableToolsPopup = null;
         var view;
 
         toolbarSettings.prompts = Object.assign({}, toolbarConfig.prompts, configOverrides.prompts || {});
@@ -232,6 +233,125 @@
             });
         }
 
+        function createIcon(iconId) {
+            var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+            var href = (toolbarSettings.iconSpritePath || '') + '#' + (toolbarSettings.iconPrefix || 'wysiwyg-icon-') + iconId;
+
+            svg.classList.add('wysiwyg-table-tool-icon');
+            svg.setAttribute('aria-hidden', 'true');
+            svg.setAttribute('focusable', 'false');
+            use.setAttribute('href', href);
+            use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+            svg.appendChild(use);
+
+            return svg;
+        }
+
+        function getSelectedTable() {
+            var selection = window.getSelection();
+            var cell = html.getSelectedElement(selection, 'td') || html.getSelectedElement(selection, 'th');
+
+            return html.getSelectedElement(selection, 'table') || html.getClosestTag(cell, 'table');
+        }
+
+        function closeTableTools() {
+            if (tableToolsPopup) {
+                tableToolsPopup.remove();
+                tableToolsPopup = null;
+                html.off(document, 'keydown', closeTableToolsOnEscape);
+            }
+        }
+
+        function closeTableToolsOnEscape(event) {
+            if (event.key === 'Escape') {
+                closeTableTools();
+            }
+        }
+
+        function openTableTools(anchor) {
+            var actions;
+            var tools;
+
+            if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-popup')) {
+                return false;
+            }
+
+            if (tableToolsPopup) {
+                tableToolsPopup.showFor(anchor);
+                return true;
+            }
+
+            tableToolsPopup = document.createElement('wysiwyg-popup');
+            tableToolsPopup.preferredPosition = 'bottom-start';
+            tableToolsPopup.innerHTML = [
+                '<style>',
+                '.wysiwyg-table-tools{display:flex;gap:3px}',
+                '.wysiwyg-table-tool{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:4px;background:#fff;color:#111827;padding:0;cursor:pointer}',
+                '.wysiwyg-table-tool:hover{border-color:#2563eb;background:#dbeafe}',
+                '.wysiwyg-table-tool-icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}',
+                '</style>',
+                '<div class="wysiwyg-table-tools"></div>'
+            ].join('');
+            document.body.appendChild(tableToolsPopup);
+            tools = tableToolsPopup.querySelector('.wysiwyg-table-tools');
+
+            actions = [
+                ['rowBefore', 'Row before', 'row-before', function () { editor.insertTableRow('before'); }],
+                ['rowAfter', 'Row after', 'row-after', function () { editor.insertTableRow('after'); }],
+                ['removeRow', 'Remove row', 'row-remove', function () { editor.removeTableRow(); }],
+                ['colBefore', 'Column before', 'column-before', function () { editor.insertTableColumn('before'); }],
+                ['colAfter', 'Column after', 'column-after', function () { editor.insertTableColumn('after'); }],
+                ['removeCol', 'Remove column', 'column-remove', function () { editor.removeTableColumn(); }],
+                ['headerRow', 'Toggle header row', 'header-row', function () { editor.toggleTableHeaderRow(); }],
+                ['removeTable', 'Remove table', 'table-remove', function () { editor.removeTable(); }]
+            ];
+
+            actions.forEach(function (action) {
+                var button = document.createElement('button');
+
+                button.type = 'button';
+                button.className = 'wysiwyg-table-tool';
+                button.setAttribute('data-action', action[0]);
+                button.setAttribute('title', action[1]);
+                button.setAttribute('aria-label', action[1]);
+                button.appendChild(createIcon(action[2]));
+                tools.appendChild(button);
+            });
+
+            html.on(tableToolsPopup, 'click', function (event) {
+                var button = event.target.closest && event.target.closest('[data-action]');
+                var action;
+
+                if (!button) {
+                    return;
+                }
+
+                action = actions.filter(function (entry) {
+                    return entry[0] === button.getAttribute('data-action');
+                })[0];
+
+                if (action) {
+                    restoreSelection();
+                    action[3]();
+                    saveSelection();
+                    sync();
+                }
+            });
+            html.on(document, 'keydown', closeTableToolsOnEscape);
+
+            tableToolsPopup.showFor(anchor);
+            return true;
+        }
+
+        function syncTableTools(state) {
+            if (state.table) {
+                openTableTools(getSelectedTable());
+            } else {
+                closeTableTools();
+            }
+        }
+
         function createContext(entry, event, value) {
             var state = editor.getActiveFormats();
 
@@ -255,7 +375,9 @@
         }
 
         function sync() {
-            view.sync(editor.getActiveFormats(), {
+            var state = editor.getActiveFormats();
+
+            view.sync(state, {
                 editor: editor,
                 toolbarElement: toolbarElement,
                 saveSelection: saveSelection,
@@ -266,6 +388,7 @@
                 showTablePicker: showTablePicker,
                 settings: toolbarSettings
             });
+            syncTableTools(state);
         }
 
         function runCommand(entry, event, value, options) {

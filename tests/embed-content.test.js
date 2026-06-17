@@ -72,4 +72,35 @@ describe('embed content', () => {
         editor.removeTable(selection);
         expect(editorElement.querySelector('table')).toBeNull();
     });
+
+    test('removing the selected header row still allows header toggling', () => {
+        document.body.innerHTML = [
+            '<div id="editor" contenteditable="true">',
+            '<table><thead><tr><th>Head</th></tr></thead><tbody><tr><td>Body</td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const headerText = editorElement.querySelector('th').firstChild;
+        const selection = window.getSelection();
+        const range = document.createRange();
+
+        range.setStart(headerText, 0);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.removeTableRow(selection);
+
+        expect(editorElement.querySelector('thead')).toBeNull();
+        expect(editorElement.querySelector('td').textContent).toBe('Body');
+
+        expect(function () {
+            editor.toggleTableHeaderRow(selection);
+        }).not.toThrow();
+
+        expect(editorElement.querySelector('thead th').textContent).toBe('Body');
+        expect(editorElement.querySelector('tbody')).toBeTruthy();
+    });
 });

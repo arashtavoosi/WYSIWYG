@@ -497,9 +497,60 @@ describe('editor adapter', () => {
         await Promise.resolve();
         await Promise.resolve();
 
-        expect(document.querySelector('wysiwyg-popup')).toBe(null);
+        expect(document.querySelector('wysiwyg-popup').querySelectorAll('.wysiwyg-table-tool')).toHaveLength(8);
         expect(editorElement.querySelectorAll('thead th')).toHaveLength(4);
         expect(editorElement.querySelectorAll('tbody tr')).toHaveLength(3);
         expect(editorElement.querySelectorAll('tbody td')).toHaveLength(12);
+    });
+
+    test('table tools popup is automatic while selection is inside a table', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td>Cell</td></tr></tbody></table>',
+            '<p>After</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('td').firstChild;
+        const afterTextNode = editorElement.querySelector('p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.setStart(textNode, 0);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(document.querySelectorAll('button[title="Table"]')).toHaveLength(1);
+        expect(document.getElementById('toolbar').querySelector('[title="Row before"]')).toBe(null);
+
+        const popup = document.querySelector('wysiwyg-popup');
+
+        expect(popup.open).toBe(true);
+        expect(popup.anchor).toBe(editorElement.querySelector('table'));
+        expect(popup.querySelectorAll('.wysiwyg-table-tool')).toHaveLength(8);
+        expect(popup.querySelector('[data-action="rowAfter"] use').getAttribute('href')).toBe('#wysiwyg-icon-row-after');
+
+        popup.querySelector('[data-action="rowAfter"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(document.querySelector('wysiwyg-popup').open).toBe(true);
+        expect(editorElement.querySelectorAll('tbody tr')).toHaveLength(2);
+
+        range.setStart(afterTextNode, 0);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(document.querySelector('wysiwyg-popup')).toBe(null);
     });
 });

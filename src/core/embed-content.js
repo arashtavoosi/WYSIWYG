@@ -148,13 +148,18 @@
         var cell = html.getSelectedElement(currentSelection, 'td') || html.getSelectedElement(currentSelection, 'th');
         var row = cell && html.getClosestTag(cell, 'tr');
         var table = row && html.getClosestTag(row, 'table');
+        var section = row && row.parentNode;
         var nextCell = row && (row.nextElementSibling || row.previousElementSibling);
 
         if (!row) {
             return false;
         }
 
-        row.parentNode.removeChild(row);
+        section.removeChild(row);
+
+        if (section && !section.querySelector('tr')) {
+            section.parentNode.removeChild(section);
+        }
 
         if (!table.querySelector('tr')) {
             table.parentNode.removeChild(table);
