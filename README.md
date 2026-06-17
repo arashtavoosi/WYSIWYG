@@ -42,6 +42,15 @@ Template attributes accept selectors or inline HTML:
 <wysiwyg-popup preferred-position="auto">Selected content details</wysiwyg-popup>
 ```
 
+## Editor Content CSS
+
+Include `src/ui/editor-content.css` and add `wysiwyg-editor-content` to the editable root when you want default content rendering for embedded output such as visible, selectable tables:
+
+```html
+<link rel="stylesheet" href="src/ui/editor-content.css">
+<div class="wysiwyg-editor-content" contenteditable="true"></div>
+```
+
 ## Demo
 
 Run a local static server from the repo root:

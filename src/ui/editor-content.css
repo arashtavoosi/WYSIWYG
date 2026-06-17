@@ -1,0 +1,23 @@
+.wysiwyg-editor-content {
+    overflow-x: auto;
+}
+
+.wysiwyg-editor-content table {
+    border-collapse: collapse;
+    margin: 16px 0;
+    table-layout: fixed;
+}
+
+.wysiwyg-editor-content th,
+.wysiwyg-editor-content td {
+    min-width: 52px;
+    height: 34px;
+    padding: 6px 8px;
+    border: 1px solid var(--wysiwyg-table-border, #b9c1cc);
+    vertical-align: top;
+}
+
+.wysiwyg-editor-content th {
+    background: var(--wysiwyg-table-header-bg, #f8fafc);
+    font-weight: 700;
+}

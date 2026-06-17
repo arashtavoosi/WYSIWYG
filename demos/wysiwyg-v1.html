@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WYSIWYG Core Baseline</title>
+    <link rel="stylesheet" href="../src/ui/editor-content.css">
     <style>
         :root {
             color-scheme: light;
@@ -235,7 +236,7 @@
         <div class="editor-frame">
             <div id="toolbar" class="toolbar"></div>
 
-            <div id="editor" class="editor" contenteditable="true">
+            <div id="editor" class="editor wysiwyg-editor-content" contenteditable="true">
                 <p>This is some <strong>bold</strong> and <em>italic</em> text.</p>
                 <p>Select part of this paragraph to create a <a href="https://example.com">link</a>, convert it into a heading, or turn it into a list.</p>
             </div>
