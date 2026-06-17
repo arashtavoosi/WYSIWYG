@@ -24,6 +24,42 @@
         });
     }
 
+    function clampNumber(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function defineBooleanAttributeProperty(proto, propertyName, attributeName) {
+        if (Object.prototype.hasOwnProperty.call(proto, propertyName)) {
+            return;
+        }
+
+        Object.defineProperty(proto, propertyName, {
+            configurable: true,
+            get: function () {
+                return this.hasAttribute(attributeName);
+            },
+            set: function (value) {
+                this.toggleAttribute(attributeName, !!value);
+            }
+        });
+    }
+
+    function on(target, type, handler, options) {
+        if (target) {
+            target.addEventListener(type, handler, options);
+        }
+
+        return target;
+    }
+
+    function off(target, type, handler, options) {
+        if (target) {
+            target.removeEventListener(type, handler, options);
+        }
+
+        return target;
+    }
+
     function parseSelectorOrElements(input, context) {
         if (!input) {
             return [];
@@ -56,6 +92,69 @@
         return parseSelectorOrElements(content);
     }
 
+    function createSlot(name) {
+        var slot = document.createElement('slot');
+
+        if (name) {
+            slot.name = name;
+        }
+
+        return slot;
+    }
+
+    function appendTemplateContent(region, template) {
+        var wrapper;
+
+        region.innerHTML = '';
+
+        if (!template) {
+            return false;
+        }
+
+        if (typeof template === 'string') {
+            wrapper = document.createElement('template');
+            wrapper.innerHTML = template;
+            region.appendChild(wrapper.content.cloneNode(true));
+            return true;
+        }
+
+        if (template.content) {
+            region.appendChild(template.content.cloneNode(true));
+            return true;
+        }
+
+        if (template.nodeType) {
+            region.appendChild(template.cloneNode(true));
+            return true;
+        }
+
+        return false;
+    }
+
+    function getTemplateFromAttribute(element, name) {
+        var value = element.getAttribute(name + '-template');
+        var match;
+
+        if (!value) {
+            return null;
+        }
+
+        try {
+            match = document.querySelector(value);
+        } catch (error) {
+            match = null;
+        }
+
+        return match || value;
+    }
+
+    function renderTemplateRegion(region, template, slotName) {
+        if (!appendTemplateContent(region, template)) {
+            region.innerHTML = '';
+            region.appendChild(createSlot(slotName));
+        }
+    }
+
     function createWrapperElement(wrapper) {
         var nodes = getContentNodes(wrapper);
 
@@ -68,6 +167,26 @@
 
     function getCurrentSelection(selection) {
         return selection || window.getSelection();
+    }
+
+    function getAnchorRect(anchor, selection) {
+        var currentSelection;
+
+        if (anchor && anchor.getBoundingClientRect) {
+            return anchor.getBoundingClientRect();
+        }
+
+        if (anchor && typeof anchor.left === 'number') {
+            return anchor;
+        }
+
+        currentSelection = selection || (window.getSelection && window.getSelection());
+
+        if (currentSelection && currentSelection.rangeCount) {
+            return currentSelection.getRangeAt(0).getBoundingClientRect();
+        }
+
+        return null;
     }
 
     function getElement(node) {
@@ -356,21 +475,30 @@
     };
 
     Object.assign(htmlUtility, {
+        appendTemplateContent: appendTemplateContent,
+        clampNumber: clampNumber,
+        createSlot: createSlot,
         createWrapperElement: createWrapperElement,
+        defineBooleanAttributeProperty: defineBooleanAttributeProperty,
         expandCollapsedRangeToWord: expandCollapsedRangeToWord,
         expandCollapsedSelectionToWord: expandCollapsedSelectionToWord,
+        getAnchorRect: getAnchorRect,
         getClosestTag: getClosestTag,
         getContentNodes: getContentNodes,
         getCurrentSelection: getCurrentSelection,
         getElement: getElement,
         getSelectedElement: getSelectedElement,
         getSelectedNodes: getSelectedNodes,
+        getTemplateFromAttribute: getTemplateFromAttribute,
         moveSelectionAfterNode: moveSelectionAfterNode,
         moveSelectionToNodeStart: moveSelectionToNodeStart,
+        off: off,
+        on: on,
         parseSelectorOrElements: parseSelectorOrElements,
         placeCaretInside: placeCaretInside,
         rangeSelectsElement: rangeSelectsElement,
         replaceTag: replaceTag,
+        renderTemplateRegion: renderTemplateRegion,
         toArray: toArray,
         unique: unique,
         unwrapNode: unwrapNode

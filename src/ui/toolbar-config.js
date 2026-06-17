@@ -115,7 +115,7 @@
                     },
                     justify: {
                         title: 'Justify',
-                        iconId: 'justify', icon: 'J',
+                        iconId: 'align-justify', icon: 'J',
                         priority: 40,
                         active: function (state) { return state.textAlign === 'justify'; },
                         onCommand: function (context) {
@@ -296,7 +296,18 @@
                         active: function (state) { return !!state.link; },
                         onCommand: function (context) {
                             var prompts = context.settings.prompts;
-                            var href = promptValue(context, prompts.link, context.state.link ? context.state.link.href : prompts.link.fallback);
+                            var fallback = context.state.link ? context.state.link.href : prompts.link.fallback;
+                            var href = context.showLinkModal ? context.showLinkModal(fallback) : promptValue(context, prompts.link, fallback);
+
+                            if (href && typeof href.then === 'function') {
+                                return href.then(function (value) {
+                                    if (value) {
+                                        context.restoreSelection();
+                                        context.editor.upsertLink({ href: value });
+                                        context.saveSelection();
+                                    }
+                                });
+                            }
 
                             if (href) {
                                 context.editor.upsertLink({ href: href });

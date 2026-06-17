@@ -6,7 +6,7 @@ Small-footprint browser WYSIWYG editor with a UI-agnostic core.
 
 - `src/core/editor-core.js`: public core API.
 - `src/core/*`: shared HTML utilities, selection formatting, block structure, linking, embeds, state, and markup normalization.
-- `src/ui/*`: toolbar wiring, toolbar metadata, and toolbar state rendering.
+- `src/ui/*`: toolbar wiring, toolbar metadata, toolbar state rendering, and small UI web components.
 - `demos/wysiwyg-v1.html`: no-build demo shell.
 - `tests/*`: Jest/jsdom coverage.
 
@@ -26,6 +26,21 @@ Main methods:
 - images: `insertImage`, `updateImage`, `removeImage`
 - tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `toggleTableHeaderRow`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
+
+## UI Web Components
+
+`src/ui/web-components.js` defines two no-build custom elements:
+
+- `<wysiwyg-modal>` supports `open`, `show-close-button`, `click-outside-to-close`, `moveable`, `resizable`, and header/content/footer templates or slots.
+- `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
+
+Template attributes accept selectors or inline HTML:
+
+```html
+<template id="selectionDetails"><p>Selected content details</p></template>
+<wysiwyg-modal show-close-button content-template="#selectionDetails"></wysiwyg-modal>
+<wysiwyg-popup preferred-position="auto">Selected content details</wysiwyg-popup>
+```
 
 ## Demo
 

@@ -3,6 +3,7 @@
  */
 
 const createEditorAdapter = require('../src/ui/editor-adapter');
+require('../src/ui/web-components');
 
 describe('editor adapter', () => {
     test('renders nested toolbar groups, default buttons, dropdowns, and color pickers', () => {
@@ -388,5 +389,71 @@ describe('editor adapter', () => {
         redoButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         expect(editorElement.innerHTML).toBe('<p>Typed</p>');
+    });
+
+    test('link command uses the modal prompt and restores the editor selection', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Create a link here.</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+        const selectedText = 'link';
+        const startOffset = textNode.textContent.indexOf(selectedText);
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.setStart(textNode, startOffset);
+        range.setEnd(textNode, startOffset + selectedText.length);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        document.querySelector('button[title="Link"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const modal = document.querySelector('wysiwyg-modal');
+        const input = modal.querySelector('input');
+        const labelText = modal.querySelector('label span');
+
+        expect(modal.open).toBe(true);
+        expect(input.value).toBe('https://');
+        expect(labelText.className).toBe('sr-only');
+
+        input.value = 'https://example.org';
+        modal.querySelector('[data-action="apply"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(document.querySelector('wysiwyg-modal')).toBe(null);
+        expect(editorElement.innerHTML).toBe('<p>Create a <a href="https://example.org">link</a> here.</p>');
+    });
+
+    test('non-link prompts keep the blocking prompt path', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Start</p></div>'
+        ].join('');
+
+        window.prompt = jest.fn(function () {
+            return 'https://example.org/image.png';
+        });
+
+        createEditorAdapter({
+            editorElement: document.getElementById('editor'),
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        document.querySelector('button[title="Image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(window.prompt).toHaveBeenCalledWith('Image URL', 'https://');
+        expect(document.querySelector('wysiwyg-modal')).toBe(null);
+        expect(document.querySelector('img').getAttribute('src')).toBe('https://example.org/image.png');
     });
 });
