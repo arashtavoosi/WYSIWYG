@@ -71,4 +71,25 @@ describe('html utility', () => {
 
         expect(listener).toHaveBeenCalledTimes(1);
     });
+
+    test('resolves a range from viewport coordinates', () => {
+        document.body.innerHTML = '<p>Drop here</p>';
+
+        const text = document.querySelector('p').firstChild;
+        const range = document.createRange();
+
+        range.setStart(text, 4);
+        range.collapse(true);
+        Object.defineProperty(document, 'caretRangeFromPoint', {
+            configurable: true,
+            value: jest.fn(function () {
+                return range;
+            })
+        });
+
+        expect(html.getRangeFromPoint(10, 20)).toBe(range);
+        expect(document.caretRangeFromPoint).toHaveBeenCalledWith(10, 20);
+
+        delete document.caretRangeFromPoint;
+    });
 });

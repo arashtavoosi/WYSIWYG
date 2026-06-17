@@ -553,4 +553,36 @@ describe('editor adapter', () => {
 
         expect(document.querySelector('wysiwyg-popup')).toBe(null);
     });
+
+    test('resize overlay attaches to table targets from editor clicks', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td>Cell</td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const table = editorElement.querySelector('table');
+        const cell = editorElement.querySelector('td');
+
+        table.getBoundingClientRect = function () {
+            return { left: 12, top: 24, width: 160, height: 90 };
+        };
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(overlay.open).toBe(true);
+        expect(overlay.target).toBe(table);
+        expect(overlay.boundary).toBe(editorElement);
+        expect(overlay.style.left).toBe('12px');
+        expect(overlay.style.top).toBe('24px');
+    });
 });

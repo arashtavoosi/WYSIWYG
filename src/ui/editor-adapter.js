@@ -23,6 +23,8 @@
         var editor = createEditorCore(editorElement, config.editorOptions);
         var savedRange = null;
         var tableToolsPopup = null;
+        var resizeOverlay = null;
+        var activeResizeTarget = null;
         var view;
 
         toolbarSettings.prompts = Object.assign({}, toolbarConfig.prompts, configOverrides.prompts || {});
@@ -255,6 +257,49 @@
             return html.getSelectedElement(selection, 'table') || html.getClosestTag(cell, 'table');
         }
 
+        function getSelectedImage() {
+            return html.getSelectedElement(window.getSelection(), 'img');
+        }
+
+        function ensureResizeOverlay() {
+            if (resizeOverlay || typeof customElements === 'undefined' || !customElements.get('wysiwyg-resize-overlay')) {
+                return resizeOverlay;
+            }
+
+            resizeOverlay = document.createElement('wysiwyg-resize-overlay');
+            resizeOverlay.boundary = editorElement;
+            document.body.appendChild(resizeOverlay);
+            html.on(resizeOverlay, 'resize-end', function () {
+                editor.recordSnapshot();
+                sync();
+            });
+            html.on(resizeOverlay, 'move-end', function () {
+                editor.recordSnapshot();
+                sync();
+            });
+
+            return resizeOverlay;
+        }
+
+        function syncResizeOverlay(state) {
+            var target = state.image ? getSelectedImage() : state.table ? getSelectedTable() : activeResizeTarget;
+            var overlay;
+
+            if (!target || !editorElement.contains(target)) {
+                if (resizeOverlay) {
+                    resizeOverlay.hide();
+                }
+
+                return;
+            }
+
+            overlay = ensureResizeOverlay();
+
+            if (overlay) {
+                overlay.showFor(target);
+            }
+        }
+
         function closeTableTools() {
             if (tableToolsPopup) {
                 tableToolsPopup.remove();
@@ -389,6 +434,7 @@
                 settings: toolbarSettings
             });
             syncTableTools(state);
+            syncResizeOverlay(state);
         }
 
         function runCommand(entry, event, value, options) {
@@ -506,17 +552,20 @@
             }
         });
 
-        html.on(editorElement, 'mouseup', function () {
+        html.on(editorElement, 'mouseup', function (event) {
+            activeResizeTarget = event.target.closest && event.target.closest('img,table');
             saveSelection();
             sync();
         });
 
         html.on(editorElement, 'keyup', function () {
+            activeResizeTarget = null;
             saveSelection();
             sync();
         });
 
         html.on(editorElement, 'input', function () {
+            activeResizeTarget = null;
             saveSelection();
             editor.recordSnapshot();
             sync();

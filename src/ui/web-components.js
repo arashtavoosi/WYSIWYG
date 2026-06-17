@@ -12,6 +12,7 @@
     function defineComponents() {
         var WysiwygModalElement;
         var WysiwygPopupElement;
+        var WysiwygResizeOverlayElement;
 
         if (!html || !hasCustomElements()) {
             return {};
@@ -325,6 +326,233 @@
             }
         };
 
+        WysiwygResizeOverlayElement = customElements.get('wysiwyg-resize-overlay') || class extends HTMLElement {
+            constructor() {
+                super();
+                this.targetElement = null;
+                this.boundaryElement = null;
+                this._drag = null;
+                this.attachShadow({ mode: 'open' });
+                this.shadowRoot.innerHTML = [
+                    '<style>',
+                    ':host{display:none;position:fixed;z-index:1003;box-sizing:border-box;pointer-events:none}',
+                    ':host([open]){display:block}',
+                    '.frame{position:absolute;inset:0;border:1px solid #2563eb;box-sizing:border-box}',
+                    '.handle,.move{position:absolute;box-sizing:border-box;border:1px solid #2563eb;background:#fff;pointer-events:auto}',
+                    '.handle{width:9px;height:9px;margin:-5px 0 0 -5px;padding:0}',
+                    '.move{left:0;top:-25px;width:22px;height:22px;display:grid;place-items:center;border-radius:3px;color:#2563eb;cursor:move;padding:2px;}',
+                    '.move svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}',
+                    '[data-resize="n"]{left:50%;top:0;cursor:n-resize}',
+                    '[data-resize="ne"]{left:100%;top:0;cursor:ne-resize}',
+                    '[data-resize="e"]{left:100%;top:50%;cursor:e-resize}',
+                    '[data-resize="se"]{left:100%;top:100%;cursor:se-resize}',
+                    '[data-resize="s"]{left:50%;top:100%;cursor:s-resize}',
+                    '[data-resize="sw"]{left:0;top:100%;cursor:sw-resize}',
+                    '[data-resize="w"]{left:0;top:50%;cursor:w-resize}',
+                    '[data-resize="nw"]{left:0;top:0;cursor:nw-resize}',
+                    '</style>',
+                    '<div class="frame" part="frame">',
+                    '<button class="move" type="button" part="move" aria-label="Move"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1v14M1 8h14M8 1 5.5 3.5M8 1l2.5 2.5M8 15l-2.5-2.5M8 15l2.5-2.5M1 8l2.5-2.5M1 8l2.5 2.5M15 8l-2.5-2.5M15 8l-2.5 2.5"/></svg></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="n" aria-label="Resize north"></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="ne" aria-label="Resize northeast"></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="e" aria-label="Resize east"></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="se" aria-label="Resize southeast"></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="s" aria-label="Resize south"></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="sw" aria-label="Resize southwest"></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="w" aria-label="Resize west"></button>',
+                    '<button class="handle" type="button" part="handle" data-resize="nw" aria-label="Resize northwest"></button>',
+                    '</div>'
+                ].join('');
+                this._onStart = this._start.bind(this);
+                this._onMove = this._move.bind(this);
+                this._onStop = this._stop.bind(this);
+                this._syncPosition = this.updatePosition.bind(this);
+            }
+
+            connectedCallback() {
+                html.on(this.shadowRoot, 'pointerdown', this._onStart);
+                html.on(window, 'resize', this._syncPosition);
+                html.on(window, 'scroll', this._syncPosition, true);
+                this.updatePosition();
+            }
+
+            disconnectedCallback() {
+                html.off(this.shadowRoot, 'pointerdown', this._onStart);
+                html.off(window, 'resize', this._syncPosition);
+                html.off(window, 'scroll', this._syncPosition, true);
+                html.off(document, 'pointermove', this._onMove);
+                html.off(document, 'pointerup', this._onStop);
+            }
+
+            get open() {
+                return this.hasAttribute('open');
+            }
+
+            set open(value) {
+                this.toggleAttribute('open', !!value);
+            }
+
+            get target() {
+                return this.targetElement;
+            }
+
+            set target(value) {
+                this.targetElement = value || null;
+                this.updatePosition();
+            }
+
+            get boundary() {
+                return this.boundaryElement;
+            }
+
+            set boundary(value) {
+                this.boundaryElement = value || null;
+            }
+
+            showFor(target) {
+                this.target = target || this.target;
+                this.open = !!this.target;
+                this.updatePosition();
+            }
+
+            hide() {
+                this.open = false;
+            }
+
+            updatePosition() {
+                var rect;
+
+                if (!this.open || !this.target || !this.target.getBoundingClientRect) {
+                    return;
+                }
+
+                rect = this.target.getBoundingClientRect();
+                this.style.left = rect.left + 'px';
+                this.style.top = rect.top + 'px';
+                this.style.width = rect.width + 'px';
+                this.style.height = rect.height + 'px';
+            }
+
+            _start(event) {
+                var handle = event.target.getAttribute && event.target.getAttribute('data-resize');
+                var move = event.target.closest && event.target.closest('.move');
+                var rect;
+
+                if (!this.target || (!handle && !move)) {
+                    return;
+                }
+
+                rect = this.target.getBoundingClientRect();
+                this._drag = {
+                    type: handle ? 'resize' : 'move',
+                    handle: handle,
+                    x: event.clientX,
+                    y: event.clientY,
+                    width: rect.width,
+                    height: rect.height,
+                    range: null,
+                    moved: false,
+                    pointerEvents: this.target.style.pointerEvents
+                };
+
+                if (move) {
+                    this.target.style.pointerEvents = 'none';
+                }
+
+                event.preventDefault();
+                html.on(document, 'pointermove', this._onMove);
+                html.on(document, 'pointerup', this._onStop);
+                this._emit(this._drag.type + '-start');
+            }
+
+            _move(event) {
+                var dx;
+                var dy;
+                var width;
+                var height;
+
+                if (!this._drag || !this.target) {
+                    return;
+                }
+
+                dx = event.clientX - this._drag.x;
+                dy = event.clientY - this._drag.y;
+
+                if (this._drag.type === 'move') {
+                    this._drag.range = this._getMoveRange(event);
+                    this._drag.moved = this._moveTargetToRange(this._drag.range) || this._drag.moved;
+                    this._emit('move');
+                    return;
+                }
+
+                width = this._drag.width + (this._drag.handle.indexOf('e') !== -1 ? dx : this._drag.handle.indexOf('w') !== -1 ? -dx : 0);
+                height = this._drag.height + (this._drag.handle.indexOf('s') !== -1 ? dy : this._drag.handle.indexOf('n') !== -1 ? -dy : 0);
+                this.target.style.width = Math.round(html.clampNumber(width, 24, 4000)) + 'px';
+                this.target.style.height = Math.round(html.clampNumber(height, 24, 4000)) + 'px';
+                this.updatePosition();
+                this._emit('resize');
+            }
+
+            _stop(event) {
+                if (this._drag) {
+                    if (this._drag.type === 'move') {
+                        if (!this._drag.moved) {
+                            this._drag.range = this._getMoveRange(event) || this._drag.range;
+                            this._moveTargetToRange(this._drag.range);
+                        }
+
+                        this.target.style.pointerEvents = this._drag.pointerEvents;
+                    }
+
+                    this._emit(this._drag.type + '-end');
+                }
+
+                this._drag = null;
+                html.off(document, 'pointermove', this._onMove);
+                html.off(document, 'pointerup', this._onStop);
+            }
+
+            _getMoveRange(event) {
+                var range = html.getRangeFromPoint(event.clientX, event.clientY);
+                var node = range && range.commonAncestorContainer;
+                var element = html.getElement(node);
+                var boundary = this.boundary;
+
+                if (!range || !element || element === this.target || this.target.contains(element)) {
+                    return null;
+                }
+
+                if (boundary && (!node || !boundary.contains(node))) {
+                    return null;
+                }
+
+                return range;
+            }
+
+            _moveTargetToRange(range) {
+                if (!range || !this.target) {
+                    return false;
+                }
+
+                range.insertNode(this.target);
+                html.moveSelectionAfterNode(this.target);
+                this.updatePosition();
+                return true;
+            }
+
+            _emit(name) {
+                var rect = this.target && this.target.getBoundingClientRect ? this.target.getBoundingClientRect() : {};
+
+                this.dispatchEvent(new CustomEvent(name, {
+                    detail: {
+                        target: this.target,
+                        width: rect.width || 0,
+                        height: rect.height || 0
+                    }
+                }));
+            }
+        };
+
         if (!customElements.get('wysiwyg-modal')) {
             customElements.define('wysiwyg-modal', WysiwygModalElement);
         }
@@ -333,9 +561,14 @@
             customElements.define('wysiwyg-popup', WysiwygPopupElement);
         }
 
+        if (!customElements.get('wysiwyg-resize-overlay')) {
+            customElements.define('wysiwyg-resize-overlay', WysiwygResizeOverlayElement);
+        }
+
         return {
             WysiwygModalElement: WysiwygModalElement,
-            WysiwygPopupElement: WysiwygPopupElement
+            WysiwygPopupElement: WysiwygPopupElement,
+            WysiwygResizeOverlayElement: WysiwygResizeOverlayElement
         };
     }
 

@@ -60,6 +60,32 @@
         return target;
     }
 
+    function getRangeFromPoint(x, y, doc) {
+        var currentDocument = doc || document;
+        var position;
+        var range;
+
+        if (currentDocument.caretRangeFromPoint) {
+            return currentDocument.caretRangeFromPoint(x, y);
+        }
+
+        if (!currentDocument.caretPositionFromPoint) {
+            return null;
+        }
+
+        position = currentDocument.caretPositionFromPoint(x, y);
+
+        if (!position) {
+            return null;
+        }
+
+        range = currentDocument.createRange();
+        range.setStart(position.offsetNode, position.offset);
+        range.collapse(true);
+
+        return range;
+    }
+
     function parseSelectorOrElements(input, context) {
         if (!input) {
             return [];
@@ -487,6 +513,7 @@
         getContentNodes: getContentNodes,
         getCurrentSelection: getCurrentSelection,
         getElement: getElement,
+        getRangeFromPoint: getRangeFromPoint,
         getSelectedElement: getSelectedElement,
         getSelectedNodes: getSelectedNodes,
         getTemplateFromAttribute: getTemplateFromAttribute,

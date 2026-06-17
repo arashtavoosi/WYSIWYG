@@ -29,10 +29,11 @@ Main methods:
 
 ## UI Web Components
 
-`src/ui/web-components.js` defines two no-build custom elements:
+`src/ui/web-components.js` defines three no-build custom elements:
 
 - `<wysiwyg-modal>` supports `open`, `show-close-button`, `click-outside-to-close`, `moveable`, `resizable`, and header/content/footer templates or slots.
 - `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"` plus `-start` and `-end` aligned variants such as `bottom-start`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
+- `<wysiwyg-resize-overlay>` supports `open`, `showFor(element)`, `hide()`, eight resize handles, a move handle, and `resize-start`/`resize`/`resize-end` plus `move-start`/`move`/`move-end` events.
 
 Template attributes accept selectors or inline HTML:
 
