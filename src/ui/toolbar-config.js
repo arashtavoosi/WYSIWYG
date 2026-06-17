@@ -70,9 +70,103 @@
                     }
                 }
             },
+            inline: {
+                title: 'Inline',
+                priority: 20,
+                children: {
+                    bold: { title: 'Bold', iconId: 'bold', icon: 'B', priority: 10, active: inlineActive('bold'), onCommand: inlineCommand('bold') },
+                    italic: { title: 'Italic', iconId: 'italic', icon: 'I', priority: 20, active: inlineActive('italic'), onCommand: inlineCommand('italic') },
+                    underline: { title: 'Underline', iconId: 'underline', icon: 'U', priority: 30, active: inlineActive('underline'), onCommand: inlineCommand('underline') },
+                    strikethrough: { title: 'Strikethrough', iconId: 'strikethrough', icon: 'S', priority: 40, active: inlineActive('strikethrough'), onCommand: inlineCommand('strikethrough') },
+                    subscript: { title: 'Subscript', iconId: 'subscript', icon: 'x2', priority: 50, active: inlineActive('subscript'), onCommand: inlineCommand('subscript') },
+                    superscript: { title: 'Superscript', iconId: 'superscript', icon: 'x^2', priority: 60, active: inlineActive('superscript'), onCommand: inlineCommand('superscript') }
+                }
+            },
+            alignment: {
+                title: 'Alignment',
+                priority: 30,
+                children: {
+                    left: {
+                        title: 'Align left',
+                        iconId: 'align-left', icon: 'L',
+                        priority: 10,
+                        active: function (state) { return state.textAlign === 'left' || !state.textAlign; },
+                        onCommand: function (context) {
+                            context.editor.setInlineStyle('textAlign', 'left');
+                        }
+                    },
+                    center: {
+                        title: 'Align center',
+                        iconId: 'align-center', icon: 'C',
+                        priority: 20,
+                        active: function (state) { return state.textAlign === 'center'; },
+                        onCommand: function (context) {
+                            context.editor.setInlineStyle('textAlign', 'center');
+                        }
+                    },
+                    right: {
+                        title: 'Align right',
+                        iconId: 'align-right', icon: 'R',
+                        priority: 30,
+                        active: function (state) { return state.textAlign === 'right'; },
+                        onCommand: function (context) {
+                            context.editor.setInlineStyle('textAlign', 'right');
+                        }
+                    },
+                    justify: {
+                        title: 'Justify',
+                        iconId: 'justify', icon: 'J',
+                        priority: 40,
+                        active: function (state) { return state.textAlign === 'justify'; },
+                        onCommand: function (context) {
+                            context.editor.setInlineStyle('textAlign', 'justify');
+                        }
+                    }
+                }
+            },
+            lists: {
+                title: 'Lists',
+                priority: 40,
+                children: {
+                    bullets: {
+                        title: 'Bullets',
+                        iconId: 'bullets', icon: '*',
+                        priority: 10,
+                        active: function (state) { return state.list === 'ul'; },
+                        onCommand: function (context) {
+                            context.editor.toggleList('ul');
+                        }
+                    },
+                    numbers: {
+                        title: 'Numbers',
+                        iconId: 'numbers', icon: '1.',
+                        priority: 20,
+                        active: function (state) { return state.list === 'ol'; },
+                        onCommand: function (context) {
+                            context.editor.toggleList('ol');
+                        }
+                    },
+                    outdent: {
+                        title: 'Outdent',
+                        iconId: 'outdent', icon: '<-',
+                        priority: 30,
+                        onCommand: function (context) {
+                            context.editor.adjustIndent('outdent');
+                        }
+                    },
+                    indent: {
+                        title: 'Indent',
+                        iconId: 'indent', icon: '->',
+                        priority: 40,
+                        onCommand: function (context) {
+                            context.editor.adjustIndent('indent');
+                        }
+                    }
+                }
+            },
             blocks: {
                 title: 'Blocks',
-                priority: 20,
+                priority: 50,
                 children: {
                     paragraph: {
                         title: 'Paragraph',
@@ -121,18 +215,7 @@
                     }
                 }
             },
-            inline: {
-                title: 'Inline',
-                priority: 30,
-                children: {
-                    bold: { title: 'Bold', iconId: 'bold', icon: 'B', priority: 10, active: inlineActive('bold'), onCommand: inlineCommand('bold') },
-                    italic: { title: 'Italic', iconId: 'italic', icon: 'I', priority: 20, active: inlineActive('italic'), onCommand: inlineCommand('italic') },
-                    underline: { title: 'Underline', iconId: 'underline', icon: 'U', priority: 30, active: inlineActive('underline'), onCommand: inlineCommand('underline') },
-                    strikethrough: { title: 'Strikethrough', iconId: 'strikethrough', icon: 'S', priority: 40, active: inlineActive('strikethrough'), onCommand: inlineCommand('strikethrough') },
-                    subscript: { title: 'Subscript', iconId: 'subscript', icon: 'x2', priority: 50, active: inlineActive('subscript'), onCommand: inlineCommand('subscript') },
-                    superscript: { title: 'Superscript', iconId: 'superscript', icon: 'x^2', priority: 60, active: inlineActive('superscript'), onCommand: inlineCommand('superscript') }
-                }
-            },
+            
             style: {
                 title: 'Style',
                 priority: 40,
@@ -199,88 +282,6 @@
                         value: function (state) { return state.highlightColor; },
                         fallback: '#ffff00',
                         onCommand: inlineStyleCommand('backgroundColor')
-                    }
-                }
-            },
-            lists: {
-                title: 'Lists',
-                priority: 50,
-                children: {
-                    bullets: {
-                        title: 'Bullets',
-                        iconId: 'bullets', icon: '*',
-                        priority: 10,
-                        active: function (state) { return state.list === 'ul'; },
-                        onCommand: function (context) {
-                            context.editor.toggleList('ul');
-                        }
-                    },
-                    numbers: {
-                        title: 'Numbers',
-                        iconId: 'numbers', icon: '1.',
-                        priority: 20,
-                        active: function (state) { return state.list === 'ol'; },
-                        onCommand: function (context) {
-                            context.editor.toggleList('ol');
-                        }
-                    },
-                    outdent: {
-                        title: 'Outdent',
-                        iconId: 'outdent', icon: '<-',
-                        priority: 30,
-                        onCommand: function (context) {
-                            context.editor.adjustIndent('outdent');
-                        }
-                    },
-                    indent: {
-                        title: 'Indent',
-                        iconId: 'indent', icon: '->',
-                        priority: 40,
-                        onCommand: function (context) {
-                            context.editor.adjustIndent('indent');
-                        }
-                    }
-                }
-            },
-            alignment: {
-                title: 'Alignment',
-                priority: 60,
-                children: {
-                    left: {
-                        title: 'Align left',
-                        iconId: 'align-left', icon: 'L',
-                        priority: 10,
-                        active: function (state) { return state.textAlign === 'left' || !state.textAlign; },
-                        onCommand: function (context) {
-                            context.editor.setInlineStyle('textAlign', 'left');
-                        }
-                    },
-                    center: {
-                        title: 'Align center',
-                        iconId: 'align-center', icon: 'C',
-                        priority: 20,
-                        active: function (state) { return state.textAlign === 'center'; },
-                        onCommand: function (context) {
-                            context.editor.setInlineStyle('textAlign', 'center');
-                        }
-                    },
-                    right: {
-                        title: 'Align right',
-                        iconId: 'align-right', icon: 'R',
-                        priority: 30,
-                        active: function (state) { return state.textAlign === 'right'; },
-                        onCommand: function (context) {
-                            context.editor.setInlineStyle('textAlign', 'right');
-                        }
-                    },
-                    justify: {
-                        title: 'Justify',
-                        iconId: 'justify', icon: 'J',
-                        priority: 40,
-                        active: function (state) { return state.textAlign === 'justify'; },
-                        onCommand: function (context) {
-                            context.editor.setInlineStyle('textAlign', 'justify');
-                        }
                     }
                 }
             },
