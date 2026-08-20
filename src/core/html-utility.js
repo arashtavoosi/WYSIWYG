@@ -215,6 +215,27 @@
         return null;
     }
 
+    function getCombinedRect(anchors) {
+        var list = Array.isArray(anchors) || anchors instanceof NodeList ? toArray(anchors) : anchors ? [anchors] : [];
+        var rects = list.map(function (anchor) {
+            return getAnchorRect(anchor);
+        }).filter(Boolean);
+        var left;
+        var top;
+        var right;
+        var bottom;
+
+        if (!rects.length) {
+            return null;
+        }
+
+        left = Math.min.apply(Math, rects.map(function (rect) { return rect.left; }));
+        top = Math.min.apply(Math, rects.map(function (rect) { return rect.top; }));
+        right = Math.max.apply(Math, rects.map(function (rect) { return rect.right; }));
+        bottom = Math.max.apply(Math, rects.map(function (rect) { return rect.bottom; }));
+        return { left: left, top: top, right: right, bottom: bottom, width: right - left, height: bottom - top };
+    }
+
     function getElement(node) {
         return node && node.nodeType === Node.ELEMENT_NODE ? node : node && node.parentElement;
     }
@@ -519,6 +540,7 @@
         expandCollapsedRangeToWord: expandCollapsedRangeToWord,
         expandCollapsedSelectionToWord: expandCollapsedSelectionToWord,
         getAnchorRect: getAnchorRect,
+        getCombinedRect: getCombinedRect,
         getClosestTag: getClosestTag,
         getContentNodes: getContentNodes,
         getCurrentSelection: getCurrentSelection,

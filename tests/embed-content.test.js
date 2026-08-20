@@ -3,6 +3,7 @@
  */
 
 const createEditorCore = require('../src/core/editor-core');
+const html = require('../src/core/html-utility');
 
 function selectNode(node) {
     const range = document.createRange();
@@ -103,5 +104,55 @@ describe('embed content', () => {
 
         expect(editorElement.querySelector('thead th').textContent).toBe('Body');
         expect(editorElement.querySelector('tbody')).toBeTruthy();
+    });
+
+    test('column insertion keeps selection in the original row', () => {
+        document.body.innerHTML = [
+            '<div id="editor" contenteditable="true"><table>',
+            '<thead><tr><th>Head</th></tr></thead>',
+            '<tbody><tr><td>First</td></tr><tr><td>Selected</td></tr></tbody>',
+            '</table></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const selected = editorElement.querySelectorAll('tbody td')[1];
+        const selection = selectNode(selected);
+
+        editor.insertTableColumn('after', selection);
+
+        const inserted = html.getSelectedElement(selection, 'td');
+
+        expect(inserted.parentNode).toBe(selected.parentNode);
+        expect(inserted.cellIndex).toBe(1);
+        expect(html.getClosestTag(inserted, 'thead')).toBeNull();
+    });
+
+    test('merges and unmerges a rectangular cell selection', () => {
+        document.body.innerHTML = [
+            '<div id="editor" contenteditable="true"><table><tbody>',
+            '<tr><td>A</td><td>B</td></tr>',
+            '<tr><td>C</td><td>D</td></tr>',
+            '</tbody></table></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const cells = Array.from(editorElement.querySelectorAll('td'));
+
+        editor.mergeTableCells(cells);
+
+        const merged = editorElement.querySelector('td');
+
+        expect(editorElement.querySelectorAll('td')).toHaveLength(1);
+        expect(merged.rowSpan).toBe(2);
+        expect(merged.colSpan).toBe(2);
+        expect(merged.textContent).toBe('ABCD');
+
+        editor.unmergeTableCell(merged);
+
+        expect(editorElement.querySelectorAll('td')).toHaveLength(4);
+        expect(merged.hasAttribute('rowspan')).toBe(false);
+        expect(merged.hasAttribute('colspan')).toBe(false);
     });
 });

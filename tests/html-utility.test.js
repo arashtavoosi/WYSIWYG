@@ -59,6 +59,27 @@ describe('html utility', () => {
         delete proto.enabledForTest;
     });
 
+    test('combines element rectangles', () => {
+        const first = document.createElement('div');
+        const second = document.createElement('div');
+
+        first.getBoundingClientRect = function () {
+            return { left: 10, top: 20, right: 60, bottom: 50, width: 50, height: 30 };
+        };
+        second.getBoundingClientRect = function () {
+            return { left: 10, top: 50, right: 60, bottom: 90, width: 50, height: 40 };
+        };
+
+        expect(html.getCombinedRect([first, second])).toEqual({
+            left: 10,
+            top: 20,
+            right: 60,
+            bottom: 90,
+            width: 50,
+            height: 70
+        });
+    });
+
     test('adds and removes event listeners', () => {
         const button = document.createElement('button');
         const listener = jest.fn();

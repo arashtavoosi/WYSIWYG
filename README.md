@@ -24,16 +24,17 @@ Main methods:
 - blocks: `setBlock`, `toggleBlock`, `toggleList`, `insertBreak`, `insertRule`
 - links: `upsertLink`, `removeLink`
 - images: `insertImage`, `updateImage`, `removeImage`
-- tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `toggleTableHeaderRow`, `removeTable`
+- tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
 
 ## UI Web Components
 
-`src/ui/web-components.js` defines four no-build custom elements:
+`src/ui/web-components.js` defines five no-build custom elements:
 
 - `<wysiwyg-modal>` supports `open`, `show-close-button`, `click-outside-to-close`, `moveable`, `resizable`, and header/content/footer templates or slots.
 - `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"` plus `-start` and `-end` aligned variants such as `bottom-start`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
 - `<wysiwyg-resize-overlay>` supports `open`, `showFor(element)`, `hide()`, eight resize handles, a move handle, and `resize-start`/`resize`/`resize-end` plus `move-start`/`move`/`move-end` events.
+- `<wysiwyg-table-selection>` is the adapter's cell, row, column, multi-cell, and table selection overlay.
 - `<wysiwyg-file-browser>` supports breadcrumb navigation, `view-mode="list|thumbnail"`, `supported-extensions`, `endpoint`, `load(path)`, `setData(data)`, `navigate`, and `file-select`. Server contract: `docs/file-browser-contract.md`.
 
 Template attributes accept selectors or inline HTML:

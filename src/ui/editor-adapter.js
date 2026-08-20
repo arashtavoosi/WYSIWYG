@@ -24,6 +24,9 @@
         var savedRange = null;
         var tableToolsPopup = null;
         var resizeOverlay = null;
+        var tableSelectionOverlay = null;
+        var tableSelection = null;
+        var expandingTableSelection = false;
         var activeResizeTarget = null;
         var view;
 
@@ -350,8 +353,124 @@
             return html.getSelectedElement(selection, 'table') || html.getClosestTag(cell, 'table');
         }
 
+        function getSelectedCell() {
+            var selection = window.getSelection();
+
+            return html.getSelectedElement(selection, 'td') || html.getSelectedElement(selection, 'th');
+        }
+
         function getSelectedImage() {
             return html.getSelectedElement(window.getSelection(), 'img');
+        }
+
+        function getCellsRect(cells) {
+            return html.getCombinedRect((cells || []).filter(function (cell) {
+                return cell && cell.isConnected;
+            }));
+        }
+
+        function getRectangleCells(anchor, cell, selected) {
+            var table = html.getClosestTag(anchor, 'table');
+            var bounds = (selected || []).concat([anchor, cell]);
+            var minRow = Math.min.apply(Math, bounds.map(function (item) { return item.parentNode.rowIndex; }));
+            var maxRow = Math.max.apply(Math, bounds.map(function (item) { return item.parentNode.rowIndex; }));
+            var minColumn = Math.min.apply(Math, bounds.map(function (item) { return item.cellIndex; }));
+            var maxColumn = Math.max.apply(Math, bounds.map(function (item) { return item.cellIndex; }));
+            var cells = [];
+            var rowIndex;
+            var columnIndex;
+
+            for (rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
+                for (columnIndex = minColumn; columnIndex <= maxColumn; columnIndex += 1) {
+                    if (table.rows[rowIndex] && table.rows[rowIndex].cells[columnIndex]) {
+                        cells.push(table.rows[rowIndex].cells[columnIndex]);
+                    }
+                }
+            }
+
+            return cells;
+        }
+
+        function setTableSelection(cell, mode, expand) {
+            var table = cell && html.getClosestTag(cell, 'table');
+            var anchor = expand && tableSelection && tableSelection.table === table ? tableSelection.anchor : cell;
+            var cells;
+
+            if (!table || !cell) {
+                tableSelection = null;
+                return;
+            }
+
+            cells = expand ? getRectangleCells(anchor, cell, tableSelection && tableSelection.cells) : [cell];
+            tableSelection = {
+                anchor: anchor,
+                cell: cell,
+                cells: cells,
+                mode: mode || (cells.length > 1 || cell.rowSpan > 1 || cell.colSpan > 1 ? 'multiple' : 'cell'),
+                table: table
+            };
+        }
+
+        function clearTableSelection() {
+            tableSelection = null;
+
+            if (tableSelectionOverlay) {
+                tableSelectionOverlay.hide();
+            }
+        }
+
+        function setTableSelectionMode(mode) {
+            var cell;
+            var table;
+            var columnIndex;
+
+            if (!tableSelection) {
+                return;
+            }
+
+            cell = tableSelection.cell;
+            table = tableSelection.table;
+            columnIndex = cell.cellIndex;
+            tableSelection.mode = mode;
+            tableSelection.cells = mode === 'row' ? html.toArray(cell.parentNode.cells) : mode === 'column' ? html.toArray(table.rows).map(function (row) {
+                return row.cells[columnIndex];
+            }).filter(Boolean) : mode === 'table' ? html.toArray(table.querySelectorAll('th,td')) : [cell];
+            activeResizeTarget = mode === 'table' ? table : mode === 'row' ? cell.parentNode : mode === 'cell' || mode === 'column' ? cell : null;
+        }
+
+        function selectTableMode(mode) {
+            setTableSelectionMode(mode);
+            sync();
+        }
+
+        function ensureTableSelectionOverlay() {
+            if (tableSelectionOverlay || typeof customElements === 'undefined' || !customElements.get('wysiwyg-table-selection')) {
+                return tableSelectionOverlay;
+            }
+
+            tableSelectionOverlay = document.createElement('wysiwyg-table-selection');
+            document.body.appendChild(tableSelectionOverlay);
+            html.on(tableSelectionOverlay, 'table-select', function (event) {
+                selectTableMode(event.detail.mode);
+            });
+            return tableSelectionOverlay;
+        }
+
+        function syncTableSelectionOverlay(state) {
+            var overlay;
+
+            if (!tableSelection || !tableSelection.table.isConnected || state.image || state.link) {
+                if (tableSelectionOverlay) {
+                    tableSelectionOverlay.hide();
+                }
+                return;
+            }
+
+            overlay = ensureTableSelectionOverlay();
+
+            if (overlay) {
+                overlay.showFor(tableSelection);
+            }
         }
 
         function ensureResizeOverlay() {
@@ -375,8 +494,15 @@
         }
 
         function syncResizeOverlay(state) {
-            var target = activeResizeTarget || (state.image ? getSelectedImage() : state.table ? getSelectedTable() : null);
+            var target;
             var overlay;
+            var mode = tableSelection && tableSelection.mode;
+
+            if (tableSelection) {
+                target = mode === 'table' ? tableSelection.table : mode === 'row' ? tableSelection.cell.parentNode : mode === 'cell' || mode === 'column' ? tableSelection.cell : null;
+            } else {
+                target = activeResizeTarget || (state.image ? getSelectedImage() : null);
+            }
 
             if (!target || !editorElement.contains(target)) {
                 if (resizeOverlay) {
@@ -389,7 +515,12 @@
             overlay = ensureResizeOverlay();
 
             if (overlay) {
-                overlay.showFor(target);
+                overlay.showFor(target, {
+                    frame: mode === 'column' ? tableSelection.cells : null,
+                    moveable: tableSelection ? mode === 'table' : true,
+                    resizable: !tableSelection || mode !== 'multiple',
+                    resizeAxis: mode === 'row' ? 'y' : mode === 'column' ? 'x' : null
+                });
             }
         }
 
@@ -407,43 +538,84 @@
             }
         }
 
-        function openTableTools(anchor) {
+        function tableActionEnabled(name) {
+            var section;
+
+            if (!tableSelection) {
+                return false;
+            }
+
+            if (name === 'merge') {
+                section = tableSelection.cells[0] && tableSelection.cells[0].parentNode.parentNode;
+                return tableSelection.cells.length > 1 && tableSelection.cells.every(function (cell) {
+                    return cell.rowSpan === 1 && cell.colSpan === 1 && cell.parentNode.parentNode === section;
+                });
+            }
+
+            if (name === 'unmerge') {
+                return tableSelection.cells.length === 1 && (tableSelection.cell.rowSpan > 1 || tableSelection.cell.colSpan > 1);
+            }
+
+            return true;
+        }
+
+        function openTableTools(anchor, mode) {
             var actions;
             var tools;
+            var actionMap;
+            var actionNames;
 
             if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-popup')) {
                 return false;
             }
 
             if (tableToolsPopup) {
-                tableToolsPopup.showFor(anchor);
-                return true;
+                if (tableToolsPopup.getAttribute('data-mode') === mode) {
+                    html.toArray(tableToolsPopup.querySelectorAll('[data-action]')).forEach(function (button) {
+                        button.disabled = !tableActionEnabled(button.getAttribute('data-action'));
+                    });
+                    tableToolsPopup.showFor(anchor);
+                    return true;
+                }
+
+                closeTableTools();
             }
 
             tableToolsPopup = document.createElement('wysiwyg-popup');
             tableToolsPopup.preferredPosition = 'bottom-start';
+            tableToolsPopup.setAttribute('data-mode', mode);
             tableToolsPopup.innerHTML = [
                 '<style>',
                 '.wysiwyg-table-tools{display:flex;gap:3px}',
                 '.wysiwyg-table-tool{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:4px;background:#fff;color:#111827;padding:0;cursor:pointer}',
                 '.wysiwyg-table-tool:hover{border-color:#2563eb;background:#dbeafe}',
+                '.wysiwyg-table-tool:disabled{opacity:.4;cursor:default;background:#fff;border-color:transparent}',
                 '.wysiwyg-table-tool-icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}',
                 '</style>',
                 '<div class="wysiwyg-table-tools"></div>'
             ].join('');
             document.body.appendChild(tableToolsPopup);
             tools = tableToolsPopup.querySelector('.wysiwyg-table-tools');
-
-            actions = [
-                ['rowBefore', 'Row before', 'row-before', function () { editor.insertTableRow('before'); }],
-                ['rowAfter', 'Row after', 'row-after', function () { editor.insertTableRow('after'); }],
-                ['removeRow', 'Remove row', 'row-remove', function () { editor.removeTableRow(); }],
-                ['colBefore', 'Column before', 'column-before', function () { editor.insertTableColumn('before'); }],
-                ['colAfter', 'Column after', 'column-after', function () { editor.insertTableColumn('after'); }],
-                ['removeCol', 'Remove column', 'column-remove', function () { editor.removeTableColumn(); }],
-                ['headerRow', 'Toggle header row', 'header-row', function () { editor.toggleTableHeaderRow(); }],
-                ['removeTable', 'Remove table', 'table-remove', function () { editor.removeTable(); }]
-            ];
+            actionMap = {
+                rowBefore: ['rowBefore', 'Row before', 'row-before', function () { editor.insertTableRow('before'); }],
+                rowAfter: ['rowAfter', 'Row after', 'row-after', function () { editor.insertTableRow('after'); }],
+                removeRow: ['removeRow', 'Remove row', 'row-remove', function () { editor.removeTableRow(); }],
+                colBefore: ['colBefore', 'Column before', 'column-before', function () { editor.insertTableColumn('before'); }],
+                colAfter: ['colAfter', 'Column after', 'column-after', function () { editor.insertTableColumn('after'); }],
+                removeCol: ['removeCol', 'Remove column', 'column-remove', function () { editor.removeTableColumn(); }],
+                headerRow: ['headerRow', 'Toggle header row', 'header-row', function () { editor.toggleTableHeaderRow(); }],
+                removeTable: ['removeTable', 'Remove table', 'table-remove', function () { editor.removeTable(); }],
+                merge: ['merge', 'Merge cells', 'merge-cells', function () { editor.mergeTableCells(tableSelection.cells); }],
+                unmerge: ['unmerge', 'Unmerge cells', 'unmerge-cells', function () { editor.unmergeTableCell(tableSelection.cell); }]
+            };
+            actionNames = {
+                cell: ['rowBefore', 'rowAfter', 'colBefore', 'colAfter'],
+                multiple: ['merge', 'unmerge'],
+                row: ['rowBefore', 'rowAfter', 'removeRow'],
+                column: ['colBefore', 'colAfter', 'removeCol'],
+                table: ['headerRow', 'removeTable']
+            }[mode] || [];
+            actions = actionNames.map(function (name) { return actionMap[name]; });
 
             actions.forEach(function (action) {
                 var button = document.createElement('button');
@@ -453,6 +625,7 @@
                 button.setAttribute('data-action', action[0]);
                 button.setAttribute('title', action[1]);
                 button.setAttribute('aria-label', action[1]);
+                button.disabled = !tableActionEnabled(action[0]);
                 button.appendChild(createIcon(action[2]));
                 tools.appendChild(button);
             });
@@ -460,8 +633,10 @@
             html.on(tableToolsPopup, 'click', function (event) {
                 var button = event.target.closest && event.target.closest('[data-action]');
                 var action;
+                var previousMode;
+                var selectedCell;
 
-                if (!button) {
+                if (!button || button.disabled) {
                     return;
                 }
 
@@ -470,21 +645,36 @@
                 })[0];
 
                 if (action) {
+                    previousMode = tableSelection && tableSelection.mode;
                     restoreSelection();
                     action[3]();
                     saveSelection();
+                    selectedCell = getSelectedCell();
+
+                    if (selectedCell && editorElement.contains(selectedCell)) {
+                        setTableSelection(selectedCell);
+
+                        if (action[0] !== 'merge' && action[0] !== 'unmerge') {
+                            setTableSelectionMode(previousMode);
+                        }
+                    } else {
+                        clearTableSelection();
+                    }
+
                     sync();
                 }
             });
             html.on(document, 'keydown', closeTableToolsOnEscape);
-
             tableToolsPopup.showFor(anchor);
             return true;
         }
 
         function syncTableTools(state) {
-            if (state.table) {
-                openTableTools(getSelectedTable());
+            var anchor;
+
+            if (tableSelection && !state.image && !state.link) {
+                anchor = tableSelection.mode === 'table' ? tableSelection.table : getCellsRect(tableSelection.cells);
+                openTableTools(anchor, tableSelection.mode);
             } else {
                 closeTableTools();
             }
@@ -513,9 +703,37 @@
             };
         }
 
+        function syncTableSelectionState(state) {
+            var cell;
+            var table;
+
+            if (state.image || state.link) {
+                clearTableSelection();
+                return;
+            }
+
+            if (!state.table) {
+                return;
+            }
+
+            cell = getSelectedCell();
+            table = cell && html.getClosestTag(cell, 'table');
+
+            if (!cell || !table || !editorElement.contains(table)) {
+                clearTableSelection();
+                return;
+            }
+
+            if (!tableSelection || !tableSelection.table.isConnected || tableSelection.table !== table) {
+                setTableSelection(cell);
+                activeResizeTarget = cell;
+            }
+        }
+
         function sync() {
             var state = editor.getActiveFormats();
 
+            syncTableSelectionState(state);
             view.sync(state, {
                 editor: editor,
                 toolbarElement: toolbarElement,
@@ -530,6 +748,7 @@
             });
             syncTableTools(state);
             syncResizeOverlay(state);
+            syncTableSelectionOverlay(state);
         }
 
         function runCommand(entry, event, value, options) {
@@ -644,24 +863,62 @@
         html.on(document, 'selectionchange', function () {
             if (document.activeElement === editorElement || editorElement.contains(document.activeElement)) {
                 saveSelection();
+
+                if (tableSelection && !expandingTableSelection && !editor.getActiveFormats().table) {
+                    clearTableSelection();
+                }
+
                 sync();
             }
         });
 
-        html.on(editorElement, 'mouseup', function (event) {
-            activeResizeTarget = event.target.closest && event.target.closest('img,table');
+        html.on(editorElement, 'mousedown', function (event) {
+            var cell = event.target.closest && event.target.closest('th,td');
 
-            if (activeResizeTarget && activeResizeTarget.tagName === 'IMG') {
-                html.selectNode(activeResizeTarget);
+            expandingTableSelection = !!(cell && (event.ctrlKey || event.metaKey) && tableSelection && tableSelection.table === html.getClosestTag(cell, 'table'));
+        });
+
+        html.on(editorElement, 'mouseup', function (event) {
+            var image = event.target.closest && event.target.closest('img');
+            var link = event.target.closest && event.target.closest('a');
+            var cell = event.target.closest && event.target.closest('th,td');
+
+            if (image) {
+                clearTableSelection();
+                activeResizeTarget = image;
+                html.selectNode(image);
+            } else if (link && cell) {
+                clearTableSelection();
+                activeResizeTarget = null;
+            } else if (cell) {
+                setTableSelection(cell, null, event.ctrlKey || event.metaKey);
+                activeResizeTarget = tableSelection.mode === 'cell' ? cell : null;
+
+                if (getSelectedCell() !== cell) {
+                    html.moveSelectionToNodeStart(cell);
+                }
+            } else {
+                clearTableSelection();
+                activeResizeTarget = null;
             }
 
+            expandingTableSelection = false;
             saveSelection();
             sync();
+        });
+
+        html.on(document, 'mouseup', function () {
+            expandingTableSelection = false;
         });
 
         html.on(editorElement, 'keyup', function () {
             activeResizeTarget = null;
             saveSelection();
+
+            if (!editor.getActiveFormats().table) {
+                clearTableSelection();
+            }
+
             sync();
         });
 

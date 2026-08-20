@@ -25,6 +25,7 @@
         var WysiwygModalElement;
         var WysiwygPopupElement;
         var WysiwygResizeOverlayElement;
+        var WysiwygTableSelectionElement;
         var WysiwygFileBrowserElement;
 
         if (!html || !hasCustomElements()) {
@@ -344,6 +345,7 @@
                 super();
                 this.targetElement = null;
                 this.boundaryElement = null;
+                this.frameElements = null;
                 this._drag = null;
                 this.attachShadow({ mode: 'open' });
                 this.shadowRoot.innerHTML = [
@@ -363,6 +365,8 @@
                     '[data-resize="sw"]{left:0;top:100%;cursor:sw-resize}',
                     '[data-resize="w"]{left:0;top:50%;cursor:w-resize}',
                     '[data-resize="nw"]{left:0;top:0;cursor:nw-resize}',
+                    ':host([move-disabled]) .move{display:none}:host([resize-disabled]) .handle{display:none}',
+                    ':host([resize-axis="x"]) .handle:not([data-resize="e"]):not([data-resize="w"]),:host([resize-axis="y"]) .handle:not([data-resize="n"]):not([data-resize="s"]){display:none}',
                     '</style>',
                     '<div class="frame" part="frame">',
                     '<button class="move" type="button" part="move" aria-label="Move"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1v14M1 8h14M8 1 5.5 3.5M8 1l2.5 2.5M8 15l-2.5-2.5M8 15l2.5-2.5M1 8l2.5-2.5M1 8l2.5 2.5M15 8l-2.5-2.5M15 8l-2.5 2.5"/></svg></button>',
@@ -422,7 +426,17 @@
                 this.boundaryElement = value || null;
             }
 
-            showFor(target) {
+            showFor(target, options) {
+                options = options || {};
+                this.frameElements = options.frame || null;
+                this.toggleAttribute('move-disabled', options.moveable === false);
+                this.toggleAttribute('resize-disabled', options.resizable === false);
+                this.toggleAttribute('resize-axis', !!options.resizeAxis);
+
+                if (options.resizeAxis) {
+                    this.setAttribute('resize-axis', options.resizeAxis);
+                }
+
                 this.target = target || this.target;
                 this.open = !!this.target;
                 this.updatePosition();
@@ -439,7 +453,7 @@
                     return;
                 }
 
-                rect = this.target.getBoundingClientRect();
+                rect = html.getCombinedRect(this.frameElements) || this.target.getBoundingClientRect();
                 this.style.left = rect.left + 'px';
                 this.style.top = rect.top + 'px';
                 this.style.width = rect.width + 'px';
@@ -483,6 +497,7 @@
                 var dy;
                 var width;
                 var height;
+                var axis;
 
                 if (!this._drag || !this.target) {
                     return;
@@ -500,8 +515,16 @@
 
                 width = this._drag.width + (this._drag.handle.indexOf('e') !== -1 ? dx : this._drag.handle.indexOf('w') !== -1 ? -dx : 0);
                 height = this._drag.height + (this._drag.handle.indexOf('s') !== -1 ? dy : this._drag.handle.indexOf('n') !== -1 ? -dy : 0);
-                this.target.style.width = Math.round(html.clampNumber(width, 24, 4000)) + 'px';
-                this.target.style.height = Math.round(html.clampNumber(height, 24, 4000)) + 'px';
+                axis = this.getAttribute('resize-axis');
+
+                if (axis !== 'y') {
+                    this.target.style.width = Math.round(html.clampNumber(width, 24, 4000)) + 'px';
+                }
+
+                if (axis !== 'x') {
+                    this.target.style.height = Math.round(html.clampNumber(height, 24, 4000)) + 'px';
+                }
+
                 this.updatePosition();
                 this._emit('resize');
             }
@@ -562,6 +585,117 @@
                         width: rect.width || 0,
                         height: rect.height || 0
                     }
+                }));
+            }
+        };
+
+        WysiwygTableSelectionElement = customElements.get('wysiwyg-table-selection') || class extends HTMLElement {
+            constructor() {
+                super();
+                this.table = null;
+                this.cell = null;
+                this.cells = [];
+                this.attachShadow({ mode: 'open' });
+                this.shadowRoot.innerHTML = [
+                    '<style>',
+                    ':host{display:none;position:fixed;inset:0;z-index:1004;pointer-events:none}:host([open]){display:block}',
+                    '.frame{position:absolute;box-sizing:border-box;border:2px solid #2563eb;background:rgba(37,99,235,.08)}',
+                    '.selector{position:absolute;width:20px;height:20px;display:grid;place-items:center;padding:0;border:1px solid #2563eb;border-radius:3px;background:#fff;color:#2563eb;pointer-events:auto;cursor:pointer}',
+                    '.selector:hover{background:#dbeafe}.selector svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}',
+                    ':host(:not([mode="cell"])) .selector{display:none}',
+                    '</style>',
+                    '<div class="frame" part="frame"></div>',
+                    '<button class="selector table" type="button" data-mode="table" aria-label="Select table" title="Select table"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12"/><path d="M2 6h12M2 10h12M6 2v12M10 2v12"/></svg></button>',
+                    '<button class="selector row" type="button" data-mode="row" aria-label="Select row" title="Select row"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="5" width="12" height="6"/><path d="M6 5v6M10 5v6"/></svg></button>',
+                    '<button class="selector column" type="button" data-mode="column" aria-label="Select column" title="Select column"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="2" width="6" height="12"/><path d="M5 6h6M5 10h6"/></svg></button>'
+                ].join('');
+                this._frame = this.shadowRoot.querySelector('.frame');
+                this._tableButton = this.shadowRoot.querySelector('.table');
+                this._rowButton = this.shadowRoot.querySelector('.row');
+                this._columnButton = this.shadowRoot.querySelector('.column');
+                this._onClick = this._click.bind(this);
+                this._syncPosition = this.updatePosition.bind(this);
+            }
+
+            connectedCallback() {
+                html.on(this.shadowRoot, 'click', this._onClick);
+                html.on(window, 'resize', this._syncPosition);
+                html.on(window, 'scroll', this._syncPosition, true);
+            }
+
+            disconnectedCallback() {
+                html.off(this.shadowRoot, 'click', this._onClick);
+                html.off(window, 'resize', this._syncPosition);
+                html.off(window, 'scroll', this._syncPosition, true);
+            }
+
+            get open() {
+                return this.hasAttribute('open');
+            }
+
+            set open(value) {
+                this.toggleAttribute('open', !!value);
+            }
+
+            showFor(selection) {
+                this.table = selection && selection.table;
+                this.cell = selection && selection.cell;
+                this.cells = selection && selection.cells || [];
+                this.setAttribute('mode', selection && selection.mode || 'cell');
+                this.open = !!(this.table && this.cell && this.cells.length);
+                this.updatePosition();
+            }
+
+            hide() {
+                this.open = false;
+            }
+
+            updatePosition() {
+                var rects;
+                var left;
+                var top;
+                var right;
+                var bottom;
+                var selectionRect;
+                var tableRect;
+                var rowRect;
+                var cellRect;
+
+                if (!this.open || !this.table || !this.cell) {
+                    return;
+                }
+
+                rects = this.cells.map(function (cell) { return cell.getBoundingClientRect(); });
+                left = Math.min.apply(Math, rects.map(function (rect) { return rect.left; }));
+                top = Math.min.apply(Math, rects.map(function (rect) { return rect.top; }));
+                right = Math.max.apply(Math, rects.map(function (rect) { return rect.right; }));
+                bottom = Math.max.apply(Math, rects.map(function (rect) { return rect.bottom; }));
+                selectionRect = { left: left, top: top, width: right - left, height: bottom - top };
+                tableRect = this.table.getBoundingClientRect();
+                rowRect = this.cell.parentNode.getBoundingClientRect();
+                cellRect = this.cell.getBoundingClientRect();
+                this._frame.style.left = selectionRect.left + 'px';
+                this._frame.style.top = selectionRect.top + 'px';
+                this._frame.style.width = selectionRect.width + 'px';
+                this._frame.style.height = selectionRect.height + 'px';
+                this._tableButton.style.left = Math.max(0, tableRect.left - 22) + 'px';
+                this._tableButton.style.top = Math.max(0, tableRect.top - 22) + 'px';
+                this._rowButton.style.left = Math.max(0, tableRect.left - 22) + 'px';
+                this._rowButton.style.top = rowRect.top + Math.max(0, (rowRect.height - 20) / 2) + 'px';
+                this._columnButton.style.left = cellRect.left + Math.max(0, (cellRect.width - 20) / 2) + 'px';
+                this._columnButton.style.top = Math.max(0, tableRect.top - 22) + 'px';
+            }
+
+            _click(event) {
+                var button = event.target.closest && event.target.closest('[data-mode]');
+
+                if (!button) {
+                    return;
+                }
+
+                event.preventDefault();
+                this.dispatchEvent(new CustomEvent('table-select', {
+                    detail: { mode: button.getAttribute('data-mode') }
                 }));
             }
         };
@@ -804,6 +938,10 @@
             customElements.define('wysiwyg-resize-overlay', WysiwygResizeOverlayElement);
         }
 
+        if (!customElements.get('wysiwyg-table-selection')) {
+            customElements.define('wysiwyg-table-selection', WysiwygTableSelectionElement);
+        }
+
         if (!customElements.get('wysiwyg-file-browser')) {
             customElements.define('wysiwyg-file-browser', WysiwygFileBrowserElement);
         }
@@ -812,6 +950,7 @@
             WysiwygModalElement: WysiwygModalElement,
             WysiwygPopupElement: WysiwygPopupElement,
             WysiwygResizeOverlayElement: WysiwygResizeOverlayElement,
+            WysiwygTableSelectionElement: WysiwygTableSelectionElement,
             WysiwygFileBrowserElement: WysiwygFileBrowserElement
         };
     }

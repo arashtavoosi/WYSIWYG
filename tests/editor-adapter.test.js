@@ -627,7 +627,8 @@ describe('editor adapter', () => {
         await Promise.resolve();
         await Promise.resolve();
 
-        expect(document.querySelector('wysiwyg-popup').querySelectorAll('.wysiwyg-table-tool')).toHaveLength(8);
+        expect(document.querySelector('wysiwyg-popup').getAttribute('data-mode')).toBe('cell');
+        expect(document.querySelector('wysiwyg-popup').querySelectorAll('.wysiwyg-table-tool')).toHaveLength(4);
         expect(editorElement.querySelectorAll('thead th')).toHaveLength(4);
         expect(editorElement.querySelectorAll('tbody tr')).toHaveLength(3);
         expect(editorElement.querySelectorAll('tbody td')).toHaveLength(12);
@@ -666,11 +667,18 @@ describe('editor adapter', () => {
         const popup = document.querySelector('wysiwyg-popup');
 
         expect(popup.open).toBe(true);
-        expect(popup.anchor).toBe(editorElement.querySelector('table'));
-        expect(popup.querySelectorAll('.wysiwyg-table-tool')).toHaveLength(8);
-        expect(popup.querySelector('[data-action="rowAfter"] use').getAttribute('href')).toBe('#wysiwyg-icon-row-after');
+        expect(popup.getAttribute('data-mode')).toBe('cell');
+        expect(popup.querySelectorAll('.wysiwyg-table-tool')).toHaveLength(4);
 
-        popup.querySelector('[data-action="rowAfter"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('wysiwyg-table-selection').shadowRoot.querySelector('[data-mode="row"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const rowPopup = document.querySelector('wysiwyg-popup');
+
+        expect(rowPopup.getAttribute('data-mode')).toBe('row');
+        expect(rowPopup.querySelectorAll('.wysiwyg-table-tool')).toHaveLength(3);
+        expect(rowPopup.querySelector('[data-action="rowAfter"] use').getAttribute('href')).toBe('#wysiwyg-icon-row-after');
+
+        rowPopup.querySelector('[data-action="rowAfter"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         expect(document.querySelector('wysiwyg-popup').open).toBe(true);
         expect(editorElement.querySelectorAll('tbody tr')).toHaveLength(2);
@@ -682,6 +690,35 @@ describe('editor adapter', () => {
         document.dispatchEvent(new Event('selectionchange'));
 
         expect(document.querySelector('wysiwyg-popup')).toBe(null);
+    });
+
+    test('column tools keep the selected cell in its body row', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><table>',
+            '<thead><tr><th>Head</th></tr></thead>',
+            '<tbody><tr><td>First</td></tr><tr><td>Selected</td></tr></tbody>',
+            '</table></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cell = editorElement.querySelectorAll('tbody td')[1];
+        const adapter = createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        document.querySelector('[data-action="colAfter"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(adapter.editor.getActiveFormats().table.rowIndex).toBe(2);
+        expect(adapter.editor.getActiveFormats().table.cellIndex).toBe(1);
+
+        document.querySelector('[data-action="colBefore"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(adapter.editor.getActiveFormats().table.rowIndex).toBe(2);
+        expect(adapter.editor.getActiveFormats().table.cellIndex).toBe(1);
     });
 
     test('resize overlay attaches to table targets from editor clicks', () => {
@@ -697,23 +734,29 @@ describe('editor adapter', () => {
         const cell = editorElement.querySelector('td');
 
         table.getBoundingClientRect = function () {
-            return { left: 12, top: 24, width: 160, height: 90 };
+            return { left: 12, top: 24, right: 172, bottom: 114, width: 160, height: 90 };
+        };
+        cell.getBoundingClientRect = function () {
+            return { left: 12, top: 24, right: 92, bottom: 69, width: 80, height: 45 };
         };
 
-        createEditorAdapter({
+        const adapter = createEditorAdapter({
             editorElement: editorElement,
             toolbarElement: document.getElementById('toolbar')
         });
 
+        editorElement.focus();
         cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
         const overlay = document.querySelector('wysiwyg-resize-overlay');
 
         expect(overlay.open).toBe(true);
-        expect(overlay.target).toBe(table);
+        expect(overlay.target).toBe(cell);
         expect(overlay.boundary).toBe(editorElement);
+        expect(overlay.hasAttribute('move-disabled')).toBe(true);
         expect(overlay.style.left).toBe('12px');
         expect(overlay.style.top).toBe('24px');
+        expect(adapter.editor.getActiveFormats().table).toBeTruthy();
     });
 
     test('resize overlay switches directly to another clicked target', () => {
@@ -728,14 +771,22 @@ describe('editor adapter', () => {
         const editorElement = document.getElementById('editor');
         const first = document.getElementById('first');
         const second = document.getElementById('second');
+        const firstCell = first.querySelector('td');
+        const secondCell = second.querySelector('td');
         const selection = window.getSelection();
         const range = document.createRange();
 
         first.getBoundingClientRect = function () {
-            return { left: 10, top: 20, width: 100, height: 60 };
+            return { left: 10, top: 20, right: 110, bottom: 80, width: 100, height: 60 };
         };
         second.getBoundingClientRect = function () {
-            return { left: 30, top: 120, width: 180, height: 80 };
+            return { left: 30, top: 120, right: 210, bottom: 200, width: 180, height: 80 };
+        };
+        firstCell.getBoundingClientRect = function () {
+            return { left: 10, top: 20, right: 110, bottom: 80, width: 100, height: 60 };
+        };
+        secondCell.getBoundingClientRect = function () {
+            return { left: 30, top: 120, right: 210, bottom: 200, width: 180, height: 80 };
         };
 
         createEditorAdapter({
@@ -743,21 +794,203 @@ describe('editor adapter', () => {
             toolbarElement: document.getElementById('toolbar')
         });
 
-        range.selectNodeContents(first.querySelector('td'));
+        range.selectNodeContents(firstCell);
         range.collapse(true);
         selection.removeAllRanges();
         selection.addRange(range);
         document.dispatchEvent(new Event('selectionchange'));
-        first.querySelector('td').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        firstCell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
         const overlay = document.querySelector('wysiwyg-resize-overlay');
 
-        expect(overlay.target).toBe(first);
+        expect(overlay.target).toBe(firstCell);
 
-        second.querySelector('td').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        range.selectNodeContents(secondCell);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        secondCell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
-        expect(overlay.target).toBe(second);
+        expect(overlay.target).toBe(secondCell);
         expect(overlay.style.left).toBe('30px');
         expect(overlay.style.top).toBe('120px');
+    });
+
+    test('nested image selection suppresses table selection and table tools', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td><img src="image.png"></td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const image = editorElement.querySelector('img');
+
+        image.getBoundingClientRect = function () {
+            return { left: 40, top: 50, right: 140, bottom: 110, width: 100, height: 60 };
+        };
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        expect(document.querySelector('wysiwyg-popup')).toBeNull();
+        expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(image);
+        expect(document.querySelector('wysiwyg-table-selection')).toBeNull();
+    });
+
+    test('modifier click selects a cell rectangle and exposes merge and unmerge', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td>A</td><td>B</td></tr><tr><td>C</td><td>D</td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cells = Array.from(editorElement.querySelectorAll('td'));
+        const selection = window.getSelection();
+        const range = document.createRange();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.selectNodeContents(cells[0]);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        cells[0].dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        cells[3].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, ctrlKey: true }));
+        selection.removeAllRanges();
+        document.dispatchEvent(new Event('selectionchange'));
+        cells[3].dispatchEvent(new MouseEvent('mouseup', { bubbles: true, ctrlKey: true }));
+
+        cells[1].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, ctrlKey: true }));
+        selection.removeAllRanges();
+        document.dispatchEvent(new Event('selectionchange'));
+        cells[1].dispatchEvent(new MouseEvent('mouseup', { bubbles: true, ctrlKey: true }));
+
+        const popup = document.querySelector('wysiwyg-popup');
+        const resizeOverlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(document.querySelector('wysiwyg-table-selection').getAttribute('mode')).toBe('multiple');
+        expect(popup.getAttribute('data-mode')).toBe('multiple');
+        expect(popup.querySelectorAll('.wysiwyg-table-tool')).toHaveLength(2);
+        expect(popup.querySelector('[data-action="merge"]').disabled).toBe(false);
+        expect(popup.querySelector('[data-action="unmerge"]').disabled).toBe(true);
+        expect(resizeOverlay.open).toBe(false);
+
+        popup.querySelector('[data-action="merge"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const merged = editorElement.querySelector('td');
+        const mergedPopup = document.querySelector('wysiwyg-popup');
+
+        expect(editorElement.querySelectorAll('td')).toHaveLength(1);
+        expect(merged.rowSpan).toBe(2);
+        expect(merged.colSpan).toBe(2);
+        expect(mergedPopup.querySelector('[data-action="unmerge"]').disabled).toBe(false);
+
+        mergedPopup.querySelector('[data-action="unmerge"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.querySelectorAll('td')).toHaveLength(4);
+    });
+
+    test('table selectors enable row, column, and table resize modes', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td>A</td><td>B</td></tr><tr><td>C</td><td>D</td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const table = editorElement.querySelector('table');
+        const cell = editorElement.querySelector('td');
+        const cells = Array.from(editorElement.querySelectorAll('td'));
+        const rows = Array.from(editorElement.querySelectorAll('tr'));
+        const selection = window.getSelection();
+        const range = document.createRange();
+
+        table.getBoundingClientRect = function () {
+            return { left: 10, top: 20, right: 110, bottom: 80, width: 100, height: 60 };
+        };
+        rows.forEach(function (row, rowIndex) {
+            row.getBoundingClientRect = function () {
+                return { left: 10, top: 20 + rowIndex * 30, right: 110, bottom: 50 + rowIndex * 30, width: 100, height: 30 };
+            };
+        });
+        cells.forEach(function (tableCell, index) {
+            var rowIndex = Math.floor(index / 2);
+            var columnIndex = index % 2;
+
+            tableCell.getBoundingClientRect = function () {
+                return { left: 10 + columnIndex * 50, top: 20 + rowIndex * 30, right: 60 + columnIndex * 50, bottom: 50 + rowIndex * 30, width: 50, height: 30 };
+            };
+        });
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.selectNodeContents(cell);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        let selector = document.querySelector('wysiwyg-table-selection');
+        selector.shadowRoot.querySelector('[data-mode="row"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        let resizeOverlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(document.querySelector('wysiwyg-popup').getAttribute('data-mode')).toBe('row');
+        expect(resizeOverlay.open).toBe(true);
+        expect(resizeOverlay.target).toBe(rows[0]);
+        expect(resizeOverlay.getAttribute('resize-axis')).toBe('y');
+
+        resizeOverlay.shadowRoot.querySelector('[data-resize="s"]').dispatchEvent(new MouseEvent('pointerdown', {
+            bubbles: true,
+            clientX: 60,
+            clientY: 50
+        }));
+        document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 80, clientY: 70 }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }));
+
+        expect(rows[0].style.height).toBe('50px');
+        expect(rows[0].style.width).toBe('');
+
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        selector = document.querySelector('wysiwyg-table-selection');
+        selector.shadowRoot.querySelector('[data-mode="column"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        resizeOverlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(document.querySelector('wysiwyg-popup').getAttribute('data-mode')).toBe('column');
+        expect(document.querySelector('wysiwyg-popup').querySelectorAll('.wysiwyg-table-tool')).toHaveLength(3);
+        expect(resizeOverlay.open).toBe(true);
+        expect(resizeOverlay.target).toBe(cell);
+        expect(resizeOverlay.getAttribute('resize-axis')).toBe('x');
+        expect(resizeOverlay.style.height).toBe('60px');
+
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        selector = document.querySelector('wysiwyg-table-selection');
+        selector.shadowRoot.querySelector('[data-mode="table"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(document.querySelector('wysiwyg-popup').getAttribute('data-mode')).toBe('table');
+        expect(document.querySelector('wysiwyg-popup').querySelectorAll('.wysiwyg-table-tool')).toHaveLength(2);
+        expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(table);
+        expect(document.querySelector('wysiwyg-resize-overlay').hasAttribute('move-disabled')).toBe(false);
+        expect(document.querySelector('wysiwyg-resize-overlay').hasAttribute('resize-axis')).toBe(false);
     });
 });

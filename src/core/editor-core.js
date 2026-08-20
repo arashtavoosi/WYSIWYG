@@ -328,6 +328,13 @@
                 });
             },
 
+            mergeTableCells: function (cells, selection) {
+                return performMutation(function () {
+                    embedContent.mergeTableCells(cells, selection);
+                    return api;
+                });
+            },
+
             removeTableRow: function (selection) {
                 return performMutation(function () {
                     embedContent.removeTableRow(selection);
@@ -352,6 +359,13 @@
             toggleTableHeaderRow: function (selection) {
                 return performMutation(function () {
                     embedContent.toggleTableHeaderRow(selection);
+                    return api;
+                });
+            },
+
+            unmergeTableCell: function (cell, selection) {
+                return performMutation(function () {
+                    embedContent.unmergeTableCell(cell, selection);
                     return api;
                 });
             },

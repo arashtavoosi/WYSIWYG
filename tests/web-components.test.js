@@ -199,6 +199,91 @@ describe('web components', () => {
         expect(table.style.height).toBe('85px');
     });
 
+    test('resize overlay can disable moving while retaining resize handles', () => {
+        document.body.innerHTML = '<table><tbody><tr><td id="cell">Cell</td></tr></tbody></table>';
+
+        const cell = document.getElementById('cell');
+        const overlay = document.createElement('wysiwyg-resize-overlay');
+
+        cell.getBoundingClientRect = function () {
+            return { left: 10, top: 20, width: 100, height: 40 };
+        };
+        document.body.appendChild(overlay);
+        overlay.showFor(cell, { moveable: false });
+
+        expect(overlay.hasAttribute('move-disabled')).toBe(true);
+        expect(overlay.hasAttribute('resize-disabled')).toBe(false);
+    });
+
+    test('resize overlay can frame multiple elements and restrict its resize axis', () => {
+        document.body.innerHTML = '<table><tbody><tr><td id="first">A</td></tr><tr><td id="second">B</td></tr></tbody></table>';
+
+        const first = document.getElementById('first');
+        const second = document.getElementById('second');
+        const overlay = document.createElement('wysiwyg-resize-overlay');
+
+        first.getBoundingClientRect = function () {
+            return { left: 10, top: 20, right: 70, bottom: 50, width: 60, height: 30 };
+        };
+        second.getBoundingClientRect = function () {
+            return { left: 10, top: 50, right: 70, bottom: 90, width: 60, height: 40 };
+        };
+        document.body.appendChild(overlay);
+        overlay.showFor(first, { frame: [first, second], moveable: false, resizeAxis: 'x' });
+
+        expect(overlay.open).toBe(true);
+        expect(overlay.getAttribute('resize-axis')).toBe('x');
+        expect(overlay.style.width).toBe('60px');
+        expect(overlay.style.height).toBe('70px');
+
+        overlay.shadowRoot.querySelector('[data-resize="e"]').dispatchEvent(new MouseEvent('pointerdown', {
+            bubbles: true,
+            clientX: 70,
+            clientY: 35
+        }));
+        document.dispatchEvent(new MouseEvent('pointermove', {
+            bubbles: true,
+            clientX: 90,
+            clientY: 55
+        }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }));
+
+        expect(first.style.width).toBe('80px');
+        expect(first.style.height).toBe('');
+    });
+
+    test('table selection overlay positions mode selectors and emits selection mode', () => {
+        document.body.innerHTML = '<table><tbody><tr><td>A</td><td>B</td></tr></tbody></table>';
+
+        const table = document.querySelector('table');
+        const row = document.querySelector('tr');
+        const cell = document.querySelector('td');
+        const overlay = document.createElement('wysiwyg-table-selection');
+        const listener = jest.fn();
+
+        table.getBoundingClientRect = function () {
+            return { left: 40, top: 60, right: 240, bottom: 140, width: 200, height: 80 };
+        };
+        row.getBoundingClientRect = function () {
+            return { left: 40, top: 60, right: 240, bottom: 100, width: 200, height: 40 };
+        };
+        cell.getBoundingClientRect = function () {
+            return { left: 40, top: 60, right: 140, bottom: 100, width: 100, height: 40 };
+        };
+        document.body.appendChild(overlay);
+        overlay.addEventListener('table-select', listener);
+        overlay.showFor({ table: table, cell: cell, cells: [cell], mode: 'cell' });
+
+        expect(overlay.open).toBe(true);
+        expect(overlay.shadowRoot.querySelectorAll('[data-mode]')).toHaveLength(3);
+        expect(overlay.shadowRoot.querySelector('.frame').style.width).toBe('100px');
+        expect(overlay.shadowRoot.querySelector('.table').style.left).toBe('18px');
+
+        overlay.shadowRoot.querySelector('[data-mode="row"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(listener).toHaveBeenCalledWith(expect.objectContaining({ detail: { mode: 'row' } }));
+    });
+
     test('resize overlay move handle moves the target to a drop range', () => {
         document.body.innerHTML = '<p id="source">Before <img id="image" src="x.png"> after</p><p id="target">Drop here</p>';
 

@@ -185,6 +185,8 @@
         var cell = html.getSelectedElement(currentSelection, 'td') || html.getSelectedElement(currentSelection, 'th');
         var table = cell && html.getClosestTag(cell, 'table');
         var index = cell && cell.cellIndex;
+        var rowIndex = cell && cell.parentNode.rowIndex;
+        var insertedIndex = position === 'before' ? index : index + 1;
 
         if (!table || index < 0) {
             return false;
@@ -195,7 +197,7 @@
             row.insertBefore(createTableCell(row.parentNode.tagName === 'THEAD' ? 'th' : 'td'), reference);
         });
 
-        html.moveSelectionToNodeStart(table.rows[0].cells[position === 'before' ? index : index + 1], currentSelection);
+        html.moveSelectionToNodeStart(table.rows[rowIndex].cells[insertedIndex], currentSelection);
         return true;
     }
 
@@ -269,16 +271,195 @@
         return true;
     }
 
+    function getTableGrid(table) {
+        var grid = [];
+
+        html.toArray(table.rows).forEach(function (row, rowIndex) {
+            var columnIndex = 0;
+
+            grid[rowIndex] = grid[rowIndex] || [];
+            html.toArray(row.cells).forEach(function (cell) {
+                var rowOffset;
+                var columnOffset;
+
+                while (grid[rowIndex][columnIndex]) {
+                    columnIndex += 1;
+                }
+
+                for (rowOffset = 0; rowOffset < cell.rowSpan; rowOffset += 1) {
+                    grid[rowIndex + rowOffset] = grid[rowIndex + rowOffset] || [];
+
+                    for (columnOffset = 0; columnOffset < cell.colSpan; columnOffset += 1) {
+                        grid[rowIndex + rowOffset][columnIndex + columnOffset] = cell;
+                    }
+                }
+
+                columnIndex += cell.colSpan;
+            });
+        });
+
+        return grid;
+    }
+
+    function getGridPosition(grid, cell) {
+        var rowIndex;
+        var columnIndex;
+
+        for (rowIndex = 0; rowIndex < grid.length; rowIndex += 1) {
+            columnIndex = grid[rowIndex].indexOf(cell);
+
+            if (columnIndex !== -1) {
+                return { row: rowIndex, column: columnIndex };
+            }
+        }
+
+        return null;
+    }
+
+    function hasCellContent(cell) {
+        return cell.textContent.trim() !== '' || html.toArray(cell.childNodes).some(function (node) {
+            return node.nodeType !== Node.ELEMENT_NODE || node.tagName !== 'BR';
+        });
+    }
+
+    function appendCellContent(target, source) {
+        if (!hasCellContent(source)) {
+            return;
+        }
+
+        if (!hasCellContent(target)) {
+            target.innerHTML = '';
+        } else {
+            target.appendChild(document.createElement('br'));
+        }
+
+        while (source.firstChild) {
+            target.appendChild(source.firstChild);
+        }
+    }
+
+    function mergeTableCells(cells, selection) {
+        var selected = html.unique(html.toArray(cells).filter(function (cell) {
+            return cell && /^(TD|TH)$/.test(cell.tagName);
+        }));
+        var table = selected[0] && html.getClosestTag(selected[0], 'table');
+        var grid;
+        var positions;
+        var minRow;
+        var maxRow;
+        var minColumn;
+        var maxColumn;
+        var keeper;
+        var rowIndex;
+        var columnIndex;
+
+        if (selected.length < 2 || !table || selected.some(function (cell) {
+            return html.getClosestTag(cell, 'table') !== table || cell.rowSpan !== 1 || cell.colSpan !== 1 || cell.parentNode.parentNode !== selected[0].parentNode.parentNode;
+        })) {
+            return false;
+        }
+
+        grid = getTableGrid(table);
+        positions = selected.map(function (cell) { return getGridPosition(grid, cell); });
+        minRow = Math.min.apply(Math, positions.map(function (position) { return position.row; }));
+        maxRow = Math.max.apply(Math, positions.map(function (position) { return position.row; }));
+        minColumn = Math.min.apply(Math, positions.map(function (position) { return position.column; }));
+        maxColumn = Math.max.apply(Math, positions.map(function (position) { return position.column; }));
+
+        if (selected.length !== (maxRow - minRow + 1) * (maxColumn - minColumn + 1)) {
+            return false;
+        }
+
+        for (rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
+            for (columnIndex = minColumn; columnIndex <= maxColumn; columnIndex += 1) {
+                if (selected.indexOf(grid[rowIndex][columnIndex]) === -1) {
+                    return false;
+                }
+            }
+        }
+
+        keeper = grid[minRow][minColumn];
+        selected.sort(function (left, right) {
+            var leftPosition = getGridPosition(grid, left);
+            var rightPosition = getGridPosition(grid, right);
+            return leftPosition.row - rightPosition.row || leftPosition.column - rightPosition.column;
+        }).forEach(function (cell) {
+            if (cell !== keeper) {
+                appendCellContent(keeper, cell);
+                cell.parentNode.removeChild(cell);
+            }
+        });
+
+        keeper.rowSpan = maxRow - minRow + 1;
+        keeper.colSpan = maxColumn - minColumn + 1;
+        html.moveSelectionToNodeStart(keeper, html.getCurrentSelection(selection));
+        return keeper;
+    }
+
+    function unmergeTableCell(cell, selection) {
+        var table = cell && html.getClosestTag(cell, 'table');
+        var rowSpan = cell && cell.rowSpan;
+        var columnSpan = cell && cell.colSpan;
+        var grid;
+        var position;
+        var created = [];
+        var rowOffset;
+        var columnOffset;
+
+        if (!table || (rowSpan === 1 && columnSpan === 1)) {
+            return false;
+        }
+
+        grid = getTableGrid(table);
+        position = getGridPosition(grid, cell);
+        cell.removeAttribute('rowspan');
+        cell.removeAttribute('colspan');
+
+        for (rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
+            for (columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
+                var row;
+                var targetColumn;
+                var reference = null;
+                var newCell;
+
+                if (rowOffset === 0 && columnOffset === 0) {
+                    continue;
+                }
+
+                row = table.rows[position.row + rowOffset];
+                targetColumn = position.column + columnOffset;
+                html.toArray(row.cells).some(function (rowCell) {
+                    var rowCellPosition = getGridPosition(grid, rowCell);
+
+                    if (rowCell !== cell && rowCellPosition && rowCellPosition.column > targetColumn) {
+                        reference = rowCell;
+                        return true;
+                    }
+
+                    return false;
+                });
+                newCell = createTableCell(row.parentNode.tagName === 'THEAD' ? 'th' : 'td');
+                row.insertBefore(newCell, reference);
+                created.push(newCell);
+            }
+        }
+
+        html.moveSelectionToNodeStart(cell, html.getCurrentSelection(selection));
+        return [cell].concat(created);
+    }
+
     return {
         insertImage: insertImage,
         insertTable: insertTable,
         insertTableColumn: insertTableColumn,
         insertTableRow: insertTableRow,
+        mergeTableCells: mergeTableCells,
         removeImage: removeImage,
         removeTable: removeTable,
         removeTableColumn: removeTableColumn,
         removeTableRow: removeTableRow,
         toggleTableHeaderRow: toggleTableHeaderRow,
+        unmergeTableCell: unmergeTableCell,
         updateImage: updateImage
     };
 }));

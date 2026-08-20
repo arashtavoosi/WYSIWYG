@@ -206,6 +206,16 @@
     </defs>
   </symbol>
 
+  <symbol id="wysiwyg-icon-merge-cells" viewBox="0 0 24 24" fill="none">
+    <rect x="2" y="4" width="20" height="16" rx="1" stroke="currentColor" stroke-width="2"></rect>
+    <path d="M8 8L12 12L8 16M16 8L12 12L16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+  </symbol>
+
+  <symbol id="wysiwyg-icon-unmerge-cells" viewBox="0 0 24 24" fill="none">
+    <rect x="2" y="4" width="20" height="16" rx="1" stroke="currentColor" stroke-width="2"></rect>
+    <path d="M12 4V20M10 9L7 12L10 15M14 9L17 12L14 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+  </symbol>
+
   <symbol id="wysiwyg-icon-rule" viewBox="0 0 24 24" fill="none">
     <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
   </symbol>
