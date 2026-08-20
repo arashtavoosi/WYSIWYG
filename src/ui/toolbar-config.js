@@ -451,7 +451,7 @@
                         iconId: 'clear-formatting', icon: 'A-',
                         priority: 10,
                         onCommand: function (context) {
-                            context.editor.clear();
+                            (context.clearFormatting || context.editor.clear)();
                         }
                     }
                 }

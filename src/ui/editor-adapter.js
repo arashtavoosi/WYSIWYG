@@ -420,6 +420,17 @@
             }
         }
 
+        function clearFormatting() {
+            var elements = [];
+
+            if (tableSelection) {
+                elements = tableSelection.mode === 'table' ? [tableSelection.table] :
+                    tableSelection.mode === 'row' ? [tableSelection.cell.parentNode] : tableSelection.cells;
+            }
+
+            editor.clear(null, { elements: elements });
+        }
+
         function setTableSelectionMode(mode) {
             var cell;
             var table;
@@ -711,6 +722,7 @@
                 showLinkModal: showLinkModal,
                 showImageBrowserModal: showImageBrowserModal,
                 showTablePicker: showTablePicker,
+                clearFormatting: clearFormatting,
                 settings: toolbarSettings
             };
         }

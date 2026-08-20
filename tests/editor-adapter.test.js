@@ -222,6 +222,71 @@ describe('editor adapter', () => {
         expect(headingButton.getAttribute('aria-pressed')).toBe('true');
     });
 
+    test('alignment on a selected cell stays inside that cell', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<p id="before">Before</p>',
+            '<table><tbody><tr><td id="cell"><br></td></tr></tbody></table>',
+            '<p id="after">After</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cell = document.getElementById('cell');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const alignRight = document.querySelector('button[title="Align right"]');
+
+        alignRight.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.style.textAlign).toBe('');
+        expect(editorElement.children[0]).toBe(document.getElementById('before'));
+        expect(editorElement.children[1].tagName).toBe('TABLE');
+        expect(editorElement.children[2]).toBe(document.getElementById('after'));
+        expect(cell.style.textAlign).toBe('right');
+        expect(cell.innerHTML).toBe('<br>');
+        expect(alignRight.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('clear formatting removes styles from selected cells and rows', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr id="row" style="height: 48px"><td id="cell" style="width: 120px; text-align: right"><br></td><td><br></td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cell = document.getElementById('cell');
+        const row = document.getElementById('row');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        document.querySelector('button[title="Clear formatting"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(cell.hasAttribute('style')).toBe(false);
+        expect(row.style.height).toBe('48px');
+
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        document.querySelector('wysiwyg-table-selection').shadowRoot.querySelector('[data-mode="row"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('button[title="Clear formatting"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(row.hasAttribute('style')).toBe(false);
+    });
+
     test('restores the editor selection before applying color from the toolbar', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',

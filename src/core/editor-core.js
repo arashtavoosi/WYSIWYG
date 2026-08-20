@@ -182,9 +182,12 @@
         }
 
         var api = {
-            clear: function (selection) {
+            clear: function (selection, options) {
                 return performMutation(function () {
-                    selectionFormatting.clearFormatting(selection, getFormattingOptions());
+                    var formattingOptions = getFormattingOptions();
+
+                    formattingOptions.elements = options && options.elements;
+                    selectionFormatting.clearFormatting(selection, formattingOptions);
                     return normalize();
                 });
             },

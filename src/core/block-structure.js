@@ -7,6 +7,8 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     function ensureCurrentBlock(rootNode, range) {
         var block = html.getClosestTag(html.getElement(range.startContainer), ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
+        var cell = html.getClosestTag(html.getElement(range.startContainer), ['td', 'th'], rootNode);
+        var container = cell || rootNode;
         var paragraph;
 
         if (block && block !== rootNode) {
@@ -15,17 +17,27 @@
 
         paragraph = document.createElement('p');
 
-        if (rootNode.childNodes.length === 0) {
+        if (container.childNodes.length === 0) {
             paragraph.appendChild(document.createElement('br'));
         } else {
-            while (rootNode.firstChild) {
-                paragraph.appendChild(rootNode.firstChild);
+            while (container.firstChild) {
+                paragraph.appendChild(container.firstChild);
             }
         }
 
-        rootNode.appendChild(paragraph);
+        container.appendChild(paragraph);
+        range.selectNodeContents(paragraph);
+        range.collapse(true);
 
         return paragraph;
+    }
+
+    function getCurrentStyleTarget(rootNode, range) {
+        return html.getClosestTag(
+            html.getElement(range.startContainer),
+            ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'td', 'th'],
+            rootNode
+        ) || ensureCurrentBlock(rootNode, range);
     }
 
     function setBlock(type, selection, options) {
@@ -205,7 +217,7 @@
         }
 
         range = currentSelection.getRangeAt(0);
-        block = ensureCurrentBlock(config.root, range);
+        block = getCurrentStyleTarget(config.root, range);
         block.style[propertyName] = value;
 
         return block;

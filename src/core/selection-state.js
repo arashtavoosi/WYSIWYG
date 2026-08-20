@@ -83,7 +83,7 @@
                 width: imageElement.getAttribute('width') || ''
             } : false,
             italic: !!html.getClosestTag(startElement, ['em', 'i'], rootNode),
-            lineHeight: getInlineStyleValue(blockElement || startElement, 'lineHeight'),
+            lineHeight: getInlineStyleValue(blockElement || cellElement || startElement, 'lineHeight'),
             link: linkElement ? {
                 href: linkElement.getAttribute('href') || '',
                 target: linkElement.getAttribute('target') || '',
@@ -94,7 +94,7 @@
             strikethrough: !!html.getClosestTag(startElement, ['s', 'strike'], rootNode),
             subscript: !!html.getClosestTag(startElement, 'sub', rootNode),
             superscript: !!html.getClosestTag(startElement, 'sup', rootNode),
-            textAlign: getInlineStyleValue(blockElement || startElement, 'textAlign'),
+            textAlign: getInlineStyleValue(blockElement || cellElement || startElement, 'textAlign'),
             table: tableElement ? {
                 cellIndex: cellElement ? cellElement.cellIndex : null,
                 headerRow: !!tableElement.querySelector('thead'),

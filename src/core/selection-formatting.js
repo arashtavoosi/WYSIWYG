@@ -250,6 +250,10 @@
         var walker;
         var currentNode;
 
+        html.unique(html.parseSelectorOrElements(config.elements)).forEach(function (element) {
+            element.removeAttribute('style');
+        });
+
         if (currentSelection.rangeCount === 0) {
             return false;
         }
