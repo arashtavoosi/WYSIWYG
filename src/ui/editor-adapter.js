@@ -27,6 +27,7 @@
         var tableSelectionOverlay = null;
         var tableSelection = null;
         var expandingTableSelection = false;
+        var movingResizeTarget = false;
         var activeResizeTarget = null;
         var view;
 
@@ -481,11 +482,22 @@
             resizeOverlay = document.createElement('wysiwyg-resize-overlay');
             resizeOverlay.boundary = editorElement;
             document.body.appendChild(resizeOverlay);
+            html.on(resizeOverlay, 'move-start', function () {
+                movingResizeTarget = true;
+            });
             html.on(resizeOverlay, 'resize-end', function () {
                 editor.recordSnapshot();
                 sync();
             });
-            html.on(resizeOverlay, 'move-end', function () {
+            html.on(resizeOverlay, 'move-end', function (event) {
+                activeResizeTarget = event.detail.target;
+
+                if (activeResizeTarget && activeResizeTarget.tagName === 'IMG') {
+                    clearTableSelection();
+                    html.selectNode(activeResizeTarget);
+                    saveSelection();
+                }
+
                 editor.recordSnapshot();
                 sync();
             });
@@ -883,6 +895,20 @@
             var link = event.target.closest && event.target.closest('a');
             var cell = event.target.closest && event.target.closest('th,td');
 
+            if (movingResizeTarget && resizeOverlay && resizeOverlay.target) {
+                activeResizeTarget = resizeOverlay.target;
+                clearTableSelection();
+
+                if (activeResizeTarget.tagName === 'IMG') {
+                    html.selectNode(activeResizeTarget);
+                }
+
+                movingResizeTarget = false;
+                saveSelection();
+                sync();
+                return;
+            }
+
             if (image) {
                 clearTableSelection();
                 activeResizeTarget = image;
@@ -909,6 +935,7 @@
 
         html.on(document, 'mouseup', function () {
             expandingTableSelection = false;
+            movingResizeTarget = false;
         });
 
         html.on(editorElement, 'keyup', function () {

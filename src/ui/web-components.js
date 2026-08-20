@@ -553,12 +553,21 @@
                 var node = range && range.commonAncestorContainer;
                 var element = html.getElement(node);
                 var boundary = this.boundary;
+                var table;
+                var cell;
 
                 if (!range || !element || element === this.target || this.target.contains(element)) {
                     return null;
                 }
 
                 if (boundary && (!node || !boundary.contains(node))) {
+                    return null;
+                }
+
+                table = html.getClosestTag(element, 'table', boundary || document.body);
+                cell = html.getClosestTag(element, ['td', 'th'], boundary || document.body);
+
+                if (table && !cell) {
                     return null;
                 }
 
@@ -571,7 +580,7 @@
                 }
 
                 range.insertNode(this.target);
-                html.moveSelectionAfterNode(this.target);
+                html.selectNode(this.target);
                 this.updatePosition();
                 return true;
             }

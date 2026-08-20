@@ -844,6 +844,75 @@ describe('editor adapter', () => {
         expect(document.querySelector('wysiwyg-table-selection')).toBeNull();
     });
 
+    test('moving an image between cells keeps image selection active', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td id="source"><img src="image.png"></td><td id="destination"><br></td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const image = editorElement.querySelector('img');
+        const source = document.getElementById('source');
+        const destination = document.getElementById('destination');
+        const destinationRange = document.createRange();
+        let dropRange = destinationRange;
+
+        image.getBoundingClientRect = function () {
+            return { left: 40, top: 50, right: 140, bottom: 110, width: 100, height: 60 };
+        };
+        destinationRange.selectNodeContents(destination);
+        destinationRange.collapse(true);
+        Object.defineProperty(document, 'caretRangeFromPoint', {
+            configurable: true,
+            value: function () {
+                return dropRange;
+            }
+        });
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        overlay.shadowRoot.querySelector('.move').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+        document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 160, clientY: 80 }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 160, clientY: 80 }));
+        destination.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 160, clientY: 80 }));
+
+        expect(image.parentNode).toBe(destination);
+        expect(document.querySelector('button[title="Image"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('wysiwyg-popup')).toBeNull();
+        expect(overlay.open).toBe(true);
+        expect(overlay.target).toBe(image);
+        expect(editorElement.querySelectorAll('tr')).toHaveLength(1);
+        expect(editorElement.querySelectorAll('td')).toHaveLength(2);
+
+        const sourceRange = document.createRange();
+
+        sourceRange.selectNodeContents(source);
+        sourceRange.collapse(true);
+        dropRange = sourceRange;
+        overlay.shadowRoot.querySelector('.move').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+        document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 40, clientY: 80 }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 40, clientY: 80 }));
+        source.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 40, clientY: 80 }));
+
+        expect(image.parentNode).toBe(source);
+        expect(document.querySelector('button[title="Image"]').getAttribute('aria-pressed')).toBe('true');
+        expect(overlay.target).toBe(image);
+        expect(editorElement.querySelectorAll('tr')).toHaveLength(1);
+        expect(editorElement.querySelectorAll('td')).toHaveLength(2);
+
+        delete document.caretRangeFromPoint;
+    });
+
     test('modifier click selects a cell rectangle and exposes merge and unmerge', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',

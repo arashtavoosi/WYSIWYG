@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 
+const html = require('../src/core/html-utility');
 require('../src/ui/web-components');
 
 describe('web components', () => {
@@ -330,6 +331,70 @@ describe('web components', () => {
         expect(image.style.left).toBe('');
         expect(image.style.top).toBe('');
         expect(image.style.pointerEvents).toBe('');
+        expect(window.getSelection().getRangeAt(0).commonAncestorContainer).toBe(target);
+        expect(window.getSelection().getRangeAt(0).toString()).toBe('');
+        expect(html.getSelectedElement(window.getSelection(), 'img')).toBe(image);
+
+        delete document.caretRangeFromPoint;
+    });
+
+    test('resize overlay keeps repeated image moves inside table cells', () => {
+        document.body.innerHTML = [
+            '<div id="editor"><table><tbody>',
+            '<tr><td id="source"><img id="image" src="x.png"><br></td><td id="second"><br></td></tr>',
+            '<tr><td id="third"><br></td><td><br></td></tr>',
+            '</tbody></table></div>'
+        ].join('');
+
+        const editor = document.getElementById('editor');
+        const image = document.getElementById('image');
+        const second = document.getElementById('second');
+        const third = document.getElementById('third');
+        const tbody = editor.querySelector('tbody');
+        const overlay = document.createElement('wysiwyg-resize-overlay');
+        const secondRange = document.createRange();
+        const invalidRange = document.createRange();
+        const thirdRange = document.createRange();
+        const ranges = [];
+
+        image.getBoundingClientRect = function () {
+            return { left: 20, top: 30, right: 80, bottom: 70, width: 60, height: 40 };
+        };
+        secondRange.selectNodeContents(second);
+        secondRange.collapse(true);
+        invalidRange.setStart(tbody, 1);
+        invalidRange.collapse(true);
+        thirdRange.selectNodeContents(third);
+        thirdRange.collapse(true);
+        ranges.push(secondRange, invalidRange, thirdRange);
+        Object.defineProperty(document, 'caretRangeFromPoint', {
+            configurable: true,
+            value: function () {
+                return ranges.shift();
+            }
+        });
+
+        overlay.boundary = editor;
+        document.body.appendChild(overlay);
+        overlay.showFor(image);
+        overlay.shadowRoot.querySelector('.move').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+
+        document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 100, clientY: 40 }));
+        expect(image.parentNode).toBe(second);
+        expect(html.getSelectedElement(window.getSelection(), 'img')).toBe(image);
+
+        document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 100, clientY: 80 }));
+        expect(image.parentNode).toBe(second);
+
+        document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 40, clientY: 80 }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }));
+
+        expect(image.parentNode).toBe(third);
+        expect(html.getSelectedElement(window.getSelection(), 'img')).toBe(image);
+        expect(editor.querySelectorAll('table')).toHaveLength(1);
+        expect(editor.querySelectorAll('tr')).toHaveLength(2);
+        expect(editor.querySelectorAll('td')).toHaveLength(4);
+        expect(tbody.children).toHaveLength(2);
 
         delete document.caretRangeFromPoint;
     });
