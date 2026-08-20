@@ -28,6 +28,7 @@
         var view;
 
         toolbarSettings.prompts = Object.assign({}, toolbarConfig.prompts, configOverrides.prompts || {});
+        toolbarSettings.fileBrowser = Object.assign({}, toolbarConfig.fileBrowser, configOverrides.fileBrowser || {});
         toolbarSettings.toolbar = config.toolbar || toolbarSettings.toolbar;
 
         function selectionIsInEditor(selection) {
@@ -128,6 +129,98 @@
                 modal.show();
                 input.focus();
                 input.select();
+            });
+        }
+
+        function getDirectoryPath(value) {
+            var path;
+            var separator;
+
+            if (!value) {
+                return '';
+            }
+
+            try {
+                path = new URL(value, window.location.href).pathname;
+            } catch (error) {
+                path = String(value).split(/[?#]/)[0];
+            }
+
+            path = path.replace(/\/+$/, '');
+            separator = path.lastIndexOf('/');
+            return separator > 0 ? path.slice(0, separator) : '/';
+        }
+
+        function showImageBrowserModal(currentImage) {
+            var modal;
+            var title;
+            var browser;
+            var resolved = false;
+            var settings = toolbarSettings.fileBrowser || {};
+            var prompt = toolbarSettings.prompts.image;
+            var rootPath = settings.path || '/';
+            var initialPath = getDirectoryPath(currentImage && (currentImage.filePath || currentImage.src)) || rootPath;
+
+            if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal') || !customElements.get('wysiwyg-file-browser')) {
+                return promptUser(prompt.label, currentImage ? currentImage.src : prompt.fallback);
+            }
+
+            modal = document.createElement('wysiwyg-modal');
+            modal.showCloseButton = true;
+            modal.clickOutsideToClose = true;
+            modal.moveable = true;
+            modal.innerHTML = [
+                '<strong slot="header"></strong>',
+                '<wysiwyg-file-browser></wysiwyg-file-browser>',
+                '<span slot="footer"><button type="button" data-action="cancel">Cancel</button></span>'
+            ].join('');
+            document.body.appendChild(modal);
+
+            title = modal.querySelector('[slot="header"]');
+            browser = modal.querySelector('wysiwyg-file-browser');
+            title.textContent = prompt.label;
+            browser.supportedExtensions = settings.supportedExtensions || '';
+            browser.viewMode = settings.viewMode || 'thumbnail';
+
+            if (settings.endpoint) {
+                browser.endpoint = settings.endpoint;
+                browser.load(initialPath).catch(function () {
+                    return initialPath === rootPath ? null : browser.load(rootPath);
+                }).catch(function () {
+                    browser.setData({ path: rootPath, items: [] });
+                });
+            } else {
+                browser.setData({
+                    path: initialPath === rootPath ? initialPath : rootPath,
+                    breadcrumbs: settings.breadcrumbs || null,
+                    items: settings.items || []
+                });
+            }
+
+            return new Promise(function (resolve) {
+                function finish(value) {
+                    if (resolved) {
+                        return;
+                    }
+
+                    resolved = true;
+                    modal.close();
+                    modal.remove();
+                    restoreSelection();
+                    resolve(value);
+                }
+
+                html.on(modal, 'close', function () {
+                    finish(null);
+                });
+                html.on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
+                    finish(null);
+                });
+                html.on(browser, 'file-select', function (event) {
+                    finish(event.detail.file);
+                });
+
+                modal.show();
             });
         }
 
@@ -282,7 +375,7 @@
         }
 
         function syncResizeOverlay(state) {
-            var target = state.image ? getSelectedImage() : state.table ? getSelectedTable() : activeResizeTarget;
+            var target = activeResizeTarget || (state.image ? getSelectedImage() : state.table ? getSelectedTable() : null);
             var overlay;
 
             if (!target || !editorElement.contains(target)) {
@@ -414,6 +507,7 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showImageBrowserModal: showImageBrowserModal,
                 showTablePicker: showTablePicker,
                 settings: toolbarSettings
             };
@@ -430,6 +524,7 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showImageBrowserModal: showImageBrowserModal,
                 showTablePicker: showTablePicker,
                 settings: toolbarSettings
             });
@@ -478,6 +573,7 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showImageBrowserModal: showImageBrowserModal,
                 showTablePicker: showTablePicker,
                 settings: toolbarSettings
             }
@@ -554,6 +650,11 @@
 
         html.on(editorElement, 'mouseup', function (event) {
             activeResizeTarget = event.target.closest && event.target.closest('img,table');
+
+            if (activeResizeTarget && activeResizeTarget.tagName === 'IMG') {
+                html.selectNode(activeResizeTarget);
+            }
+
             saveSelection();
             sync();
         });

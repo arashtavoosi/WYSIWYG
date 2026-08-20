@@ -4,6 +4,7 @@
   "description": "",
   "main": "src/core/editor-core.js",
   "scripts": {
+    "demo": "node demos/mock-server.js",
     "test": "jest"
   },
   "keywords": [],

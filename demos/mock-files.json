@@ -1,0 +1,37 @@
+{
+  "/": {
+    "items": [
+      { "type": "directory", "name": "Nature", "path": "/nature" },
+      { "type": "directory", "name": "Illustrations", "path": "/illustrations" },
+      { "type": "file", "name": "sunset.svg", "path": "/sunset.svg", "extension": ".svg", "url": "/demos/images/sunset.svg", "thumbnailUrl": "/demos/images/sunset.svg", "mime": "image/svg+xml", "size": 531 },
+      { "type": "file", "name": "readme.txt", "path": "/readme.txt", "extension": ".txt", "url": "/demos/files/readme.txt", "mime": "text/plain", "size": 131 }
+    ]
+  },
+  "/nature": {
+    "items": [
+      { "type": "directory", "name": "Water", "path": "/nature/water" },
+      { "type": "file", "name": "landscape.svg", "path": "/nature/landscape.svg", "extension": ".svg", "url": "/demos/images/landscape.svg", "thumbnailUrl": "/demos/images/landscape.svg", "mime": "image/svg+xml", "size": 472 },
+      { "type": "file", "name": "forest.svg", "path": "/nature/forest.svg", "extension": ".svg", "url": "/demos/images/nature/forest.svg", "thumbnailUrl": "/demos/images/nature/forest.svg", "mime": "image/svg+xml", "size": 617 }
+    ]
+  },
+  "/nature/water": {
+    "items": [
+      { "type": "file", "name": "coast.svg", "path": "/nature/water/coast.svg", "extension": ".svg", "url": "/demos/images/nature/water/coast.svg", "thumbnailUrl": "/demos/images/nature/water/coast.svg", "mime": "image/svg+xml", "size": 638 },
+      { "type": "file", "name": "lake.svg", "path": "/nature/water/lake.svg", "extension": ".svg", "url": "/demos/images/nature/water/lake.svg", "thumbnailUrl": "/demos/images/nature/water/lake.svg", "mime": "image/svg+xml", "size": 590 }
+    ]
+  },
+  "/illustrations": {
+    "items": [
+      { "type": "directory", "name": "Icons", "path": "/illustrations/icons" },
+      { "type": "file", "name": "shapes.svg", "path": "/illustrations/shapes.svg", "extension": ".svg", "url": "/demos/images/shapes.svg", "thumbnailUrl": "/demos/images/shapes.svg", "mime": "image/svg+xml", "size": 501 },
+      { "type": "file", "name": "pattern.svg", "path": "/illustrations/pattern.svg", "extension": ".svg", "url": "/demos/images/illustrations/pattern.svg", "thumbnailUrl": "/demos/images/illustrations/pattern.svg", "mime": "image/svg+xml", "size": 653 },
+      { "type": "file", "name": "palette.json", "path": "/illustrations/palette.json", "extension": ".json", "url": "/demos/files/palette.json", "mime": "application/json", "size": 94 }
+    ]
+  },
+  "/illustrations/icons": {
+    "items": [
+      { "type": "file", "name": "camera.svg", "path": "/illustrations/icons/camera.svg", "extension": ".svg", "url": "/demos/images/illustrations/icons/camera.svg", "thumbnailUrl": "/demos/images/illustrations/icons/camera.svg", "mime": "image/svg+xml", "size": 488 },
+      { "type": "file", "name": "picture.svg", "path": "/illustrations/icons/picture.svg", "extension": ".svg", "url": "/demos/images/illustrations/icons/picture.svg", "thumbnailUrl": "/demos/images/illustrations/icons/picture.svg", "mime": "image/svg+xml", "size": 493 }
+    ]
+  }
+}

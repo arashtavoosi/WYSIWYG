@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="title">
+  <title id="title">Rocky coast</title>
+  <rect width="640" height="400" fill="#cfe8f3"/>
+  <path d="M0 225c125-38 205 40 320 8s214-8 320 20v147H0Z" fill="#27839b"/>
+  <path d="M0 278c130-35 190 45 320 8s220-4 320 25" fill="none" stroke="#e0f2fe" stroke-width="12"/>
+  <path d="M0 315 105 190l72 106 88-38 95 142H0Z" fill="#596b72"/>
+  <circle cx="526" cy="86" r="40" fill="#fbbf24"/>
+</svg>

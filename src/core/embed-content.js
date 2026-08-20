@@ -31,6 +31,10 @@
             }
         });
 
+        if (attributes.filePath) {
+            image.setAttribute('data-file-path', attributes.filePath);
+        }
+
         range.insertNode(image);
         html.moveSelectionAfterNode(image, currentSelection);
 
@@ -51,6 +55,12 @@
                 image.setAttribute(name, attributes[name]);
             }
         });
+
+        if (attributes.filePath === null || attributes.filePath === '') {
+            image.removeAttribute('data-file-path');
+        } else if (attributes.filePath !== undefined) {
+            image.setAttribute('data-file-path', attributes.filePath);
+        }
 
         return image;
     }

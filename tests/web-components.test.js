@@ -27,6 +27,8 @@ describe('web components', () => {
 
         modal.show();
         expect(modal.open).toBe(true);
+        expect(modal.shadowRoot.querySelector('style').textContent).toContain('z-index:2000');
+        expect(modal.shadowRoot.querySelector('style').textContent).toContain('min-width:min(420px,calc(100vw - 32px))');
 
         modal.shadowRoot.querySelector('.shade').dispatchEvent(new MouseEvent('click', { bubbles: true }));
         expect(modal.open).toBe(false);
@@ -162,7 +164,7 @@ describe('web components', () => {
         expect(overlay.shadowRoot.querySelectorAll('[data-resize]')).toHaveLength(8);
         expect(overlay.shadowRoot.querySelector('.move')).toBeTruthy();
         expect(overlay.shadowRoot.querySelector('.move svg')).toBeTruthy();
-        expect(overlay.shadowRoot.querySelector('style').textContent).toContain('.move{left:0;top:-26px');
+        expect(overlay.shadowRoot.querySelector('style').textContent).toContain('.move{left:0;top:-25px');
     });
 
     test('resize overlay resizes the target from a drag handle', () => {
@@ -291,5 +293,70 @@ describe('web components', () => {
         expect(outside.contains(image)).toBe(false);
 
         delete document.caretRangeFromPoint;
+    });
+
+    test('file browser renders breadcrumbs, filters extensions, and switches view mode', () => {
+        document.body.innerHTML = '';
+
+        const browser = document.createElement('wysiwyg-file-browser');
+
+        browser.supportedExtensions = '.jpg,png';
+        document.body.appendChild(browser);
+        browser.setData({
+            path: '/assets/photos',
+            items: [
+                { type: 'directory', name: 'Nested', path: '/assets/photos/nested' },
+                { type: 'file', name: 'hero.jpg', path: '/assets/photos/hero.jpg', extension: '.jpg' },
+                { type: 'file', name: 'notes.txt', path: '/assets/photos/notes.txt', extension: '.txt' }
+            ]
+        });
+
+        expect(Array.from(browser.shadowRoot.querySelectorAll('[data-crumb]')).map(function (button) {
+            return button.textContent;
+        })).toEqual(['Root', 'assets', 'photos']);
+        expect(browser.shadowRoot.querySelector('[data-crumb="/assets/photos"]').getAttribute('aria-current')).toBe('page');
+        expect(browser.shadowRoot.querySelector('style').textContent).toContain('.crumbs button{border:0;background:transparent;color:#2563eb');
+        expect(Array.from(browser.shadowRoot.querySelectorAll('[data-index] .name')).map(function (node) {
+            return node.textContent;
+        }).join(' ')).toContain('Nested');
+        expect(Array.from(browser.shadowRoot.querySelectorAll('[data-index] .name')).map(function (node) {
+            return node.textContent;
+        }).join(' ')).toContain('hero.jpg');
+
+        browser.shadowRoot.querySelector('[data-mode="thumbnail"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(browser.viewMode).toBe('thumbnail');
+        expect(browser.shadowRoot.querySelector('[data-mode="thumbnail"]').getAttribute('aria-pressed')).toBe('true');
+        expect(browser.shadowRoot.querySelector('[data-mode="list"]').textContent).toBe('');
+        expect(browser.shadowRoot.querySelectorAll('[data-mode] svg')).toHaveLength(2);
+    });
+
+    test('file browser emits selection and navigate events', () => {
+        document.body.innerHTML = '';
+
+        const browser = document.createElement('wysiwyg-file-browser');
+        const select = jest.fn();
+        const navigate = jest.fn();
+
+        document.body.appendChild(browser);
+        browser.setData({
+            path: '/assets',
+            items: [
+                { type: 'directory', name: 'Images', path: '/assets/images' },
+                { type: 'file', name: 'hero.png', path: '/assets/hero.png', extension: '.png' }
+            ]
+        });
+        browser.addEventListener('file-select', select);
+        browser.addEventListener('navigate', navigate);
+
+        browser.shadowRoot.querySelector('[data-index="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(select).toHaveBeenCalledWith(expect.objectContaining({
+            detail: { file: expect.objectContaining({ name: 'hero.png' }) }
+        }));
+
+        browser.shadowRoot.querySelector('[data-index="0"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(navigate).toHaveBeenCalledWith(expect.objectContaining({
+            detail: { path: '/assets/images' }
+        }));
     });
 });

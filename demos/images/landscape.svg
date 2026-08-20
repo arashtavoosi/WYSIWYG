@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="title">
+  <title id="title">Green hills under a bright sky</title>
+  <rect width="640" height="400" fill="#dff3ff"/>
+  <circle cx="520" cy="82" r="42" fill="#fbbf24"/>
+  <path d="M0 280 150 145l125 118 110-85 255 190v32H0Z" fill="#6b9b76"/>
+  <path d="M0 322 190 225l115 74 116-67 219 120v48H0Z" fill="#2f6f55"/>
+</svg>

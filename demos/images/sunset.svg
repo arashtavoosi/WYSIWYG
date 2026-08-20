@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="title">
+  <title id="title">Sunset over water</title>
+  <rect width="640" height="400" fill="#fed7aa"/>
+  <rect y="250" width="640" height="150" fill="#256e82"/>
+  <circle cx="320" cy="215" r="76" fill="#f97316"/>
+  <path d="M0 250h640M70 294h190m110 0h205M160 340h320" stroke="#fef3c7" stroke-width="10" stroke-linecap="round" opacity=".8"/>
+</svg>

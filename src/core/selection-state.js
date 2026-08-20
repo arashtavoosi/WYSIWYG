@@ -76,6 +76,7 @@
             headingLevel: blockElement && /^H[1-6]$/.test(blockElement.tagName) ? Number(blockElement.tagName.charAt(1)) : null,
             image: imageElement ? {
                 alt: imageElement.getAttribute('alt') || '',
+                filePath: imageElement.getAttribute('data-file-path') || '',
                 height: imageElement.getAttribute('height') || '',
                 src: imageElement.getAttribute('src') || '',
                 title: imageElement.getAttribute('title') || '',

@@ -24,10 +24,11 @@ describe('embed content', () => {
         const image = editorElement.querySelector('img');
         const selection = selectNode(image);
 
-        editor.updateImage({ src: 'new.png', alt: 'New' }, selection);
+        editor.updateImage({ src: 'new.png', alt: 'New', filePath: '/assets/new.png' }, selection);
 
         expect(editorElement.querySelector('img').getAttribute('src')).toBe('new.png');
         expect(editorElement.querySelector('img').getAttribute('alt')).toBe('New');
+        expect(editorElement.querySelector('img').getAttribute('data-file-path')).toBe('/assets/new.png');
 
         selectNode(editorElement.querySelector('img'));
         editor.removeImage(selection);

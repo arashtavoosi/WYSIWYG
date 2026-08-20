@@ -269,7 +269,12 @@
             editorElement: document.getElementById('editor'),
             toolbarElement: document.getElementById('toolbar'),
             toolbarConfig: {
-                iconSpritePath: '../src/ui/toolbar-icons.svg'
+                iconSpritePath: '../src/ui/toolbar-icons.svg',
+                fileBrowser: {
+                    endpoint: '/files',
+                    path: '/',
+                    supportedExtensions: '.jpg,.png,.svg'
+                }
             },
             statusElements: {
                 active: document.getElementById('activeState'),

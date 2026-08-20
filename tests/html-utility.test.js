@@ -92,4 +92,13 @@ describe('html utility', () => {
 
         delete document.caretRangeFromPoint;
     });
+
+    test('selects a node with the current selection', () => {
+        document.body.innerHTML = '<p>Before <img src="x.png"> after</p>';
+
+        const image = document.querySelector('img');
+        const selection = html.selectNode(image);
+
+        expect(html.getSelectedElement(selection, 'img')).toBe(image);
+    });
 });

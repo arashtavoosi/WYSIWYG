@@ -29,11 +29,12 @@ Main methods:
 
 ## UI Web Components
 
-`src/ui/web-components.js` defines three no-build custom elements:
+`src/ui/web-components.js` defines four no-build custom elements:
 
 - `<wysiwyg-modal>` supports `open`, `show-close-button`, `click-outside-to-close`, `moveable`, `resizable`, and header/content/footer templates or slots.
 - `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"` plus `-start` and `-end` aligned variants such as `bottom-start`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
 - `<wysiwyg-resize-overlay>` supports `open`, `showFor(element)`, `hide()`, eight resize handles, a move handle, and `resize-start`/`resize`/`resize-end` plus `move-start`/`move`/`move-end` events.
+- `<wysiwyg-file-browser>` supports breadcrumb navigation, `view-mode="list|thumbnail"`, `supported-extensions`, `endpoint`, `load(path)`, `setData(data)`, `navigate`, and `file-select`. Server contract: `docs/file-browser-contract.md`.
 
 Template attributes accept selectors or inline HTML:
 
@@ -41,7 +42,26 @@ Template attributes accept selectors or inline HTML:
 <template id="selectionDetails"><p>Selected content details</p></template>
 <wysiwyg-modal show-close-button content-template="#selectionDetails"></wysiwyg-modal>
 <wysiwyg-popup preferred-position="auto">Selected content details</wysiwyg-popup>
+<wysiwyg-file-browser supported-extensions=".jpg,.png" endpoint="/files"></wysiwyg-file-browser>
 ```
+
+The default image toolbar command opens `<wysiwyg-file-browser>` inside `<wysiwyg-modal>`. Configure its source through adapter toolbar config:
+
+```js
+createEditorAdapter({
+  editorElement,
+  toolbarElement,
+  toolbarConfig: {
+    fileBrowser: {
+      endpoint: '/files',
+      path: '/',
+      supportedExtensions: '.jpg,.jpeg,.png,.gif,.webp,.svg'
+    }
+  }
+});
+```
+
+The same Image command replaces a selected image. Images chosen from the browser keep `items[].path` in `data-file-path`, allowing the modal to reopen that virtual folder even when the rendered `src` uses a different media URL. Invalid folders fall back to the configured root path.
 
 ## Editor Content CSS
 
@@ -54,13 +74,15 @@ Include `src/ui/editor-content.css` and add `wysiwyg-editor-content` to the edit
 
 ## Demo
 
-Run a local static server from the repo root:
+Run the dependency-free demo server from the repo root:
 
 ```sh
-python3 -m http.server 4173
+npm run demo
 ```
 
 Open `http://localhost:4173/demos/wysiwyg-v1.html`.
+
+The demo server exposes `/files?path=...` from `demos/mock-files.json`. Its nested folders, supported and unsupported files, and sample images exercise breadcrumbs, navigation, extension filtering, list view, thumbnail view, and file selection.
 
 ## Tests
 

@@ -29,10 +29,15 @@
 
     return {
         headingLevel: 2,
-        imageAttributes: ['src', 'alt', 'title', 'width', 'height'],
+        imageAttributes: ['src', 'alt', 'title', 'width', 'height', 'filePath'],
         indentStep: 24,
         iconPrefix: 'wysiwyg-icon-',
         iconSpritePath: '',
+        fileBrowser: {
+            endpoint: '',
+            path: '/',
+            supportedExtensions: '.jpg,.jpeg,.png,.gif,.webp,.svg'
+        },
         prompts: {
             image: { label: 'Image URL', fallback: 'https://' },
             link: { label: 'Link URL', fallback: 'https://' },
@@ -324,33 +329,56 @@
                         title: 'Image',
                         iconId: 'image', icon: 'Img',
                         priority: 30,
-                        onCommand: function (context) {
-                            var src = promptValue(context, context.settings.prompts.image);
-
-                            if (src) {
-                                context.editor.insertImage({ src: src, alt: '' });
-                            }
-                        }
-                    },
-                    updateImage: {
-                        title: 'Update image URL',
-                        iconId: 'image-edit', icon: 'Img+',
-                        priority: 40,
                         active: function (state) { return !!state.image; },
-                        disabled: function (state) { return !state.image; },
                         onCommand: function (context) {
-                            var prompts = context.settings.prompts;
-                            var src = promptValue(context, prompts.image, context.state.image ? context.state.image.src : prompts.image.fallback);
+                            var selectedImage = context.state.image;
+                            var result = context.showImageBrowserModal ? context.showImageBrowserModal(selectedImage) : promptValue(context, context.settings.prompts.image, selectedImage ? selectedImage.src : undefined);
 
-                            if (src !== null) {
-                                context.editor.updateImage({ src: src });
+                            function apply(value) {
+                                var file = value && typeof value === 'object' ? value : null;
+                                var src = file ? file.url || file.path || file.src : value;
+                                var attributes;
+
+                                if (!src) {
+                                    return;
+                                }
+
+                                attributes = {
+                                    src: src,
+                                    filePath: file && file.path ? file.path : ''
+                                };
+
+                                if (selectedImage) {
+                                    attributes.alt = selectedImage.alt;
+                                    attributes.height = selectedImage.height;
+                                    attributes.title = selectedImage.title;
+                                    attributes.width = selectedImage.width;
+                                    context.editor.updateImage(attributes);
+                                } else {
+                                    attributes.alt = '';
+                                    context.editor.insertImage(attributes);
+                                }
+                            }
+
+                            if (result && typeof result.then === 'function') {
+                                return result.then(function (value) {
+                                    if (value) {
+                                        context.restoreSelection();
+                                        apply(value);
+                                        context.saveSelection();
+                                    }
+                                });
+                            }
+
+                            if (result) {
+                                apply(result);
                             }
                         }
                     },
                     removeImage: {
                         title: 'Remove image',
                         iconId: 'image-remove', icon: 'Img-',
-                        priority: 50,
+                        priority: 40,
                         disabled: function (state) { return !state.image; },
                         onCommand: function (context) {
                             context.editor.removeImage();

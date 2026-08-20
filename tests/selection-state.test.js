@@ -6,7 +6,7 @@ const createEditorCore = require('../src/core/editor-core');
 
 describe('selection state', () => {
     test('reports collapsed selection, heading level, and selected image attributes', () => {
-        document.body.innerHTML = '<div id="editor" contenteditable="true"><h2>Title</h2><p><img src="a.png" alt="A"></p></div>';
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><h2>Title</h2><p><img src="a.png" alt="A" data-file-path="/assets/a.png"></p></div>';
 
         const editorElement = document.getElementById('editor');
         const editor = createEditorCore(editorElement);
@@ -28,6 +28,7 @@ describe('selection state', () => {
 
         expect(editor.getActiveFormats(selection).image).toEqual({
             alt: 'A',
+            filePath: '/assets/a.png',
             height: '',
             src: 'a.png',
             title: '',

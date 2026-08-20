@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="title">
+  <title id="title">Colorful geometric shapes</title>
+  <rect width="640" height="400" fill="#f8fafc"/>
+  <circle cx="155" cy="195" r="92" fill="#2563eb"/>
+  <rect x="280" y="92" width="176" height="176" rx="12" fill="#ef4444"/>
+  <path d="m485 307 76-160 76 160Z" fill="#f59e0b"/>
+  <path d="M45 342h550" stroke="#1f2937" stroke-width="12"/>
+</svg>

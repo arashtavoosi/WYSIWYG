@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="title">
+  <title id="title">Mountain lake</title>
+  <rect width="640" height="400" fill="#dbeafe"/>
+  <path d="M0 235 120 105l95 100 88-130 150 150 80-88 107 116v47H0Z" fill="#64748b"/>
+  <path d="m120 105 34 36 27-3 34 67Zm183-30 47 47 39 7 64 96Z" fill="#f8fafc"/>
+  <path d="M0 255c155-25 235 30 350 0s202-8 290 10v135H0Z" fill="#3b82a0"/>
+  <path d="M90 318h460M170 360h290" stroke="#bfdbfe" stroke-width="9" stroke-linecap="round"/>
+</svg>

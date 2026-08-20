@@ -9,10 +9,23 @@
         return typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined';
     }
 
+    function escapeHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[character];
+        });
+    }
+
     function defineComponents() {
         var WysiwygModalElement;
         var WysiwygPopupElement;
         var WysiwygResizeOverlayElement;
+        var WysiwygFileBrowserElement;
 
         if (!html || !hasCustomElements()) {
             return {};
@@ -30,9 +43,9 @@
                 this.attachShadow({ mode: 'open' });
                 this.shadowRoot.innerHTML = [
                     '<style>',
-                    ':host{display:none}:host([open]){display:block}',
-                    '.shade{position:fixed;inset:0;background:rgba(15,23,42,.34);z-index:1000}',
-                    '.box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1001;min-width:280px;max-width:min(92vw,680px);max-height:88vh;background:#fff;color:#111827;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 20px 60px rgba(15,23,42,.24);overflow:auto}',
+                    ':host{display:none}:host([open]){display:block;position:fixed;inset:0;z-index:2000}',
+                    '.shade{position:fixed;inset:0;background:rgba(15,23,42,.34);z-index:0}',
+                    '.box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;min-width:min(420px,calc(100vw - 32px));max-width:min(92vw,680px);max-height:88vh;background:#fff;color:#111827;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 20px 60px rgba(15,23,42,.24);overflow:auto}',
                     ':host([resizable]) .box{resize:both}',
                     '.head,.foot{padding:12px 14px}.head{display:flex;gap:12px;align-items:center;border-bottom:1px solid #e5e7eb}:host([moveable]) .head{cursor:move}',
                     '.body{padding:14px}.foot{border-top:1px solid #e5e7eb}.region{flex:1}.close{border:0;background:transparent;color:inherit;font:inherit;line-height:1;padding:4px 6px;cursor:pointer}.close[hidden]{display:none}',
@@ -553,6 +566,232 @@
             }
         };
 
+        WysiwygFileBrowserElement = customElements.get('wysiwyg-file-browser') || class extends HTMLElement {
+            static get observedAttributes() {
+                return ['endpoint', 'path', 'view-mode', 'supported-extensions'];
+            }
+
+            constructor() {
+                super();
+                this._data = { path: '/', items: [] };
+                this._settingPath = false;
+                this.attachShadow({ mode: 'open' });
+                this.shadowRoot.innerHTML = [
+                    '<style>',
+                    ':host{display:block;color:#111827;font:13px/1.35 system-ui,sans-serif}',
+                    '.bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}',
+                    '.crumbs{display:flex;gap:4px;align-items:center;min-width:0;overflow:auto}',
+                    'button{font:inherit;color:inherit;cursor:pointer}',
+                    '.crumbs button{border:0;background:transparent;color:#2563eb;padding:2px;text-decoration:none}',
+                    '.crumbs button:hover{text-decoration:underline}.crumbs button[aria-current="page"]{color:#475569;font-weight:600;cursor:default}.crumbs span{color:#94a3b8}',
+                    '.modes{display:flex;gap:4px}',
+                    '.modes button,.item{background:#fff;border:1px solid #d1d5db;border-radius:4px}',
+                    '.modes button:hover,.modes button[aria-pressed="true"],.item:hover{border-color:#2563eb;background:#dbeafe}',
+                    '.modes button{display:grid;place-items:center;width:30px;height:30px;padding:0}',
+                    '.modes svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}',
+                    '.items{display:grid;gap:4px}',
+                    ':host([view-mode="thumbnail"]) .items{grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}',
+                    '.item{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;text-align:left;min-width:0;padding:4px 7px}',
+                    ':host([view-mode="thumbnail"]) .item{grid-template-columns:1fr;justify-items:center;min-height:82px;text-align:center}',
+                    '.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}',
+                    '.meta{color:#64748b;font-size:12px}',
+                    '.thumb{width:64px;height:44px;object-fit:cover;border:1px solid #e5e7eb;background:#f8fafc}',
+                    ':host(:not([view-mode="thumbnail"])) .thumb{display:none}',
+                    '</style>',
+                    '<div class="bar"><nav class="crumbs" aria-label="Breadcrumb"></nav><div class="modes"><button type="button" data-mode="list" aria-label="List view" title="List view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button><button type="button" data-mode="thumbnail" aria-label="Thumbnail view" title="Thumbnail view"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button></div></div>',
+                    '<div class="items" role="listbox"></div>'
+                ].join('');
+                this._crumbs = this.shadowRoot.querySelector('.crumbs');
+                this._items = this.shadowRoot.querySelector('.items');
+                this._onClick = this._click.bind(this);
+            }
+
+            connectedCallback() {
+                html.on(this.shadowRoot, 'click', this._onClick);
+                this._render();
+
+                if (this.endpoint && !this._data.items.length) {
+                    this.load(this.path);
+                }
+            }
+
+            disconnectedCallback() {
+                html.off(this.shadowRoot, 'click', this._onClick);
+            }
+
+            attributeChangedCallback(name, oldValue, value) {
+                if (oldValue === value) {
+                    return;
+                }
+
+                if (name === 'path' && !this._settingPath && this.endpoint && this.isConnected) {
+                    this.load(value || '/');
+                    return;
+                }
+
+                this._render();
+            }
+
+            get endpoint() {
+                return this.getAttribute('endpoint') || '';
+            }
+
+            set endpoint(value) {
+                value ? this.setAttribute('endpoint', value) : this.removeAttribute('endpoint');
+            }
+
+            get path() {
+                return this.getAttribute('path') || this._data.path || '/';
+            }
+
+            set path(value) {
+                this.setAttribute('path', value || '/');
+            }
+
+            get viewMode() {
+                return this.getAttribute('view-mode') || 'list';
+            }
+
+            set viewMode(value) {
+                this.setAttribute('view-mode', value === 'thumbnail' ? 'thumbnail' : 'list');
+            }
+
+            get supportedExtensions() {
+                return (this.getAttribute('supported-extensions') || '').split(',').map(function (extension) {
+                    extension = extension.trim().toLowerCase();
+                    return extension && extension.charAt(0) === '.' ? extension : extension ? '.' + extension : '';
+                }).filter(Boolean);
+            }
+
+            set supportedExtensions(value) {
+                this.setAttribute('supported-extensions', Array.isArray(value) ? value.join(',') : value || '');
+            }
+
+            setData(data) {
+                this._data = Object.assign({ path: '/', breadcrumbs: null, items: [] }, data || {});
+                this._setPath(this._data.path || '/');
+                this._render();
+            }
+
+            load(path) {
+                var self = this;
+                var url;
+
+                this._setPath(path || '/');
+
+                if (!this.endpoint || typeof fetch !== 'function') {
+                    this.dispatchEvent(new CustomEvent('navigate', { detail: { path: this.path } }));
+                    return Promise.resolve(null);
+                }
+
+                url = new URL(this.endpoint, window.location.href);
+                url.searchParams.set('path', this.path);
+
+                return fetch(url.toString()).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Unable to load files');
+                    }
+
+                    return response.json();
+                }).then(function (data) {
+                    self.setData(data);
+                    self.dispatchEvent(new CustomEvent('navigate', { detail: { path: self.path } }));
+                    return data;
+                });
+            }
+
+            _setPath(path) {
+                this._settingPath = true;
+                this.setAttribute('path', path || '/');
+                this._settingPath = false;
+            }
+
+            _click(event) {
+                var mode = event.target.closest && event.target.closest('[data-mode]');
+                var crumb = event.target.closest && event.target.closest('[data-crumb]');
+                var item = event.target.closest && event.target.closest('[data-index]');
+                var entry;
+
+                if (mode) {
+                    this.viewMode = mode.getAttribute('data-mode');
+                    return;
+                }
+
+                if (crumb) {
+                    this.load(crumb.getAttribute('data-crumb'));
+                    return;
+                }
+
+                if (!item) {
+                    return;
+                }
+
+                entry = this._visibleItems()[Number(item.getAttribute('data-index'))];
+
+                if (!entry) {
+                    return;
+                }
+
+                if (entry.type === 'directory') {
+                    this.load(entry.path);
+                    return;
+                }
+
+                this.dispatchEvent(new CustomEvent('file-select', { detail: { file: entry } }));
+            }
+
+            _visibleItems() {
+                var extensions = this.supportedExtensions;
+
+                return (this._data.items || []).filter(function (item) {
+                    var extension = (item.extension || (item.name && item.name.match(/\.[^.]+$/) || [''])[0]).toLowerCase();
+                    return item.type === 'directory' || !extensions.length || extensions.indexOf(extension) !== -1;
+                });
+            }
+
+            _breadcrumbs() {
+                var path = this._data.path || this.path || '/';
+                var parts;
+                var current = '';
+
+                if (this._data.breadcrumbs) {
+                    return this._data.breadcrumbs;
+                }
+
+                parts = path.split('/').filter(Boolean);
+
+                return [{ name: 'Root', path: '/' }].concat(parts.map(function (part) {
+                    current += '/' + part;
+                    return { name: part, path: current };
+                }));
+            }
+
+            _render() {
+                var breadcrumbs = this._breadcrumbs();
+                var items = this._visibleItems();
+                var mode = this.viewMode;
+
+                if (!this._crumbs || !this._items) {
+                    return;
+                }
+
+                this._crumbs.innerHTML = breadcrumbs.map(function (crumb, index) {
+                    var current = index === breadcrumbs.length - 1 ? ' aria-current="page"' : '';
+                    return '<button type="button" data-crumb="' + escapeHtml(crumb.path) + '"' + current + '>' + escapeHtml(index ? crumb.name : 'Root') + '</button>';
+                }).join('<span>/</span>');
+                this.shadowRoot.querySelectorAll('[data-mode]').forEach(function (button) {
+                    button.setAttribute('aria-pressed', String(button.getAttribute('data-mode') === mode));
+                });
+                this._items.innerHTML = items.map(function (item, index) {
+                    var icon = item.type === 'directory' ? '&#128193;' : '&#128196;';
+                    var thumb = item.thumbnailUrl ? '<img class="thumb" alt="" src="' + escapeHtml(item.thumbnailUrl) + '">' : '<span class="thumb"></span>';
+                    var meta = item.type === 'directory' ? 'Folder' : (item.extension || '');
+
+                    return '<button class="item" type="button" role="option" data-index="' + index + '">' + thumb + '<span class="name">' + icon + ' ' + escapeHtml(item.name) + '</span><span class="meta">' + escapeHtml(meta) + '</span></button>';
+                }).join('');
+            }
+        };
+
         if (!customElements.get('wysiwyg-modal')) {
             customElements.define('wysiwyg-modal', WysiwygModalElement);
         }
@@ -565,10 +804,15 @@
             customElements.define('wysiwyg-resize-overlay', WysiwygResizeOverlayElement);
         }
 
+        if (!customElements.get('wysiwyg-file-browser')) {
+            customElements.define('wysiwyg-file-browser', WysiwygFileBrowserElement);
+        }
+
         return {
             WysiwygModalElement: WysiwygModalElement,
             WysiwygPopupElement: WysiwygPopupElement,
-            WysiwygResizeOverlayElement: WysiwygResizeOverlayElement
+            WysiwygResizeOverlayElement: WysiwygResizeOverlayElement,
+            WysiwygFileBrowserElement: WysiwygFileBrowserElement
         };
     }
 

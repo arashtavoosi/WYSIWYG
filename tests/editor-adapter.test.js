@@ -435,26 +435,156 @@ describe('editor adapter', () => {
         expect(editorElement.innerHTML).toBe('<p>Create a <a href="https://example.org">link</a> here.</p>');
     });
 
-    test('non-link prompts keep the blocking prompt path', () => {
+    test('image command uses a file browser modal', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true"><p>Start</p></div>'
         ].join('');
 
-        window.prompt = jest.fn(function () {
-            return 'https://example.org/image.png';
-        });
+        const editorElement = document.getElementById('editor');
+        const paragraph = editorElement.querySelector('p');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        window.prompt = jest.fn();
 
         createEditorAdapter({
-            editorElement: document.getElementById('editor'),
-            toolbarElement: document.getElementById('toolbar')
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                fileBrowser: {
+                    path: '/assets',
+                    supportedExtensions: '.png',
+                    items: [
+                        { type: 'file', name: 'hero.png', path: '/assets/hero.png', url: '/media/hero.png', extension: '.png' },
+                        { type: 'file', name: 'notes.txt', path: '/assets/notes.txt', extension: '.txt' }
+                    ]
+                }
+            }
         });
+
+        range.selectNodeContents(paragraph);
+        range.collapse(false);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
 
         document.querySelector('button[title="Image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-        expect(window.prompt).toHaveBeenCalledWith('Image URL', 'https://');
+        const modal = document.querySelector('wysiwyg-modal');
+        const browser = modal.querySelector('wysiwyg-file-browser');
+
+        expect(modal.open).toBe(true);
+        expect(browser.viewMode).toBe('thumbnail');
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(1);
+        expect(window.prompt).not.toHaveBeenCalled();
+
+        browser.shadowRoot.querySelector('[data-index="0"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await Promise.resolve();
+        await Promise.resolve();
+
         expect(document.querySelector('wysiwyg-modal')).toBe(null);
-        expect(document.querySelector('img').getAttribute('src')).toBe('https://example.org/image.png');
+        expect(editorElement.querySelector('img').getAttribute('src')).toBe('/media/hero.png');
+        expect(editorElement.querySelector('img').getAttribute('data-file-path')).toBe('/assets/hero.png');
+    });
+
+    test('image command opens the selected image folder and replaces that image', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>',
+            '<img src="/media/assets/old.png" alt="Old" width="120" data-file-path="/assets/old.png">',
+            '</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const image = editorElement.querySelector('img');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                fileBrowser: {
+                    path: '/assets',
+                    supportedExtensions: '.png',
+                    items: [
+                        { type: 'file', name: 'old.png', path: '/assets/old.png', url: '/media/assets/old.png', extension: '.png' },
+                        { type: 'file', name: 'new.png', path: '/assets/new.png', url: '/media/assets/new.png', extension: '.png' }
+                    ]
+                }
+            }
+        });
+
+        editorElement.focus();
+        image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        expect(document.querySelector('button[title="Image"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Update image URL"]')).toBeNull();
+
+        document.querySelector('button[title="Image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const modal = document.querySelector('wysiwyg-modal');
+        const browser = modal.querySelector('wysiwyg-file-browser');
+
+        expect(browser.path).toBe('/assets');
+
+        browser.shadowRoot.querySelector('[data-index="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(editorElement.querySelectorAll('img')).toHaveLength(1);
+        expect(editorElement.querySelector('img')).toBe(image);
+        expect(image.getAttribute('src')).toBe('/media/assets/new.png');
+        expect(image.getAttribute('data-file-path')).toBe('/assets/new.png');
+        expect(image.getAttribute('alt')).toBe('Old');
+        expect(image.getAttribute('width')).toBe('120');
+    });
+
+    test('image command falls back to the file browser root for an invalid image path', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>',
+            '<img src="/outside/old.png">',
+            '</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const image = editorElement.querySelector('img');
+
+        global.fetch = jest.fn()
+            .mockResolvedValueOnce({ ok: false })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: function () {
+                    return Promise.resolve({ path: '/', items: [] });
+                }
+            });
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                fileBrowser: { endpoint: '/files', path: '/' }
+            }
+        });
+
+        editorElement.focus();
+        image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        document.querySelector('button[title="Image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        await new Promise(function (resolve) { setTimeout(resolve, 0); });
+
+        const modal = document.querySelector('wysiwyg-modal');
+        const browser = modal.querySelector('wysiwyg-file-browser');
+        const requestedPaths = global.fetch.mock.calls.map(function (call) {
+            return new URL(call[0]).searchParams.get('path');
+        });
+
+        expect(requestedPaths).toEqual(['/outside', '/']);
+        expect(browser.path).toBe('/');
+
+        modal.querySelector('[data-action="cancel"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        delete global.fetch;
     });
 
     test('table command uses a popup grid picker', async () => {
@@ -584,5 +714,50 @@ describe('editor adapter', () => {
         expect(overlay.boundary).toBe(editorElement);
         expect(overlay.style.left).toBe('12px');
         expect(overlay.style.top).toBe('24px');
+    });
+
+    test('resize overlay switches directly to another clicked target', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table id="first"><tbody><tr><td>First</td></tr></tbody></table>',
+            '<table id="second"><tbody><tr><td>Second</td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const first = document.getElementById('first');
+        const second = document.getElementById('second');
+        const selection = window.getSelection();
+        const range = document.createRange();
+
+        first.getBoundingClientRect = function () {
+            return { left: 10, top: 20, width: 100, height: 60 };
+        };
+        second.getBoundingClientRect = function () {
+            return { left: 30, top: 120, width: 180, height: 80 };
+        };
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.selectNodeContents(first.querySelector('td'));
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+        first.querySelector('td').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(overlay.target).toBe(first);
+
+        second.querySelector('td').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        expect(overlay.target).toBe(second);
+        expect(overlay.style.left).toBe('30px');
+        expect(overlay.style.top).toBe('120px');
     });
 });

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="title">
+  <title id="title">Evergreen forest</title>
+  <rect width="640" height="400" fill="#d9f0ea"/>
+  <path d="M0 320 145 170l105 105L385 120l255 210v70H0Z" fill="#7ca982"/>
+  <g fill="#14532d">
+    <path d="m75 345 62-170 62 170Z"/><path d="m180 360 75-215 75 215Z"/>
+    <path d="m330 350 68-190 68 190Z"/><path d="m445 365 82-235 82 235Z"/>
+  </g>
+  <rect y="345" width="640" height="55" fill="#365f46"/>
+</svg>

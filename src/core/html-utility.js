@@ -414,6 +414,16 @@
         currentSelection.addRange(range);
     }
 
+    function selectNode(node, selection) {
+        var currentSelection = getCurrentSelection(selection);
+        var range = document.createRange();
+
+        range.selectNode(node);
+        currentSelection.removeAllRanges();
+        currentSelection.addRange(range);
+        return currentSelection;
+    }
+
     function placeCaretInside(node) {
         var target = node;
         var range = document.createRange();
@@ -526,6 +536,7 @@
         rangeSelectsElement: rangeSelectsElement,
         replaceTag: replaceTag,
         renderTemplateRegion: renderTemplateRegion,
+        selectNode: selectNode,
         toArray: toArray,
         unique: unique,
         unwrapNode: unwrapNode
