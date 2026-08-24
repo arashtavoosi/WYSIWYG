@@ -222,6 +222,38 @@ describe('editor adapter', () => {
         expect(headingButton.getAttribute('aria-pressed')).toBe('true');
     });
 
+    test('keeps the caret inside a word after a toolbar inline command', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Alpha beta gamma.</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.setStart(textNode, textNode.textContent.indexOf('beta') + 2);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        document.querySelector('button[title="Bold"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.innerHTML).toBe('<p>Alpha <strong>beta</strong> gamma.</p>');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('strong').firstChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
+
     test('alignment on a selected cell stays inside that cell', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',

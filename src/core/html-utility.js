@@ -415,6 +415,118 @@
         return currentSelection;
     }
 
+    function getTextOffset(rootNode, container, offset) {
+        var range;
+
+        if (!container || !rootNode.contains(container)) {
+            return null;
+        }
+
+        range = document.createRange();
+        range.selectNodeContents(rootNode);
+        range.setEnd(container, offset);
+        return range.toString().length;
+    }
+
+    function getTextPosition(rootNode, offset, bias) {
+        var walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT);
+        var node;
+        var lastNode = null;
+        var remaining = Math.max(offset, 0);
+
+        while ((node = walker.nextNode())) {
+            lastNode = node;
+
+            if (remaining < node.nodeValue.length || (remaining === node.nodeValue.length && bias !== 'forward')) {
+                return { node: node, offset: remaining };
+            }
+
+            if (remaining === node.nodeValue.length && bias === 'forward') {
+                node = walker.nextNode();
+
+                if (node) {
+                    return { node: node, offset: 0 };
+                }
+
+                return { node: lastNode, offset: lastNode.nodeValue.length };
+            }
+
+            remaining -= node.nodeValue.length;
+        }
+
+        if (lastNode) {
+            return { node: lastNode, offset: lastNode.nodeValue.length };
+        }
+
+        return { node: rootNode, offset: 0 };
+    }
+
+    function getSelectionBookmark(selection, rootNode) {
+        var currentSelection = getCurrentSelection(selection);
+        var range;
+        var startOffset;
+        var endOffset;
+        var anchorOffset;
+        var focusOffset;
+
+        if (!currentSelection || currentSelection.rangeCount === 0 || !rootNode) {
+            return null;
+        }
+
+        range = currentSelection.getRangeAt(0);
+
+        if (!rootNode.contains(range.commonAncestorContainer)) {
+            return null;
+        }
+
+        startOffset = getTextOffset(rootNode, range.startContainer, range.startOffset);
+        endOffset = getTextOffset(rootNode, range.endContainer, range.endOffset);
+
+        if (startOffset === null || endOffset === null) {
+            return null;
+        }
+
+        anchorOffset = getTextOffset(rootNode, currentSelection.anchorNode, currentSelection.anchorOffset);
+        focusOffset = getTextOffset(rootNode, currentSelection.focusNode, currentSelection.focusOffset);
+
+        return {
+            backward: anchorOffset !== null && focusOffset !== null && anchorOffset > focusOffset,
+            endOffset: endOffset,
+            startOffset: startOffset
+        };
+    }
+
+    function restoreSelectionBookmark(bookmark, selection, rootNode) {
+        var currentSelection = getCurrentSelection(selection);
+        var start;
+        var end;
+        var range;
+
+        if (!bookmark || !currentSelection || !rootNode) {
+            return false;
+        }
+
+        start = getTextPosition(rootNode, bookmark.startOffset, 'forward');
+        end = bookmark.startOffset === bookmark.endOffset ? start : getTextPosition(rootNode, bookmark.endOffset, 'backward');
+
+        if (!start || !end) {
+            return false;
+        }
+
+        range = document.createRange();
+        range.setStart(start.node, start.offset);
+        range.setEnd(end.node, end.offset);
+        currentSelection.removeAllRanges();
+
+        if (bookmark.backward && typeof currentSelection.setBaseAndExtent === 'function') {
+            currentSelection.setBaseAndExtent(end.node, end.offset, start.node, start.offset);
+        } else {
+            currentSelection.addRange(range);
+        }
+
+        return true;
+    }
+
     function moveSelectionAfterNode(node, selection) {
         var currentSelection = getCurrentSelection(selection);
         var range = document.createRange();
@@ -541,6 +653,7 @@
         expandCollapsedSelectionToWord: expandCollapsedSelectionToWord,
         getAnchorRect: getAnchorRect,
         getCombinedRect: getCombinedRect,
+        getSelectionBookmark: getSelectionBookmark,
         getClosestTag: getClosestTag,
         getContentNodes: getContentNodes,
         getCurrentSelection: getCurrentSelection,
@@ -558,6 +671,7 @@
         rangeSelectsElement: rangeSelectsElement,
         replaceTag: replaceTag,
         renderTemplateRegion: renderTemplateRegion,
+        restoreSelectionBookmark: restoreSelectionBookmark,
         selectNode: selectNode,
         toArray: toArray,
         unique: unique,

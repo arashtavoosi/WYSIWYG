@@ -293,6 +293,39 @@ describe('editor core', () => {
         editor.toggleInline('bold', selection);
 
         expect(editorElement.innerHTML).toBe('<p>Alpha <strong>beta</strong> gamma.</p>');
+
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('strong').firstChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
+
+    test('preserves expanded selections when inline formatting wraps and unwraps text', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta gamma.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.setStart(textNode, 6);
+        range.setEnd(textNode, 10);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.toggleInline('bold', selection);
+
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(false);
+        expect(selection.toString()).toBe('beta');
+
+        editor.toggleInline('bold', selection);
+
+        expect(editorElement.innerHTML).toBe('<p>Alpha beta gamma.</p>');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(false);
+        expect(selection.toString()).toBe('beta');
     });
 
     test('collapsed style and link commands expand to the current word', () => {
@@ -306,6 +339,10 @@ describe('editor core', () => {
         editor.setInlineStyle('backgroundColor', '#ffff00', selection);
 
         expect(editorElement.innerHTML).toBe('<p>Alpha <span style="background-color: rgb(255, 255, 0);">beta</span> gamma.</p>');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('span').firstChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(1);
 
         textNode = editorElement.querySelector('p').lastChild;
         selection = selectCollapsed(textNode, textNode.textContent.indexOf('gamma') + 2);
@@ -341,10 +378,15 @@ describe('editor core', () => {
         const editorElement = document.getElementById('editor');
         const editor = createEditorCore(editorElement);
         const textNode = editorElement.querySelector('strong').firstChild;
+        const selection = selectCollapsed(textNode, 2);
 
-        editor.clear(selectCollapsed(textNode, 2));
+        editor.clear(selection);
 
         expect(editorElement.innerHTML).toBe('<p>Alpha beta.</p>');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('p').firstChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(2);
     });
 
     test('supports additional inline commands and inline style controls', () => {

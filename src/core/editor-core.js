@@ -6,7 +6,8 @@
             require('./selection-state'),
             require('./linking'),
             require('./block-structure'),
-            require('./embed-content')
+            require('./embed-content'),
+            require('./html-utility')
         );
     } else {
         root.createEditorCore = factory(
@@ -15,10 +16,11 @@
             root.WysiwygSelectionState,
             root.WysiwygLinking,
             root.WysiwygBlockStructure,
-            root.WysiwygEmbedContent
+            root.WysiwygEmbedContent,
+            root.WysiwygHtmlUtility
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (selectionFormatting, markupNormalization, selectionState, linking, blockStructure, embedContent) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (selectionFormatting, markupNormalization, selectionState, linking, blockStructure, embedContent, html) {
     function normalizeInlineCommand(name) {
         var map = {
             bold: 'strong',
@@ -68,7 +70,7 @@
         var history = [];
         var historyIndex = -1;
 
-        if (!selectionFormatting || !markupNormalization || !selectionState || !linking || !blockStructure || !embedContent) {
+        if (!selectionFormatting || !markupNormalization || !selectionState || !linking || !blockStructure || !embedContent || !html) {
             throw new Error('Editor core dependencies are not available');
         }
 
@@ -167,6 +169,20 @@
             return result;
         }
 
+        function performSelectionMutation(callback, selection) {
+            var before = rootNode.innerHTML;
+            var bookmark = html.getSelectionBookmark(selection, rootNode);
+            var result = callback();
+
+            html.restoreSelectionBookmark(bookmark, selection, rootNode);
+
+            if (rootNode.innerHTML !== before) {
+                pushSnapshot();
+            }
+
+            return result;
+        }
+
         function normalize() {
             markupNormalization.simplifyAllFormattingTags(rootNode);
             return api;
@@ -183,13 +199,13 @@
 
         var api = {
             clear: function (selection, options) {
-                return performMutation(function () {
+                return performSelectionMutation(function () {
                     var formattingOptions = getFormattingOptions();
 
                     formattingOptions.elements = options && options.elements;
                     selectionFormatting.clearFormatting(selection, formattingOptions);
                     return normalize();
-                });
+                }, selection);
             },
 
             canRedo: function () {
@@ -276,10 +292,10 @@
                 }
 
                 styleObj[propertyName] = value;
-                return performMutation(function () {
+                return performSelectionMutation(function () {
                     selectionFormatting.applyStyle(styleObj, selection, { expandCollapsedToWord: true, root: rootNode });
                     return api;
-                });
+                }, selection);
             },
 
             insertBreak: function (selection) {
@@ -381,10 +397,10 @@
             },
 
             toggleInline: function (name, selection) {
-                return performMutation(function () {
+                return performSelectionMutation(function () {
                     selectionFormatting.toggleFormat(normalizeInlineCommand(name), selection, getFormattingOptions());
                     return normalize();
-                });
+                }, selection);
             },
 
             toggleBlock: function (type, selection) {

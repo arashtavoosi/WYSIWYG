@@ -43,12 +43,17 @@
         return null;
     }
 
-    function wrapSelection(wrapper, selection) {
+    function wrapSelection(wrapper, selection, options) {
         var currentSelection = html.getCurrentSelection(selection);
+        var config = options || {};
+        var rootNode = config.root || document.body;
+        var selectionBookmark;
 
         if (currentSelection.rangeCount === 0) {
             return false;
         }
+
+        selectionBookmark = config.selectionBookmark || html.getSelectionBookmark(currentSelection, rootNode);
 
         var range = currentSelection.getRangeAt(0);
         var wrapperElement = html.createWrapperElement(wrapper);
@@ -65,7 +70,7 @@
             newWrapper.parentNode.normalize();
         }
 
-        currentSelection.removeAllRanges();
+        html.restoreSelectionBookmark(selectionBookmark, currentSelection, rootNode);
 
         return true;
     }
@@ -73,13 +78,17 @@
     function unwrapSelection(tagName, selection, options) {
         var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
+        var rootNode = config.root || document.body;
+        var selectionBookmark;
 
         if (currentSelection.rangeCount === 0) {
             return false;
         }
 
+        selectionBookmark = config.selectionBookmark || html.getSelectionBookmark(currentSelection, rootNode);
+
         var range = currentSelection.getRangeAt(0);
-        var formattingAncestor = html.getClosestTag(range.commonAncestorContainer, tagName, config.root);
+        var formattingAncestor = html.getClosestTag(range.commonAncestorContainer, tagName, rootNode);
 
         if (!formattingAncestor) {
             return false;
@@ -134,7 +143,7 @@
             config.removeEmptyFormattingElements(tagName, parent);
         }
 
-        currentSelection.removeAllRanges();
+        html.restoreSelectionBookmark(selectionBookmark, currentSelection, rootNode);
 
         return true;
     }
@@ -142,14 +151,19 @@
     function toggleFormat(tagName, selection, options) {
         var config = options || {};
         var currentSelection = html.getCurrentSelection(selection);
+        var rootNode = config.root || document.body;
+        var selectionBookmark;
+        var formattingOptions;
         var range;
 
         if (currentSelection.rangeCount === 0) {
             return false;
         }
 
+        selectionBookmark = html.getSelectionBookmark(currentSelection, rootNode);
+
         if (config.expandCollapsedToWord) {
-            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, config.root);
+            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, rootNode);
         }
 
         range = currentSelection.getRangeAt(0);
@@ -158,28 +172,36 @@
             return false;
         }
 
-        if (isSelectionWithinTag(range, tagName, config.root)) {
-            return unwrapSelection(tagName, currentSelection, options);
+        formattingOptions = Object.assign({}, config, {
+            root: rootNode,
+            selectionBookmark: selectionBookmark
+        });
+
+        if (isSelectionWithinTag(range, tagName, rootNode)) {
+            return unwrapSelection(tagName, currentSelection, formattingOptions);
         }
 
-        return wrapSelection('<' + tagName + '></' + tagName + '>', currentSelection);
+        return wrapSelection('<' + tagName + '></' + tagName + '>', currentSelection, formattingOptions);
     }
 
     function applyStyle(styleObj, selection, options) {
         var config = options || {};
         var currentSelection = html.getCurrentSelection(selection);
+        var rootNode = config.root || document.body;
+        var selectionBookmark;
         var range;
         var span;
         var fragment;
         var selectedSpan;
-        var restoredRange;
 
         if (currentSelection.rangeCount === 0) {
             return false;
         }
 
+        selectionBookmark = html.getSelectionBookmark(currentSelection, rootNode);
+
         if (config.expandCollapsedToWord) {
-            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, config.root);
+            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, rootNode);
         }
 
         range = currentSelection.getRangeAt(0);
@@ -192,10 +214,7 @@
 
         if (selectedSpan) {
             Object.assign(selectedSpan.style, styleObj);
-            restoredRange = document.createRange();
-            restoredRange.selectNodeContents(selectedSpan);
-            currentSelection.removeAllRanges();
-            currentSelection.addRange(restoredRange);
+            html.restoreSelectionBookmark(selectionBookmark, currentSelection, rootNode);
             return true;
         }
 
@@ -205,16 +224,14 @@
         fragment = range.extractContents();
 
         if (fragment.childNodes.length === 0) {
+            html.restoreSelectionBookmark(selectionBookmark, currentSelection, rootNode);
             return false;
         }
 
         span.appendChild(fragment);
         range.insertNode(span);
         span.parentNode.normalize();
-        restoredRange = document.createRange();
-        restoredRange.selectNodeContents(span);
-        currentSelection.removeAllRanges();
-        currentSelection.addRange(restoredRange);
+        html.restoreSelectionBookmark(selectionBookmark, currentSelection, rootNode);
 
         return true;
     }
@@ -243,6 +260,8 @@
     function clearFormatting(selection, options) {
         var currentSelection = html.getCurrentSelection(selection);
         var config = options || {};
+        var rootNode = config.root || document.body;
+        var selectionBookmark;
         var range;
         var tags = config.tags || ['STRONG', 'EM', 'U', 'S', 'SUB', 'SUP', 'B', 'I', 'STRIKE', 'SPAN'];
         var nodesToUnwrap = [];
@@ -254,12 +273,14 @@
             element.removeAttribute('style');
         });
 
+        selectionBookmark = html.getSelectionBookmark(currentSelection, rootNode);
+
         if (currentSelection.rangeCount === 0) {
             return false;
         }
 
         if (config.expandCollapsedToWord) {
-            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, config.root);
+            currentSelection = html.expandCollapsedSelectionToWord(currentSelection, rootNode);
         }
 
         range = currentSelection.getRangeAt(0);
@@ -270,7 +291,7 @@
 
         ancestor = html.getElement(range.startContainer);
 
-        while (ancestor && ancestor !== config.root && ancestor.nodeType === Node.ELEMENT_NODE) {
+        while (ancestor && ancestor !== rootNode && ancestor.nodeType === Node.ELEMENT_NODE) {
             if (
                 tags.indexOf(ancestor.tagName) !== -1 &&
                 (html.rangeSelectsElement(range, ancestor) || ancestor.textContent === range.toString())
@@ -334,7 +355,7 @@
             range.commonAncestorContainer.parentNode.normalize();
         }
 
-        currentSelection.removeAllRanges();
+        html.restoreSelectionBookmark(selectionBookmark, currentSelection, rootNode);
 
         return true;
     }
