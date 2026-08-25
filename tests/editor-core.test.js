@@ -145,6 +145,23 @@ describe('editor core', () => {
         expect(editor.getActiveFormats(selection).list).toBe('ul');
     });
 
+    test('preserves the caret when changing a list type', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><ol><li>First item</li><li>Second item</li></ol></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const itemText = editorElement.querySelector('li').firstChild;
+        const selection = selectCollapsed(itemText, 3);
+
+        editor.toggleList('ul', selection);
+
+        expect(editorElement.innerHTML).toBe('<ul><li>First item</li><li>Second item</li></ul>');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('li').firstChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(3);
+    });
+
     test('applies color and line-height styles', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Styled text</p></div>';
 
@@ -404,6 +421,22 @@ describe('editor core', () => {
         expect(selection.getRangeAt(0).collapsed).toBe(true);
         expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('p').firstChild);
         expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
+
+    test('clear formatting removes alignment from the current list item', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><ul><li style="text-align: center;">Aligned item</li></ul></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const itemText = editorElement.querySelector('li').firstChild;
+        const selection = selectCollapsed(itemText, 4);
+
+        editor.clear(selection);
+
+        expect(editorElement.innerHTML).toBe('<ul><li>Aligned item</li></ul>');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startOffset).toBe(4);
     });
 
     test('clear formatting preserves the paragraph around a formatted selection', () => {

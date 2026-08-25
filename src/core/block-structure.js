@@ -5,8 +5,34 @@
         root.WysiwygBlockStructure = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
+    var BLOCK_TAGS = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'];
+
+    function moveChildren(source, target) {
+        while (source.firstChild) {
+            target.appendChild(source.firstChild);
+        }
+    }
+
+    function withSelectionRange(selection, callback) {
+        var currentSelection = html.getCurrentSelection(selection);
+
+        if (!currentSelection || currentSelection.rangeCount === 0) {
+            return false;
+        }
+
+        return callback(currentSelection.getRangeAt(0), currentSelection);
+    }
+
+    function withSelectionTarget(selection, options, getTarget, callback) {
+        var config = options || {};
+
+        return withSelectionRange(selection, function (range, currentSelection) {
+            return callback(getTarget(config.root, range), config, currentSelection);
+        });
+    }
+
     function ensureCurrentBlock(rootNode, range) {
-        var block = html.getClosestTag(html.getElement(range.startContainer), ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
+        var block = html.getClosestTag(html.getElement(range.startContainer), BLOCK_TAGS, rootNode);
         var cell = html.getClosestTag(html.getElement(range.startContainer), ['td', 'th'], rootNode);
         var container = cell || rootNode;
         var paragraph;
@@ -20,9 +46,7 @@
         if (container.childNodes.length === 0) {
             paragraph.appendChild(document.createElement('br'));
         } else {
-            while (container.firstChild) {
-                paragraph.appendChild(container.firstChild);
-            }
+            moveChildren(container, paragraph);
         }
 
         container.appendChild(paragraph);
@@ -35,223 +59,166 @@
     function getCurrentStyleTarget(rootNode, range) {
         return html.getClosestTag(
             html.getElement(range.startContainer),
-            ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'td', 'th'],
+            BLOCK_TAGS.concat(['td', 'th']),
             rootNode
         ) || ensureCurrentBlock(rootNode, range);
     }
 
     function setBlock(type, selection, options) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var config = options || {};
-        var range;
-        var block;
-        var targetTag;
+        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
+            var targetTag;
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
+            if (type === 'heading') {
+                targetTag = 'h' + String((config.level || 1));
+            } else if (type === 'paragraph') {
+                targetTag = 'p';
+            } else {
+                targetTag = type;
+            }
 
-        range = currentSelection.getRangeAt(0);
-        block = ensureCurrentBlock(config.root, range);
+            block = html.replaceTag(block, targetTag);
+            html.placeCaretInside(block);
 
-        if (type === 'heading') {
-            targetTag = 'h' + String((config.level || 1));
-        } else if (type === 'paragraph') {
-            targetTag = 'p';
-        } else {
-            targetTag = type;
-        }
-
-        block = html.replaceTag(block, targetTag);
-        html.placeCaretInside(block);
-
-        return block;
+            return block;
+        });
     }
 
     function toggleBlock(type, selection, options) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var config = options || {};
-        var range;
-        var block;
-        var wrapper;
+        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
+            var wrapper;
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
+            if (type !== 'blockquote') {
+                return false;
+            }
 
-        range = currentSelection.getRangeAt(0);
-        block = ensureCurrentBlock(config.root, range);
+            wrapper = html.getClosestTag(block, 'blockquote', config.root);
 
-        if (type !== 'blockquote') {
-            return false;
-        }
+            if (wrapper) {
+                html.unwrapNode(wrapper);
+                html.placeCaretInside(block);
+                return true;
+            }
 
-        wrapper = html.getClosestTag(block, 'blockquote', config.root);
-
-        if (wrapper) {
-            html.unwrapNode(wrapper);
+            wrapper = document.createElement('blockquote');
+            block.parentNode.insertBefore(wrapper, block);
+            wrapper.appendChild(block);
             html.placeCaretInside(block);
+
             return true;
-        }
-
-        wrapper = document.createElement('blockquote');
-        block.parentNode.insertBefore(wrapper, block);
-        wrapper.appendChild(block);
-        html.placeCaretInside(block);
-
-        return true;
+        });
     }
 
     function toggleList(listType, selection, options) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var config = options || {};
-        var range;
-        var block;
-        var currentList;
-        var list;
-        var item;
-        var parent;
+        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
+            var currentList = html.getClosestTag(block, ['ul', 'ol'], config.root);
+            var list;
+            var item;
+            var parent;
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
+            if (currentList && currentList.tagName.toLowerCase() === listType.toLowerCase()) {
+                parent = currentList.parentNode;
 
-        range = currentSelection.getRangeAt(0);
-        block = ensureCurrentBlock(config.root, range);
-        currentList = html.getClosestTag(block, ['ul', 'ol'], config.root);
+                Array.from(currentList.children).forEach(function (child) {
+                    var paragraph = document.createElement('p');
 
-        if (currentList && currentList.tagName.toLowerCase() === listType.toLowerCase()) {
-            parent = currentList.parentNode;
+                    moveChildren(child, paragraph);
+                    parent.insertBefore(paragraph, currentList);
+                });
 
-            Array.from(currentList.children).forEach(function (child) {
-                var paragraph = document.createElement('p');
+                parent.removeChild(currentList);
+                parent.normalize();
+                return true;
+            }
 
-                while (child.firstChild) {
-                    paragraph.appendChild(child.firstChild);
-                }
+            if (currentList) {
+                html.replaceTag(currentList, listType);
+                return true;
+            }
 
-                parent.insertBefore(paragraph, currentList);
-            });
+            list = document.createElement(listType);
+            item = document.createElement('li');
+            moveChildren(block, item);
+            list.appendChild(item);
+            block.parentNode.replaceChild(list, block);
+            html.placeCaretInside(item);
 
-            parent.removeChild(currentList);
-            parent.normalize();
             return true;
-        }
-
-        if (currentList) {
-            html.replaceTag(currentList, listType);
-            return true;
-        }
-
-        list = document.createElement(listType);
-        item = document.createElement('li');
-
-        while (block.firstChild) {
-            item.appendChild(block.firstChild);
-        }
-
-        list.appendChild(item);
-        block.parentNode.replaceChild(list, block);
-        html.placeCaretInside(item);
-
-        return true;
+        });
     }
 
     function insertBreak(selection) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var range;
-        var br;
+        return withSelectionRange(selection, function (range, currentSelection) {
+            var br = document.createElement('br');
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
+            range.deleteContents();
+            range.insertNode(br);
+            html.moveSelectionAfterNode(br, currentSelection);
 
-        range = currentSelection.getRangeAt(0);
-        range.deleteContents();
-        br = document.createElement('br');
-        range.insertNode(br);
-        html.moveSelectionAfterNode(br, currentSelection);
-
-        return br;
+            return br;
+        });
     }
 
     function insertRule(selection, options) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var config = options || {};
-        var range;
-        var block;
-        var hr;
-        var paragraph;
+        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block) {
+            var hr = document.createElement('hr');
+            var paragraph = document.createElement('p');
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
+            paragraph.appendChild(document.createElement('br'));
 
-        range = currentSelection.getRangeAt(0);
-        block = ensureCurrentBlock(config.root, range);
-        hr = document.createElement('hr');
-        paragraph = document.createElement('p');
-        paragraph.appendChild(document.createElement('br'));
+            if (block.nextSibling) {
+                block.parentNode.insertBefore(hr, block.nextSibling);
+                block.parentNode.insertBefore(paragraph, hr.nextSibling);
+            } else {
+                block.parentNode.appendChild(hr);
+                block.parentNode.appendChild(paragraph);
+            }
 
-        if (block.nextSibling) {
-            block.parentNode.insertBefore(hr, block.nextSibling);
-            block.parentNode.insertBefore(paragraph, hr.nextSibling);
-        } else {
-            block.parentNode.appendChild(hr);
-            block.parentNode.appendChild(paragraph);
-        }
+            html.placeCaretInside(paragraph);
 
-        html.placeCaretInside(paragraph);
-
-        return hr;
+            return hr;
+        });
     }
 
     function setBlockStyle(propertyName, value, selection, options) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var config = options || {};
-        var range;
-        var block;
+        return withSelectionTarget(selection, options, getCurrentStyleTarget, function (block) {
+            block.style[propertyName] = value;
+            return block;
+        });
+    }
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
+    function clearBlockStyle(propertyName, selection, options) {
+        return withSelectionTarget(selection, options, getCurrentStyleTarget, function (block) {
+            block.style.removeProperty(propertyName.replace(/[A-Z]/g, function (letter) {
+                return '-' + letter.toLowerCase();
+            }));
 
-        range = currentSelection.getRangeAt(0);
-        block = getCurrentStyleTarget(config.root, range);
-        block.style[propertyName] = value;
+            if (!block.getAttribute('style')) {
+                block.removeAttribute('style');
+            }
 
-        return block;
+            return block;
+        });
     }
 
     function adjustIndent(direction, selection, options) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var config = options || {};
-        var range;
-        var block;
-        var currentValue;
-        var nextValue;
-        var step = Number(config.indentStep) || 24;
+        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
+            var currentValue = parseInt(block.style.marginLeft || '0', 10) || 0;
+            var step = Number(config.indentStep) || 24;
+            var nextValue = direction === 'outdent' ? Math.max(0, currentValue - step) : currentValue + step;
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
+            if (nextValue) {
+                block.style.marginLeft = nextValue + 'px';
+            } else {
+                block.style.removeProperty('margin-left');
+            }
 
-        range = currentSelection.getRangeAt(0);
-        block = ensureCurrentBlock(config.root, range);
-        currentValue = parseInt(block.style.marginLeft || '0', 10) || 0;
-        nextValue = direction === 'outdent' ? Math.max(0, currentValue - step) : currentValue + step;
-
-        if (nextValue) {
-            block.style.marginLeft = nextValue + 'px';
-        } else {
-            block.style.removeProperty('margin-left');
-        }
-
-        return block;
+            return block;
+        });
     }
 
     return {
         adjustIndent: adjustIndent,
+        clearBlockStyle: clearBlockStyle,
         insertBreak: insertBreak,
         insertRule: insertRule,
         setBlockStyle: setBlockStyle,

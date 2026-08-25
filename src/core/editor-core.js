@@ -204,6 +204,11 @@
 
                     formattingOptions.elements = options && options.elements;
                     selectionFormatting.clearFormatting(selection, formattingOptions);
+
+                    if (!options || !options.elements || options.elements.length === 0) {
+                        blockStructure.clearBlockStyle('textAlign', selection, { root: rootNode });
+                    }
+
                     return normalize();
                 }, selection);
             },
@@ -418,10 +423,10 @@
             },
 
             toggleList: function (type, selection) {
-                return performMutation(function () {
+                return performSelectionMutation(function () {
                     blockStructure.toggleList(type, selection, { root: rootNode });
                     return api;
-                });
+                }, selection);
             },
 
             upsertLink: function (attributes, selection) {
