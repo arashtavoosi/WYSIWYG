@@ -465,7 +465,9 @@
                 var move = event.target.closest && event.target.closest('.move');
                 var rect;
 
-                if (!this.target || (!handle && !move)) {
+                if (!this.hasAttribute('open') || !this.target || (!handle && !move) ||
+                    (move && this.hasAttribute('move-disabled')) ||
+                    (handle && this.hasAttribute('resize-disabled'))) {
                     return;
                 }
 

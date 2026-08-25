@@ -856,6 +856,111 @@ describe('editor adapter', () => {
         expect(adapter.editor.getActiveFormats().table).toBeTruthy();
     });
 
+    test('hides and disables a stale table move target after selection leaves the table', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td id="cell">Cell</td></tr></tbody></table>',
+            '<p id="outside">Outside drop</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cell = document.getElementById('cell');
+        const outside = document.getElementById('outside');
+        const selection = window.getSelection();
+        const range = document.createRange();
+        const dropRange = document.createRange();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(overlay.hasAttribute('open')).toBe(true);
+        expect(overlay.target).toBe(cell);
+        expect(overlay.hasAttribute('move-disabled')).toBe(true);
+
+        range.selectNodeContents(outside);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(overlay.hasAttribute('open')).toBe(false);
+        expect(overlay.hasAttribute('move-disabled')).toBe(true);
+
+        dropRange.setStart(outside.firstChild, 7);
+        dropRange.collapse(true);
+        Object.defineProperty(document, 'caretRangeFromPoint', {
+            configurable: true,
+            value: function () {
+                return dropRange;
+            }
+        });
+
+        overlay.shadowRoot.querySelector('.move').dispatchEvent(new MouseEvent('pointerdown', {
+            bubbles: true,
+            clientX: 20,
+            clientY: 20
+        }));
+        document.dispatchEvent(new MouseEvent('pointermove', {
+            bubbles: true,
+            clientX: 80,
+            clientY: 80
+        }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }));
+
+        expect(cell.parentNode.tagName).toBe('TR');
+        expect(editorElement.querySelector('table').contains(cell)).toBe(true);
+
+        delete document.caretRangeFromPoint;
+    });
+
+    test('hides a stale cell move target when a selection crosses outside the table', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td id="cell">Cell content</td></tr></tbody></table>',
+            '<p id="outside">Outside text</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cell = document.getElementById('cell');
+        const outside = document.getElementById('outside');
+        const selection = window.getSelection();
+        const range = document.createRange();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(overlay.hasAttribute('open')).toBe(true);
+        expect(overlay.target).toBe(cell);
+
+        range.setStart(cell.firstChild, 0);
+        range.setEnd(outside.firstChild, outside.textContent.length);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(overlay.hasAttribute('open')).toBe(false);
+        expect(overlay.hasAttribute('move-disabled')).toBe(true);
+        expect(editorElement.querySelector('table').contains(cell)).toBe(true);
+    });
+
     test('resize overlay switches directly to another clicked target', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',

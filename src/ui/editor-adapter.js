@@ -364,6 +364,16 @@
             return html.getSelectedElement(window.getSelection(), 'img');
         }
 
+        function isTableResizeTarget(target) {
+            return !!(target && ['TABLE', 'TR', 'TD', 'TH'].indexOf(target.tagName) !== -1);
+        }
+
+        function clearStaleTableResizeTarget() {
+            if (isTableResizeTarget(activeResizeTarget)) {
+                activeResizeTarget = null;
+            }
+        }
+
         function getCellsRect(cells) {
             return html.getCombinedRect((cells || []).filter(function (cell) {
                 return cell && cell.isConnected;
@@ -733,10 +743,15 @@
 
             if (state.image || state.link) {
                 clearTableSelection();
+                clearStaleTableResizeTarget();
                 return;
             }
 
             if (!state.table) {
+                if (!expandingTableSelection) {
+                    clearTableSelection();
+                    clearStaleTableResizeTarget();
+                }
                 return;
             }
 
@@ -745,6 +760,7 @@
 
             if (!cell || !table || !editorElement.contains(table)) {
                 clearTableSelection();
+                clearStaleTableResizeTarget();
                 return;
             }
 
