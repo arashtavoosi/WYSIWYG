@@ -170,7 +170,7 @@
         range.deleteContents();
         br = document.createElement('br');
         range.insertNode(br);
-        html.placeCaretInside(br.parentNode);
+        html.moveSelectionAfterNode(br, currentSelection);
 
         return br;
     }

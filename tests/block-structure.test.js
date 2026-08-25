@@ -62,4 +62,28 @@ describe('block structure', () => {
         expect(cell.style.textAlign).toBe('right');
         expect(cell.innerHTML).toBe('<br>');
     });
+
+    test('places the caret after an inserted break', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const paragraph = editorElement.querySelector('p');
+        const textNode = paragraph.firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.setStart(textNode, 5);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.insertBreak(selection);
+
+        expect(paragraph.innerHTML).toBe('Alpha<br> beta');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(paragraph);
+        expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
 });
