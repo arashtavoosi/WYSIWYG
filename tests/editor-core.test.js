@@ -300,6 +300,23 @@ describe('editor core', () => {
         expect(selection.getRangeAt(0).startOffset).toBe(2);
     });
 
+    test('collapsed inline commands expand to a Persian word', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>این کلمه فارسی است.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('p').firstChild;
+        const selection = selectCollapsed(textNode, textNode.textContent.indexOf('فارسی') + 2);
+
+        editor.toggleInline('bold', selection);
+
+        expect(editorElement.innerHTML).toBe('<p>این کلمه <strong>فارسی</strong> است.</p>');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('strong').firstChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
+
     test('preserves expanded selections when inline formatting wraps and unwraps text', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta gamma.</p></div>';
 
@@ -387,6 +404,27 @@ describe('editor core', () => {
         expect(selection.getRangeAt(0).collapsed).toBe(true);
         expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('p').firstChild);
         expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
+
+    test('clear formatting preserves the paragraph around a formatted selection', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>This is some <strong>bold</strong> and <em>italic</em> text.</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const strongText = editorElement.querySelector('strong').firstChild;
+        const italicText = editorElement.querySelector('em').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.setStart(strongText, 0);
+        range.setEnd(italicText, italicText.length);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.clear(selection);
+
+        expect(editorElement.innerHTML).toBe('<p>This is some bold and italic text.</p>');
+        expect(editorElement.querySelector('p')).not.toBeNull();
     });
 
     test('supports additional inline commands and inline style controls', () => {

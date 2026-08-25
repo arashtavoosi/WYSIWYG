@@ -298,7 +298,7 @@
     }
 
     function isWordCharacter(character) {
-        return /[A-Za-z0-9_]/.test(character || '');
+        return /[\p{L}\p{M}\p{N}_\u200C\u200D]/u.test(character || '');
     }
 
     function getCollapsedTextTarget(range) {

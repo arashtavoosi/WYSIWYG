@@ -321,7 +321,7 @@
             currentNode = walker.nextNode();
         } else {
             walker.currentNode = range.commonAncestorContainer;
-            currentNode = walker.currentNode;
+            currentNode = walker.nextNode();
         }
 
         while (currentNode) {
