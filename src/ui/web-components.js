@@ -736,7 +736,7 @@
                     '.modes svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}',
                     '.items{display:grid;gap:4px}',
                     ':host([view-mode="thumbnail"]) .items{grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}',
-                    '.item{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;text-align:left;min-width:0;padding:4px 7px}',
+                    '.item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;text-align:left;min-width:0;padding:4px 7px}',
                     ':host([view-mode="thumbnail"]) .item{grid-template-columns:1fr;justify-items:center;min-height:82px;text-align:center}',
                     '.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}',
                     '.meta{color:#64748b;font-size:12px}',

@@ -466,6 +466,7 @@ describe('web components', () => {
         })).toEqual(['Root', 'assets', 'photos']);
         expect(browser.shadowRoot.querySelector('[data-crumb="/assets/photos"]').getAttribute('aria-current')).toBe('page');
         expect(browser.shadowRoot.querySelector('style').textContent).toContain('.crumbs button{border:0;background:transparent;color:#2563eb');
+        expect(browser.shadowRoot.querySelector('style').textContent).toContain('.item{display:grid;grid-template-columns:1fr auto;');
         expect(Array.from(browser.shadowRoot.querySelectorAll('[data-index] .name')).map(function (node) {
             return node.textContent;
         }).join(' ')).toContain('Nested');
