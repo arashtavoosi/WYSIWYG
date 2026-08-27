@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WYSIWYG Core Baseline</title>
+    <title>Ravan Editor</title>
     <link rel="stylesheet" href="../src/ui/editor-content.css">
     <link rel="stylesheet" href="../src/ui/toolbar.css">
     <style>
@@ -75,14 +75,12 @@
 <body>
     <div class="shell">
         <div class="heading">
-            <h1>Core Baseline</h1>
-            <p>The smallest end-to-end demo now runs against <code>createEditorCore</code> directly.</p>
+            <h1>Ravan Editor</h1>
+            <p>The smallest end-to-end demo now runs through <code>Ravan.mount</code>.</p>
         </div>
 
         <div class="editor-frame">
-            <div id="toolbar" class="toolbar"></div>
-
-            <div id="editor" class="wysiwyg-editor-content" contenteditable="true">
+            <div id="editor-wrapper">
                 <p>This is some <strong>bold</strong> and <em>italic</em> text.</p>
                 <p>Select part of this paragraph to create a <a href="https://example.com">link</a>, convert it into a heading, or turn it into a list.</p>
                 <p><table><thead><tr><th><br></th><th><br></th><th><br></th></tr></thead><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p><br></p>
@@ -110,10 +108,9 @@
     <script src="../src/ui/toolbar-config.js"></script>
     <script src="../src/ui/toolbar-view.js"></script>
     <script src="../src/ui/editor-adapter.js"></script>
+    <script src="../src/ravan.js"></script>
     <script>
-        createEditorAdapter({
-            editorElement: document.getElementById('editor'),
-            toolbarElement: document.getElementById('toolbar'),
+        Ravan.mount('#editor-wrapper', {
             toolbarConfig: {
                 iconSpritePath: '../src/ui/toolbar-icons.svg',
                 fileBrowser: {

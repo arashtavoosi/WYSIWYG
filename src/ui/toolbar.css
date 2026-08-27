@@ -1,4 +1,4 @@
-.toolbar {
+[editor-toolbar] {
     display: flex;
     flex-wrap: wrap;
     gap: 0;

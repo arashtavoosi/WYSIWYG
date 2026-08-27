@@ -1,11 +1,12 @@
-# WYSIWYG
+# Ravan
 
-Small-footprint browser WYSIWYG editor with a UI-agnostic core.
+Small-footprint browser editor with a UI-agnostic core.
 
 ## Structure
 
 - `src/core/editor-core.js`: public core API.
 - `src/core/*`: shared HTML utilities, selection formatting, block structure, linking, embeds, state, and markup normalization.
+- `src/ravan.js`: branded full-editor facade.
 - `src/ui/*`: toolbar wiring, toolbar metadata, toolbar state rendering, and small UI web components.
 - `demos/wysiwyg-v1.html`: no-build demo shell.
 - `tests/*`: Jest/jsdom coverage.
@@ -26,6 +27,22 @@ Main methods:
 - images: `insertImage`, `updateImage`, `removeImage`
 - tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
+
+## Ravan Full Editor API
+
+For normal browser usage, use the branded `Ravan.mount` facade. The mount target is an editor wrapper. Ravan wraps its existing contents in a classless `[editor-content]` element and creates an `[editor-toolbar]` before it when `toolbarElement` is omitted:
+
+```js
+const instance = Ravan.mount('#editor-wrapper', {
+  toolbarConfig: {
+    fileBrowser: {
+      endpoint: '/files'
+    }
+  }
+});
+```
+
+When `toolbarElement` is supplied, Ravan adds the `[editor-toolbar]` attribute without moving that element. The lower-level `createEditorAdapter` and `createEditorCore` APIs remain available for custom integrations. Existing `wysiwyg-*` icon and custom-element names are retained as internal compatibility contracts for now.
 
 ## UI Web Components
 
@@ -49,9 +66,7 @@ Template attributes accept selectors or inline HTML:
 The default image toolbar command opens `<wysiwyg-file-browser>` inside `<wysiwyg-modal>`. Configure its source through adapter toolbar config:
 
 ```js
-createEditorAdapter({
-  editorElement,
-  toolbarElement,
+Ravan.mount(editorWrapperElement, {
   toolbarConfig: {
     fileBrowser: {
       endpoint: '/files',
@@ -66,11 +81,11 @@ The same Image command replaces a selected image. Images chosen from the browser
 
 ## Editor Content CSS
 
-Include `src/ui/editor-content.css` and add `wysiwyg-editor-content` to the editable root when you want default content rendering for embedded output such as visible, selectable tables:
+Include `src/ui/editor-content.css` when you want default content rendering for embedded output such as visible, selectable tables. `Ravan.mount` adds the attribute automatically; custom integrations can use it directly:
 
 ```html
 <link rel="stylesheet" href="src/ui/editor-content.css">
-<div class="wysiwyg-editor-content" contenteditable="true"></div>
+<div editor-content contenteditable="true"></div>
 ```
 
 ## Toolbar CSS
@@ -79,7 +94,7 @@ Include `src/ui/toolbar.css` when using the generated toolbar and its status are
 
 ```html
 <link rel="stylesheet" href="src/ui/toolbar.css">
-<div class="toolbar"></div>
+<div editor-toolbar></div>
 ```
 
 ## Demo

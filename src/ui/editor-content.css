@@ -1,4 +1,4 @@
-.wysiwyg-editor-content {
+[editor-content] {
     min-height: 260px;
     padding: 22px;
     outline: none;
@@ -7,14 +7,14 @@
     overflow-x: auto;
 }
 
-.wysiwyg-editor-content table {
+[editor-content] table {
     border-collapse: collapse;
     margin: 16px 0;
     table-layout: fixed;
 }
 
-.wysiwyg-editor-content th,
-.wysiwyg-editor-content td {
+[editor-content] th,
+[editor-content] td {
     min-width: 52px;
     height: 34px;
     padding: 6px 8px;
@@ -22,7 +22,7 @@
     vertical-align: top;
 }
 
-.wysiwyg-editor-content th {
+[editor-content] th {
     background: var(--wysiwyg-table-header-bg, #f8fafc);
     font-weight: 700;
 }

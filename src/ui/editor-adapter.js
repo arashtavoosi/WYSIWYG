@@ -15,11 +15,49 @@
         );
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createToolbarView, toolbarConfig, html) {
+    function createToolbarElement(editorElement) {
+        var documentRef = editorElement && editorElement.ownerDocument;
+        var toolbarElement;
+
+        if (!editorElement || !editorElement.parentNode || !documentRef) {
+            throw new Error('Editor element must be attached before an automatic toolbar can be created');
+        }
+
+        toolbarElement = documentRef.createElement('div');
+        toolbarElement.setAttribute('editor-toolbar', '');
+        editorElement.parentNode.insertBefore(toolbarElement, editorElement);
+
+        return toolbarElement;
+    }
+
+    function findAdjacentToolbar(editorElement) {
+        var previous = editorElement && editorElement.previousElementSibling;
+
+        if (previous && (
+            (previous.hasAttribute && previous.hasAttribute('editor-toolbar')) ||
+            (previous.hasAttribute && previous.hasAttribute('data-ravan-toolbar')) ||
+            (previous.classList && previous.classList.contains('toolbar'))
+        )) {
+            previous.setAttribute('editor-toolbar', '');
+
+            if (previous.hasAttribute('data-ravan-toolbar')) {
+                previous.removeAttribute('data-ravan-toolbar');
+                if (previous.classList) {
+                    previous.classList.remove('toolbar');
+                }
+            }
+
+            return previous;
+        }
+
+        return null;
+    }
+
     function createEditorAdapter(config) {
         var configOverrides = config.toolbarConfig || {};
         var toolbarSettings = Object.assign({}, toolbarConfig, configOverrides);
         var editorElement = config.editorElement;
-        var toolbarElement = config.toolbarElement;
+        var toolbarElement = config.toolbarElement || findAdjacentToolbar(editorElement) || createToolbarElement(editorElement);
         var editor = createEditorCore(editorElement, config.editorOptions);
         var savedRange = null;
         var tableToolsPopup = null;
@@ -30,6 +68,8 @@
         var movingResizeTarget = false;
         var activeResizeTarget = null;
         var view;
+
+        toolbarElement.setAttribute('editor-toolbar', '');
 
         toolbarSettings.prompts = Object.assign({}, toolbarConfig.prompts, configOverrides.prompts || {});
         toolbarSettings.fileBrowser = Object.assign({}, toolbarConfig.fileBrowser, configOverrides.fileBrowser || {});
@@ -989,7 +1029,9 @@
 
         return {
             editor: editor,
-            sync: sync
+            sync: sync,
+            editorElement: editorElement,
+            toolbarElement: toolbarElement
         };
     }
 
