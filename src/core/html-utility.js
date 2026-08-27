@@ -280,6 +280,14 @@
         return getClosestTag(getElement(node), tagName);
     }
 
+    function getSelectedTable(selection, rootNode) {
+        var currentSelection = getCurrentSelection(selection);
+        var cell = getSelectedElement(currentSelection, ['td', 'th']);
+        var table = getSelectedElement(currentSelection, 'table') || getClosestTag(cell, 'table', rootNode);
+
+        return table && (!rootNode || rootNode.contains(table)) ? table : null;
+    }
+
     function getSelectedNodes(range) {
         var nodes = [];
         var node = range.startContainer;
@@ -660,6 +668,7 @@
         getElement: getElement,
         getRangeFromPoint: getRangeFromPoint,
         getSelectedElement: getSelectedElement,
+        getSelectedTable: getSelectedTable,
         getSelectedNodes: getSelectedNodes,
         getTemplateFromAttribute: getTemplateFromAttribute,
         moveSelectionAfterNode: moveSelectionAfterNode,

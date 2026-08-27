@@ -28,7 +28,7 @@ Main methods:
 - blocks: `setBlock`, `toggleBlock`, `toggleList`, `insertBreak`, `insertRule`
 - links: `upsertLink`, `removeLink`
 - images: `insertImage`, `updateImage`, `removeImage`
-- tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `removeTable`
+- tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `toggleTableFullSize`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
 
 ## Ravan Full Editor API

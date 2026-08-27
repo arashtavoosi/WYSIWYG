@@ -27,6 +27,22 @@
         return context.prompt(promptConfig.label, fallback === undefined ? promptConfig.fallback : fallback);
     }
 
+    function promptLinkValue(context, promptConfig, hrefFallback, targetFallback) {
+        var href = promptValue(context, promptConfig, hrefFallback);
+
+        if (!href) {
+            return href;
+        }
+
+        return {
+            href: href,
+            target: promptValue(context, {
+                label: promptConfig.targetLabel || 'Link target',
+                fallback: targetFallback === undefined ? (promptConfig.targetFallback || '') : targetFallback
+            }, targetFallback) || ''
+        };
+    }
+
     return {
         headingLevel: 2,
         imageAttributes: ['src', 'alt', 'title', 'width', 'height', 'filePath'],
@@ -40,7 +56,7 @@
         },
         prompts: {
             image: { label: 'Image URL', fallback: 'https://' },
-            link: { label: 'Link URL', fallback: 'https://' },
+            link: { label: 'Link URL', fallback: 'https://', targetLabel: 'Link target', targetFallback: '' },
             tableCols: { label: 'Table columns', fallback: '2' },
             tableRows: { label: 'Table rows', fallback: '2' }
         },
@@ -297,21 +313,34 @@
                         active: function (state) { return !!state.link; },
                         onCommand: function (context) {
                             var prompts = context.settings.prompts;
-                            var fallback = context.state.link ? context.state.link.href : prompts.link.fallback;
-                            var href = context.showLinkModal ? context.showLinkModal(fallback) : promptValue(context, prompts.link, fallback);
+                            var currentLink = context.state.link;
+                            var fallback = currentLink ? currentLink.href : prompts.link.fallback;
+                            var target = currentLink ? currentLink.target : (prompts.link.targetFallback || '');
+                            var result = context.showLinkModal ? context.showLinkModal(fallback, target) : promptLinkValue(context, prompts.link, fallback, target);
 
-                            if (href && typeof href.then === 'function') {
-                                return href.then(function (value) {
+                            function apply(value) {
+                                var attributes = value && typeof value === 'object' ? value : { href: value, target: target };
+
+                                if (attributes && attributes.href) {
+                                    context.editor.upsertLink({
+                                        href: attributes.href,
+                                        target: attributes.target
+                                    });
+                                }
+                            }
+
+                            if (result && typeof result.then === 'function') {
+                                return result.then(function (value) {
                                     if (value) {
                                         context.restoreSelection();
-                                        context.editor.upsertLink({ href: value });
+                                        apply(value);
                                         context.saveSelection();
                                     }
                                 });
                             }
 
-                            if (href) {
-                                context.editor.upsertLink({ href: href });
+                            if (result) {
+                                apply(result);
                             }
                         }
                     },

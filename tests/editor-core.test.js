@@ -460,6 +460,28 @@ describe('editor core', () => {
         expect(editorElement.querySelector('p')).not.toBeNull();
     });
 
+    test('clear formatting removes inline image size styles', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p><img src="image.png" width="640" height="360" style="width: 240px; height: 135px;"></p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const image = editorElement.querySelector('img');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.selectNode(image);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.clear(selection);
+
+        expect(image.style.width).toBe('');
+        expect(image.style.height).toBe('');
+        expect(image.hasAttribute('style')).toBe(false);
+        expect(image.getAttribute('width')).toBe('640');
+        expect(image.getAttribute('height')).toBe('360');
+    });
+
     test('supports additional inline commands and inline style controls', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Marks size.</p></div>';
 

@@ -268,6 +268,7 @@
         var ancestor;
         var walker;
         var currentNode;
+        var imageElement;
 
         html.unique(html.parseSelectorOrElements(config.elements)).forEach(function (element) {
             element.removeAttribute('style');
@@ -284,6 +285,17 @@
         }
 
         range = currentSelection.getRangeAt(0);
+
+        imageElement = html.getSelectedElement(range, 'img');
+
+        if (imageElement && html.rangeSelectsElement(range, imageElement)) {
+            imageElement.style.removeProperty('width');
+            imageElement.style.removeProperty('height');
+
+            if (!imageElement.getAttribute('style')) {
+                imageElement.removeAttribute('style');
+            }
+        }
 
         if (range.collapsed) {
             return false;

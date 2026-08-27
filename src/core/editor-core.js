@@ -387,6 +387,13 @@
                 });
             },
 
+            toggleTableFullSize: function (selection) {
+                return performMutation(function () {
+                    embedContent.toggleTableFullSize(selection, { root: rootNode });
+                    return api;
+                });
+            },
+
             unmergeTableCell: function (cell, selection) {
                 return performMutation(function () {
                     embedContent.unmergeTableCell(cell, selection);

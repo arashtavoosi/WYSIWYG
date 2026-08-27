@@ -106,6 +106,25 @@ describe('embed content', () => {
         expect(editorElement.querySelector('tbody')).toBeTruthy();
     });
 
+    test('toggles the table full-size style', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><table style="width: 70%; border-spacing: 2px"><tbody><tr><td>Cell</td></tr></tbody></table></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const table = editorElement.querySelector('table');
+        const selection = selectNode(table.querySelector('td'));
+
+        editor.toggleTableFullSize(selection);
+
+        expect(table.style.width).toBe('100%');
+        expect(table.style.borderSpacing).toBe('2px');
+
+        editor.toggleTableFullSize(selection);
+
+        expect(table.style.width).toBe('');
+        expect(table.style.borderSpacing).toBe('2px');
+    });
+
     test('column insertion keeps selection in the original row', () => {
         document.body.innerHTML = [
             '<div id="editor" contenteditable="true"><table>',

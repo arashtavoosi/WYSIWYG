@@ -112,16 +112,28 @@
             return window.prompt(label, fallback);
         }
 
-        function showLinkModal(fallback) {
+        function showLinkModal(fallback, targetFallback) {
             var modal;
             var title;
             var form;
             var input;
+            var targetInput;
             var resolved = false;
             var prompt = toolbarSettings.prompts.link;
+            var targetLabel = prompt.targetLabel || 'Link target';
+            var targetValue = targetFallback === undefined || targetFallback === null ? (prompt.targetFallback || '') : targetFallback;
 
             if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal')) {
-                return promptUser(prompt.label, fallback);
+                var href = promptUser(prompt.label, fallback);
+
+                if (!href) {
+                    return href;
+                }
+
+                return {
+                    href: href,
+                    target: promptUser(targetLabel, targetValue) || ''
+                };
             }
 
             modal = document.createElement('wysiwyg-modal');
@@ -130,18 +142,21 @@
             modal.moveable = true;
             modal.innerHTML = [
                 '<strong slot="header"></strong>',
-                '<form><label><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"></span><input type="url"></label></form>',
+                '<form class="wysiwyg-link-form"><label><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"></span><input type="url"></label><label><span></span><select data-field="target"><option value="">No target</option><option value="_self">Same tab or window</option><option value="_blank">New tab or window</option><option value="_parent">Parent frame</option><option value="_top">Top frame</option></select></label></form>',
                 '<span slot="footer"><button type="button" data-action="cancel">Cancel</button> <button type="button" data-action="apply">Apply</button></span>'
             ].join('');
             document.body.appendChild(modal);
 
             title = modal.querySelector('[slot="header"]');
             form = modal.querySelector('form');
-            input = modal.querySelector('input');
+            input = modal.querySelector('input[type="url"]');
+            targetInput = modal.querySelector('[data-field="target"]');
 
             title.textContent = prompt.label;
             modal.querySelector('label span').textContent = prompt.label;
+            targetInput.previousElementSibling.textContent = targetLabel;
             input.value = fallback || prompt.fallback || '';
+            targetInput.value = targetValue;
 
             return new Promise(function (resolve) {
                 function finish(value) {
@@ -161,13 +176,13 @@
                 });
                 html.on(form, 'submit', function (event) {
                     event.preventDefault();
-                    finish(input.value);
+                    finish({ href: input.value, target: targetInput.value });
                 });
                 html.on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
                     finish(null);
                 });
                 html.on(modal.querySelector('[data-action="apply"]'), 'click', function () {
-                    finish(input.value);
+                    finish({ href: input.value, target: targetInput.value });
                 });
 
                 modal.show();
@@ -385,13 +400,6 @@
             svg.appendChild(use);
 
             return svg;
-        }
-
-        function getSelectedTable() {
-            var selection = window.getSelection();
-            var cell = html.getSelectedElement(selection, 'td') || html.getSelectedElement(selection, 'th');
-
-            return html.getSelectedElement(selection, 'table') || html.getClosestTag(cell, 'table');
         }
 
         function getSelectedCell() {
@@ -632,6 +640,17 @@
             return true;
         }
 
+        function tableActionActive(name) {
+            return name === 'fullSize' && tableSelection && tableSelection.table.style.width === '100%';
+        }
+
+        function syncTableToolButton(button) {
+            var name = button.getAttribute('data-action');
+
+            button.disabled = !tableActionEnabled(name);
+            button.setAttribute('aria-pressed', tableActionActive(name) ? 'true' : 'false');
+        }
+
         function openTableTools(anchor, mode) {
             var actions;
             var tools;
@@ -644,9 +663,7 @@
 
             if (tableToolsPopup) {
                 if (tableToolsPopup.getAttribute('data-mode') === mode) {
-                    html.toArray(tableToolsPopup.querySelectorAll('[data-action]')).forEach(function (button) {
-                        button.disabled = !tableActionEnabled(button.getAttribute('data-action'));
-                    });
+                    html.toArray(tableToolsPopup.querySelectorAll('[data-action]')).forEach(syncTableToolButton);
                     tableToolsPopup.showFor(anchor);
                     return true;
                 }
@@ -661,7 +678,7 @@
                 '<style>',
                 '.wysiwyg-table-tools{display:flex;gap:3px}',
                 '.wysiwyg-table-tool{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:4px;background:#fff;color:#111827;padding:0;cursor:pointer}',
-                '.wysiwyg-table-tool:hover{border-color:#2563eb;background:#dbeafe}',
+                '.wysiwyg-table-tool:hover,.wysiwyg-table-tool[aria-pressed="true"]{border-color:#2563eb;background:#dbeafe}',
                 '.wysiwyg-table-tool:disabled{opacity:.4;cursor:default;background:#fff;border-color:transparent}',
                 '.wysiwyg-table-tool-icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}',
                 '</style>',
@@ -677,6 +694,7 @@
                 colAfter: ['colAfter', 'Column after', 'column-after', function () { editor.insertTableColumn('after'); }],
                 removeCol: ['removeCol', 'Remove column', 'column-remove', function () { editor.removeTableColumn(); }],
                 headerRow: ['headerRow', 'Toggle header row', 'header-row', function () { editor.toggleTableHeaderRow(); }],
+                fullSize: ['fullSize', 'Full-size table', 'table-full-size', function () { editor.toggleTableFullSize(); }],
                 removeTable: ['removeTable', 'Remove table', 'table-remove', function () { editor.removeTable(); }],
                 merge: ['merge', 'Merge cells', 'merge-cells', function () { editor.mergeTableCells(tableSelection.cells); }],
                 unmerge: ['unmerge', 'Unmerge cells', 'unmerge-cells', function () { editor.unmergeTableCell(tableSelection.cell); }]
@@ -686,7 +704,7 @@
                 multiple: ['merge', 'unmerge'],
                 row: ['rowBefore', 'rowAfter', 'removeRow'],
                 column: ['colBefore', 'colAfter', 'removeCol'],
-                table: ['headerRow', 'removeTable']
+                table: ['headerRow', 'fullSize', 'removeTable']
             }[mode] || [];
             actions = actionNames.map(function (name) { return actionMap[name]; });
 
@@ -698,7 +716,7 @@
                 button.setAttribute('data-action', action[0]);
                 button.setAttribute('title', action[1]);
                 button.setAttribute('aria-label', action[1]);
-                button.disabled = !tableActionEnabled(action[0]);
+                syncTableToolButton(button);
                 button.appendChild(createIcon(action[2]));
                 tools.appendChild(button);
             });

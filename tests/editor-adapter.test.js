@@ -517,19 +517,24 @@ describe('editor adapter', () => {
 
         const modal = document.querySelector('wysiwyg-modal');
         const input = modal.querySelector('input');
+        const targetInput = modal.querySelector('[data-field="target"]');
         const labelText = modal.querySelector('label span');
 
         expect(modal.open).toBe(true);
         expect(input.value).toBe('https://');
+        expect(targetInput.tagName).toBe('SELECT');
+        expect(Array.from(targetInput.options).map(function (option) { return option.value; })).toEqual(['', '_self', '_blank', '_parent', '_top']);
+        expect(targetInput.value).toBe('');
         expect(labelText.className).toBe('sr-only');
 
         input.value = 'https://example.org';
+        targetInput.value = '_blank';
         modal.querySelector('[data-action="apply"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
         await Promise.resolve();
         await Promise.resolve();
 
         expect(document.querySelector('wysiwyg-modal')).toBe(null);
-        expect(editorElement.innerHTML).toBe('<p>Create a <a href="https://example.org">link</a> here.</p>');
+        expect(editorElement.innerHTML).toBe('<p>Create a <a href="https://example.org" target="_blank">link</a> here.</p>');
     });
 
     test('image command uses a file browser modal', async () => {
@@ -1259,9 +1264,24 @@ describe('editor adapter', () => {
         selector.shadowRoot.querySelector('[data-mode="table"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         expect(document.querySelector('wysiwyg-popup').getAttribute('data-mode')).toBe('table');
-        expect(document.querySelector('wysiwyg-popup').querySelectorAll('.wysiwyg-table-tool')).toHaveLength(2);
+        expect(document.querySelector('wysiwyg-popup').querySelectorAll('.wysiwyg-table-tool')).toHaveLength(3);
         expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(table);
         expect(document.querySelector('wysiwyg-resize-overlay').hasAttribute('move-disabled')).toBe(false);
         expect(document.querySelector('wysiwyg-resize-overlay').hasAttribute('resize-axis')).toBe(false);
+
+        const fullSize = document.querySelector('wysiwyg-popup').querySelector('[data-action="fullSize"]');
+
+        expect(fullSize.getAttribute('title')).toBe('Full-size table');
+        expect(fullSize.getAttribute('aria-pressed')).toBe('false');
+
+        fullSize.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(table.style.width).toBe('100%');
+        expect(fullSize.getAttribute('aria-pressed')).toBe('true');
+
+        fullSize.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(table.style.width).toBe('');
+        expect(fullSize.getAttribute('aria-pressed')).toBe('false');
     });
 });

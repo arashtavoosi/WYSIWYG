@@ -25,6 +25,7 @@ describe('web components', () => {
         expect(modal.shadowRoot.querySelector('[part="content"] p').textContent).toBe('Bold: true');
         expect(modal.shadowRoot.querySelector('[part="footer"] button').textContent).toBe('Apply');
         expect(modal.shadowRoot.querySelector('.close').hidden).toBe(false);
+        expect(modal.shadowRoot.querySelector('.close svg path')).toBeTruthy();
 
         modal.show();
         expect(modal.open).toBe(true);

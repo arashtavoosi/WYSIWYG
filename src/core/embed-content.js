@@ -258,6 +258,26 @@
         return true;
     }
 
+    function toggleTableFullSize(selection, options) {
+        var table = html.getSelectedTable(selection, options && options.root);
+
+        if (!table) {
+            return false;
+        }
+
+        if (table.style.width === '100%') {
+            table.style.removeProperty('width');
+        } else {
+            table.style.width = '100%';
+        }
+
+        if (!table.getAttribute('style')) {
+            table.removeAttribute('style');
+        }
+
+        return table;
+    }
+
     function removeTable(selection) {
         var currentSelection = html.getCurrentSelection(selection);
         var table = html.getSelectedElement(currentSelection, 'table') || html.getClosestTag(html.getSelectedElement(currentSelection, 'td') || html.getSelectedElement(currentSelection, 'th'), 'table');
@@ -458,6 +478,7 @@
         removeTable: removeTable,
         removeTableColumn: removeTableColumn,
         removeTableRow: removeTableRow,
+        toggleTableFullSize: toggleTableFullSize,
         toggleTableHeaderRow: toggleTableHeaderRow,
         unmergeTableCell: unmergeTableCell,
         updateImage: updateImage
