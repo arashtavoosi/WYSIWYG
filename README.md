@@ -8,7 +8,10 @@ Small-footprint browser editor with a UI-agnostic core.
 - `src/core/*`: shared HTML utilities, selection formatting, block structure, linking, embeds, state, and markup normalization.
 - `src/ravan.js`: branded full-editor facade.
 - `src/ui/*`: toolbar wiring, toolbar metadata, toolbar state rendering, and small UI web components.
+- `build/entries/*`: release bundle entry points.
+- `scripts/build.mjs`: esbuild bundling and minification script.
 - `demos/wysiwyg-v1.html`: no-build demo shell.
+- `demos/ravan-bundled.html`: demo that loads `dist/ravan.min.js`.
 - `tests/*`: Jest/jsdom coverage.
 
 ## Core API
@@ -79,6 +82,22 @@ Ravan.mount(editorWrapperElement, {
 
 The same Image command replaces a selected image. Images chosen from the browser keep `items[].path` in `data-file-path`, allowing the modal to reopen that virtual folder even when the rendered `src` uses a different media URL. Invalid folders fall back to the configured root path.
 
+## Bundled Distribution
+
+Build the minified browser bundles and external sourcemaps with:
+
+```sh
+npm run build
+```
+
+This creates:
+
+- `dist/ravan-core.min.js`: core-only IIFE exposing `createEditorCore`.
+- `dist/ravan.min.js`: full-editor IIFE exposing `Ravan`.
+- `.map` sidecars for both bundles.
+
+The source modules and no-build demo remain available for development and debugging. The package `main` continues to point to the core API.
+
 ## Editor Content CSS
 
 Include `src/ui/editor-content.css` when you want default content rendering for embedded output such as visible, selectable tables. `Ravan.mount` adds the attribute automatically; custom integrations can use it directly:
@@ -106,6 +125,8 @@ npm run demo
 ```
 
 Open `http://localhost:4173/demos/wysiwyg-v1.html`.
+
+After running `npm run build`, open `http://localhost:4173/demos/ravan-bundled.html` to verify the minified full-editor bundle.
 
 The demo server exposes `/files?path=...` from `demos/mock-files.json`. Its nested folders, supported and unsupported files, and sample images exercise breadcrumbs, navigation, extension filtering, list view, thumbnail view, and file selection.
 

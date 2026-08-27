@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ravan Bundled Demo</title>
+    <link rel="stylesheet" href="../src/ui/editor-content.css">
+    <link rel="stylesheet" href="../src/ui/toolbar.css">
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --line: #d7dce3;
+            --line-strong: #b9c1cc;
+            --text: #1f2933;
+            --muted: #637083;
+            --accent-soft: #dbeafe;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 32px 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .shell {
+            max-width: 840px;
+            margin: 0 auto;
+        }
+
+        .heading {
+            margin: 0 0 18px;
+        }
+
+        .heading h1 {
+            margin: 0;
+            font-size: 2rem;
+            line-height: 1.1;
+        }
+
+        .heading p {
+            margin: 10px 0 0;
+            color: var(--muted);
+        }
+
+        .editor-frame {
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel);
+            box-shadow: 0 18px 42px rgba(31, 41, 51, 0.08);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 18px 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="shell">
+        <div class="heading">
+            <h1>Ravan Bundled Demo</h1>
+            <p>This page loads the minified <code>dist/ravan.min.js</code> bundle.</p>
+        </div>
+
+        <div class="editor-frame">
+            <div id="editor-wrapper">
+                <p>This editor is mounted from the bundled Ravan build.</p>
+                <p>Its toolbar is created automatically from the wrapper contents.</p>
+                <p>Try formatting this text, adding a link, or inserting a table.</p>
+            </div>
+
+            <div class="status">
+                <div>Block: <strong id="blockState">none</strong></div>
+                <div>List: <strong id="listState">none</strong></div>
+                <div>Link: <strong id="linkState">none</strong></div>
+                <div>Table: <strong id="tableState">none</strong></div>
+                <div>Active: <strong id="activeState">none</strong></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../dist/ravan.min.js"></script>
+    <script>
+        Ravan.mount('#editor-wrapper', {
+            toolbarConfig: {
+                iconSpritePath: '../src/ui/toolbar-icons.svg',
+                fileBrowser: {
+                    endpoint: '/files',
+                    path: '/',
+                    supportedExtensions: '.jpg,.png,.svg'
+                }
+            },
+            statusElements: {
+                active: document.getElementById('activeState'),
+                block: document.getElementById('blockState'),
+                link: document.getElementById('linkState'),
+                list: document.getElementById('listState'),
+                table: document.getElementById('tableState')
+            }
+        });
+    </script>
+</body>
+
+</html>
