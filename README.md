@@ -73,6 +73,15 @@ Include `src/ui/editor-content.css` and add `wysiwyg-editor-content` to the edit
 <div class="wysiwyg-editor-content" contenteditable="true"></div>
 ```
 
+## Toolbar CSS
+
+Include `src/ui/toolbar.css` when using the generated toolbar and its status area:
+
+```html
+<link rel="stylesheet" href="src/ui/toolbar.css">
+<div class="toolbar"></div>
+```
+
 ## Demo
 
 Run the dependency-free demo server from the repo root:

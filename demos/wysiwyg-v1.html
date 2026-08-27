@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WYSIWYG Core Baseline</title>
     <link rel="stylesheet" href="../src/ui/editor-content.css">
+    <link rel="stylesheet" href="../src/ui/toolbar.css">
     <style>
         :root {
             color-scheme: light;
@@ -17,7 +18,6 @@
             --muted: #637083;
             --accent: #2563eb;
             --accent-soft: #dbeafe;
-            --toolbar: #eef2f7;
         }
 
         * {
@@ -63,163 +63,9 @@
             box-shadow: 0 18px 42px rgba(31, 41, 51, 0.08);
         }
 
-        .toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0;
-            align-items: stretch;
-            padding: 6px;
-            border-bottom: 1px solid var(--line);
-            background: var(--toolbar);
-        }
-
-        .toolbar-group {
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-            min-height: 34px;
-            padding: 0 7px;
-            border-inline-end: 1px solid var(--line-strong);
-        }
-
-        .toolbar-group:last-child {
-            border-inline-end: 0;
-        }
-
-        .toolbar-button {
-            min-width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            padding: 0 7px;
-            background: transparent;
-            color: var(--text);
-            font: 600 0.82rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
-            cursor: pointer;
-            transition: background-color 120ms ease, border-color 120ms ease;
-        }
-
-        .toolbar-button:hover,
-        .toolbar-control select:hover,
-        .toolbar-color input:hover {
-            border-color: var(--line-strong);
-            background: #fff;
-        }
-
-        .toolbar-button.is-active {
-            border-color: #93b4f8;
-            background: var(--accent-soft);
-            color: #174ea6;
-        }
-
-        .toolbar-button-icon,
-        .toolbar-control-icon svg {
-            width: 20px;
-            height: 20px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.9;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            overflow: visible;
-        }
-
-        .toolbar-button:disabled,
-        .toolbar-control select:disabled,
-        .toolbar-color input:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .toolbar-control {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            margin: 0 2px;
-        }
-
-        .toolbar-control-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 20px;
-            color: var(--muted);
-        }
-
-        .toolbar-control-label {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-            clip: rect(0 0 0 0);
-            white-space: nowrap;
-        }
-
-        .toolbar-control select {
-            height: 30px;
-            border: 1px solid var(--line);
-            border-radius: 4px;
-            background: #fff;
-            color: var(--text);
-            font: 500 0.82rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
-            padding: 0 24px 0 8px;
-        }
-
-        .toolbar-color input {
-            width: 30px;
-            height: 30px;
-            border: 1px solid var(--line);
-            border-radius: 4px;
-            padding: 3px;
-            background: #fff;
-            cursor: pointer;
-        }
-
-        .toolbar-color input::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-
-        .toolbar-color input::-webkit-color-swatch {
-            border: 0;
-            border-radius: 2px;
-        }
-
-        .toolbar-color input::-moz-color-swatch {
-            border: 0;
-            border-radius: 2px;
-        }
-
-        .editor {
-            min-height: 260px;
-            padding: 22px;
-            outline: none;
-            font-size: 1.05rem;
-            line-height: 1.7;
-        }
-
-        .status {
-            display: flex;
-            gap: 18px;
-            padding: 14px 22px 20px;
-            color: var(--muted);
-            font-size: 0.92rem;
-        }
-
-        .status strong {
-            color: var(--text);
-        }
-
         @media (max-width: 640px) {
             body {
                 padding: 18px 14px;
-            }
-
-            .status {
-                flex-direction: column;
-                gap: 6px;
             }
         }
     </style>
@@ -236,7 +82,7 @@
         <div class="editor-frame">
             <div id="toolbar" class="toolbar"></div>
 
-            <div id="editor" class="editor wysiwyg-editor-content" contenteditable="true">
+            <div id="editor" class="wysiwyg-editor-content" contenteditable="true">
                 <p>This is some <strong>bold</strong> and <em>italic</em> text.</p>
                 <p>Select part of this paragraph to create a <a href="https://example.com">link</a>, convert it into a heading, or turn it into a list.</p>
                 <p><table><thead><tr><th><br></th><th><br></th><th><br></th></tr></thead><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p><br></p>
