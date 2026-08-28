@@ -60,6 +60,7 @@
         var toolbarElement = config.toolbarElement || findAdjacentToolbar(editorElement) || createToolbarElement(editorElement);
         var editor = createEditorCore(editorElement, config.editorOptions);
         var savedRange = null;
+        var imageToolsPopup = null;
         var tableToolsPopup = null;
         var resizeOverlay = null;
         var tableSelectionOverlay = null;
@@ -387,12 +388,12 @@
             });
         }
 
-        function createIcon(iconId) {
+        function createIcon(iconId, className) {
             var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
             var href = (toolbarSettings.iconSpritePath || '') + '#' + (toolbarSettings.iconPrefix || 'wysiwyg-icon-') + iconId;
 
-            svg.classList.add('wysiwyg-table-tool-icon');
+            svg.classList.add(className || 'wysiwyg-table-tool-icon');
             svg.setAttribute('aria-hidden', 'true');
             svg.setAttribute('focusable', 'false');
             use.setAttribute('href', href);
@@ -410,6 +411,28 @@
 
         function getSelectedImage() {
             return html.getSelectedElement(window.getSelection(), 'img');
+        }
+
+        function getImageLayout(image) {
+            if (image.style.float === 'left') {
+                return 'float-left';
+            }
+
+            if (image.style.float === 'right') {
+                return 'float-right';
+            }
+
+            return image.style.display === 'block' ? 'block' : 'inline';
+        }
+
+        function getImageToolTarget() {
+            var image = getSelectedImage();
+
+            if (image && editorElement.contains(image)) {
+                return image;
+            }
+
+            return activeResizeTarget && activeResizeTarget.tagName === 'IMG' && editorElement.contains(activeResizeTarget) ? activeResizeTarget : null;
         }
 
         function isTableResizeTarget(target) {
@@ -771,6 +794,106 @@
             }
         }
 
+        function closeImageTools() {
+            if (imageToolsPopup) {
+                imageToolsPopup.remove();
+                imageToolsPopup = null;
+                html.off(document, 'keydown', closeImageToolsOnEscape);
+            }
+        }
+
+        function closeImageToolsOnEscape(event) {
+            if (event.key === 'Escape') {
+                closeImageTools();
+            }
+        }
+
+        function syncImageToolControls(image) {
+            var fullSize = imageToolsPopup.querySelector('[data-action="fullSize"]');
+            var objectFit = imageToolsPopup.querySelector('[data-style="objectFit"]');
+            var layout = imageToolsPopup.querySelector('[data-style="layout"]');
+
+            fullSize.setAttribute('aria-pressed', image.style.width === '100%' ? 'true' : 'false');
+            objectFit.value = image.style.objectFit || '';
+            layout.value = getImageLayout(image);
+        }
+
+        function openImageTools(image) {
+            if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-popup')) {
+                return false;
+            }
+
+            if (!imageToolsPopup) {
+                imageToolsPopup = document.createElement('wysiwyg-popup');
+                imageToolsPopup.preferredPosition = 'bottom-start';
+                imageToolsPopup.setAttribute('data-mode', 'image');
+                imageToolsPopup.innerHTML = [
+                    '<style>',
+                    '.wysiwyg-image-tools{display:grid;gap:8px;min-width:190px}',
+                    '.wysiwyg-image-tool{display:flex;align-items:center;gap:7px;width:100%;height:30px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;padding:0 8px;cursor:pointer;font:500 12px/1.2 system-ui,sans-serif}',
+                    '.wysiwyg-image-tool:hover,.wysiwyg-image-tool[aria-pressed="true"]{border-color:#2563eb;background:#dbeafe}',
+                    '.wysiwyg-image-tool-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}',
+                    '.wysiwyg-image-tools label{display:grid;gap:3px;color:#475569;font:500 12px/1.2 system-ui,sans-serif}',
+                    '.wysiwyg-image-tools select{width:100%;height:30px;padding:0 24px 0 8px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;font:inherit}',
+                    '</style>',
+                    '<div class="wysiwyg-image-tools">',
+                    '<button type="button" class="wysiwyg-image-tool" data-action="fullSize" title="Full-size image" aria-label="Full-size image" aria-pressed="false"></button>',
+                    '<label><span>Object fit</span><select data-style="objectFit" aria-label="Object fit"><option value="">Default</option><option value="fill">Fill</option><option value="contain">Contain</option><option value="cover">Cover</option><option value="none">None</option><option value="scale-down">Scale down</option></select></label>',
+                    '<label><span>Layout</span><select data-style="layout" aria-label="Image layout"><option value="inline">Inline</option><option value="block">Block</option><option value="float-left">Float left</option><option value="float-right">Float right</option></select></label>',
+                    '</div>'
+                ].join('');
+                imageToolsPopup.querySelector('[data-action="fullSize"]').appendChild(createIcon('image-full-size', 'wysiwyg-image-tool-icon'));
+                imageToolsPopup.querySelector('[data-action="fullSize"]').appendChild(document.createTextNode('Full-size'));
+                document.body.appendChild(imageToolsPopup);
+                html.on(imageToolsPopup, 'click', function (event) {
+                    var button = event.target.closest && event.target.closest('[data-action="fullSize"]');
+
+                    if (!button) {
+                        return;
+                    }
+
+                    restoreSelection();
+                    editor.toggleImageFullSize();
+                    saveSelection();
+                    sync();
+                });
+                html.on(imageToolsPopup, 'change', function (event) {
+                    var control = event.target.closest && event.target.closest('[data-style]');
+
+                    if (!control) {
+                        return;
+                    }
+
+                    restoreSelection();
+
+                    if (control.getAttribute('data-style') === 'objectFit') {
+                        editor.setImageStyle('objectFit', control.value);
+                    } else {
+                        editor.setImageLayout(control.value);
+                    }
+
+                    saveSelection();
+                    sync();
+                });
+                html.on(document, 'keydown', closeImageToolsOnEscape);
+            }
+
+            syncImageToolControls(image);
+            imageToolsPopup.showFor(image);
+            return true;
+        }
+
+        function syncImageTools(state) {
+            var image = state.image ? getImageToolTarget() : null;
+
+            if (!image || !editorElement.contains(image)) {
+                closeImageTools();
+                return;
+            }
+
+            openImageTools(image);
+        }
+
         function createContext(entry, event, value) {
             var state = editor.getActiveFormats();
 
@@ -845,6 +968,7 @@
                 settings: toolbarSettings
             });
             syncTableTools(state);
+            syncImageTools(state);
             syncResizeOverlay(state);
             syncTableSelectionOverlay(state);
         }

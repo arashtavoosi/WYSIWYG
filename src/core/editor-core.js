@@ -331,6 +331,27 @@
                 });
             },
 
+            setImageLayout: function (layout, selection) {
+                return performMutation(function () {
+                    embedContent.setImageLayout(layout, selection, { root: rootNode });
+                    return api;
+                });
+            },
+
+            setImageStyle: function (propertyName, value, selection) {
+                return performMutation(function () {
+                    embedContent.setImageStyle(propertyName, value, selection, { root: rootNode });
+                    return api;
+                });
+            },
+
+            toggleImageFullSize: function (selection) {
+                return performMutation(function () {
+                    embedContent.toggleImageFullSize(selection, { root: rootNode });
+                    return api;
+                });
+            },
+
             insertRule: function (selection) {
                 return performMutation(function () {
                     blockStructure.insertRule(selection, { root: rootNode });

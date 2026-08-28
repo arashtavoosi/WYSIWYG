@@ -27,7 +27,7 @@ Main methods:
 - inline: `toggleInline`, `setInlineStyle`, `clear`
 - blocks: `setBlock`, `toggleBlock`, `toggleList`, `insertBreak`, `insertRule`
 - links: `upsertLink`, `removeLink`
-- images: `insertImage`, `updateImage`, `removeImage`
+- images: `insertImage`, `updateImage`, `removeImage`, `toggleImageFullSize`, `setImageStyle`, `setImageLayout`
 - tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `toggleTableFullSize`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
 

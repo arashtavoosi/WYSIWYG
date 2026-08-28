@@ -65,6 +65,72 @@
         return image;
     }
 
+    function getSelectedImage(selection, rootNode) {
+        var image = html.getSelectedElement(html.getCurrentSelection(selection), 'img');
+
+        return image && (!rootNode || rootNode.contains(image)) ? image : null;
+    }
+
+    function cleanImageStyle(image) {
+        if (!image.getAttribute('style')) {
+            image.removeAttribute('style');
+        }
+    }
+
+    function setImageStyle(propertyName, value, selection, options) {
+        var image = getSelectedImage(selection, options && options.root);
+        var cssProperty;
+
+        if (!image || !propertyName) {
+            return false;
+        }
+
+        cssProperty = propertyName.replace(/[A-Z]/g, function (letter) {
+            return '-' + letter.toLowerCase();
+        });
+
+        if (value === undefined || value === null || value === '') {
+            image.style.removeProperty(cssProperty);
+        } else {
+            image.style.setProperty(cssProperty, value);
+        }
+
+        cleanImageStyle(image);
+        return image;
+    }
+
+    function toggleImageFullSize(selection, options) {
+        var image = getSelectedImage(selection, options && options.root);
+
+        if (!image) {
+            return false;
+        }
+
+        image.style.width = image.style.width === '100%' ? '' : '100%';
+        cleanImageStyle(image);
+        return image;
+    }
+
+    function setImageLayout(layout, selection, options) {
+        var image = getSelectedImage(selection, options && options.root);
+
+        if (!image || ['inline', 'block', 'float-left', 'float-right'].indexOf(layout) === -1) {
+            return false;
+        }
+
+        image.style.removeProperty('display');
+        image.style.removeProperty('float');
+
+        if (layout === 'block') {
+            image.style.display = 'block';
+        } else if (layout === 'float-left' || layout === 'float-right') {
+            image.style.float = layout === 'float-left' ? 'left' : 'right';
+        }
+
+        cleanImageStyle(image);
+        return image;
+    }
+
     function removeImage(selection) {
         var currentSelection = html.getCurrentSelection(selection);
         var image = html.getSelectedElement(currentSelection, 'img');
@@ -478,8 +544,11 @@
         removeTable: removeTable,
         removeTableColumn: removeTableColumn,
         removeTableRow: removeTableRow,
+        setImageLayout: setImageLayout,
+        setImageStyle: setImageStyle,
         toggleTableFullSize: toggleTableFullSize,
         toggleTableHeaderRow: toggleTableHeaderRow,
+        toggleImageFullSize: toggleImageFullSize,
         unmergeTableCell: unmergeTableCell,
         updateImage: updateImage
     };

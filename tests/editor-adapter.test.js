@@ -642,6 +642,49 @@ describe('editor adapter', () => {
         expect(image.getAttribute('width')).toBe('120');
     });
 
+    test('image tools popup updates full-size, object-fit, and layout styles', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p><img src="image.png" style="object-fit: contain"></p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const image = editorElement.querySelector('img');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const popup = document.querySelector('wysiwyg-popup[data-mode="image"]');
+        const fullSize = popup.querySelector('[data-action="fullSize"]');
+        const objectFit = popup.querySelector('[data-style="objectFit"]');
+        const layout = popup.querySelector('[data-style="layout"]');
+
+        expect(Array.from(objectFit.options).map(function (option) { return option.value; })).toEqual(['', 'fill', 'contain', 'cover', 'none', 'scale-down']);
+        expect(Array.from(layout.options).map(function (option) { return option.value; })).toEqual(['inline', 'block', 'float-left', 'float-right']);
+        expect(objectFit.value).toBe('contain');
+        expect(layout.value).toBe('inline');
+        expect(fullSize.getAttribute('aria-pressed')).toBe('false');
+
+        fullSize.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(image.style.width).toBe('100%');
+        expect(fullSize.getAttribute('aria-pressed')).toBe('true');
+
+        objectFit.value = 'cover';
+        objectFit.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(image.style.objectFit).toBe('cover');
+
+        layout.value = 'float-right';
+        layout.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(image.style.display).toBe('');
+        expect(image.style.float).toBe('right');
+        expect(layout.value).toBe('float-right');
+    });
+
     test('image command falls back to the file browser root for an invalid image path', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
@@ -1046,7 +1089,7 @@ describe('editor adapter', () => {
         editorElement.focus();
         image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
-        expect(document.querySelector('wysiwyg-popup')).toBeNull();
+        expect(document.querySelector('wysiwyg-popup[data-mode="image"]')).not.toBeNull();
         expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(image);
         expect(document.querySelector('wysiwyg-table-selection')).toBeNull();
     });
@@ -1095,7 +1138,7 @@ describe('editor adapter', () => {
 
         expect(image.parentNode).toBe(destination);
         expect(document.querySelector('button[title="Image"]').getAttribute('aria-pressed')).toBe('true');
-        expect(document.querySelector('wysiwyg-popup')).toBeNull();
+        expect(document.querySelector('wysiwyg-popup[data-mode="image"]')).not.toBeNull();
         expect(overlay.open).toBe(true);
         expect(overlay.target).toBe(image);
         expect(editorElement.querySelectorAll('tr')).toHaveLength(1);

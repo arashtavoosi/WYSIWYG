@@ -125,6 +125,43 @@ describe('embed content', () => {
         expect(table.style.borderSpacing).toBe('2px');
     });
 
+    test('updates selected image presentation styles', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p><img src="image.png" style="height: 80px; object-fit: contain; float: right"></p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const image = editorElement.querySelector('img');
+        const selection = selectNode(image);
+
+        editor.toggleImageFullSize(selection);
+
+        expect(image.style.width).toBe('100%');
+        expect(image.style.height).toBe('80px');
+        expect(image.style.objectFit).toBe('contain');
+
+        editor.setImageStyle('objectFit', 'cover', selection);
+        expect(image.style.objectFit).toBe('cover');
+
+        editor.setImageLayout('block', selection);
+        expect(image.style.display).toBe('block');
+        expect(image.style.float).toBe('');
+
+        editor.setImageLayout('float-left', selection);
+        expect(image.style.display).toBe('');
+        expect(image.style.float).toBe('left');
+
+        editor.setImageLayout('inline', selection);
+        expect(image.style.display).toBe('');
+        expect(image.style.float).toBe('');
+
+        editor.setImageStyle('objectFit', '', selection);
+        editor.toggleImageFullSize(selection);
+
+        expect(image.style.objectFit).toBe('');
+        expect(image.style.width).toBe('');
+        expect(image.style.height).toBe('80px');
+    });
+
     test('column insertion keeps selection in the original row', () => {
         document.body.innerHTML = [
             '<div id="editor" contenteditable="true"><table>',
