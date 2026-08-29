@@ -669,10 +669,12 @@ describe('editor adapter', () => {
         expect(objectFit.value).toBe('contain');
         expect(layout.value).toBe('inline');
         expect(fullSize.getAttribute('aria-pressed')).toBe('false');
+        expect(fullSize.querySelector('[data-selected-icon]')).toBeNull();
 
         fullSize.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         expect(image.style.width).toBe('100%');
         expect(fullSize.getAttribute('aria-pressed')).toBe('true');
+        expect(fullSize.querySelector('[data-selected-icon] use').getAttribute('href')).toBe('#wysiwyg-icon-check');
 
         objectFit.value = 'cover';
         objectFit.dispatchEvent(new Event('change', { bubbles: true }));
@@ -683,6 +685,10 @@ describe('editor adapter', () => {
         expect(image.style.display).toBe('');
         expect(image.style.float).toBe('right');
         expect(layout.value).toBe('float-right');
+
+        fullSize.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(fullSize.getAttribute('aria-pressed')).toBe('false');
+        expect(fullSize.querySelector('[data-selected-icon]')).toBeNull();
     });
 
     test('image command falls back to the file browser root for an invalid image path', async () => {

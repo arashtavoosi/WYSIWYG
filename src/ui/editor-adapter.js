@@ -812,8 +812,20 @@
             var fullSize = imageToolsPopup.querySelector('[data-action="fullSize"]');
             var objectFit = imageToolsPopup.querySelector('[data-style="objectFit"]');
             var layout = imageToolsPopup.querySelector('[data-style="layout"]');
+            var selectedIcon = fullSize.querySelector('[data-selected-icon]');
+            var selected = image.style.width === '100%';
 
-            fullSize.setAttribute('aria-pressed', image.style.width === '100%' ? 'true' : 'false');
+            fullSize.setAttribute('aria-pressed', selected ? 'true' : 'false');
+
+            if (selected && !selectedIcon) {
+                selectedIcon = createIcon('check', 'wysiwyg-image-tool-icon');
+                selectedIcon.classList.add('wysiwyg-image-tool-check');
+                selectedIcon.setAttribute('data-selected-icon', '');
+                fullSize.appendChild(selectedIcon);
+            } else if (!selected && selectedIcon) {
+                selectedIcon.remove();
+            }
+
             objectFit.value = image.style.objectFit || '';
             layout.value = getImageLayout(image);
         }
@@ -833,6 +845,7 @@
                     '.wysiwyg-image-tool{display:flex;align-items:center;gap:7px;width:100%;height:30px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;padding:0 8px;cursor:pointer;font:500 12px/1.2 system-ui,sans-serif}',
                     '.wysiwyg-image-tool:hover,.wysiwyg-image-tool[aria-pressed="true"]{border-color:#2563eb;background:#dbeafe}',
                     '.wysiwyg-image-tool-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}',
+                    '.wysiwyg-image-tool-check{margin-left:auto}',
                     '.wysiwyg-image-tools label{display:grid;gap:3px;color:#475569;font:500 12px/1.2 system-ui,sans-serif}',
                     '.wysiwyg-image-tools select{width:100%;height:30px;padding:0 24px 0 8px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;font:inherit}',
                     '</style>',

@@ -125,6 +125,10 @@
     <path d="M5 15L8 12L10 14L12 11L19 18M8 10H8.01M3 3V7M3 3H7M21 3H17M21 3V7M3 21V17M3 21H7M21 21H17M21 21V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
   </symbol>
 
+  <symbol id="wysiwyg-icon-check" viewBox="0 0 24 24" fill="none">
+    <path d="M5 12L10 17L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+  </symbol>
+
   <symbol id="wysiwyg-icon-clear-formatting" viewBox="0 0 24 24" fill="none">
     <path d="M20.9999 21H7.99994C7.73624 21.0006 7.47502 20.9491 7.23132 20.8483C6.98762 20.7476 6.76624 20.5996 6.57994 20.413L2.58594 16.414C2.211 16.039 2.00037 15.5303 2.00037 15C2.00037 14.4697 2.211 13.9611 2.58594 13.586L12.5859 3.58601C12.7717 3.40021 12.9922 3.25282 13.2349 3.15226C13.4776 3.0517 13.7377 2.99994 14.0004 2.99994C14.2632 2.99994 14.5233 3.0517 14.766 3.15226C15.0087 3.25282 15.2292 3.40021 15.4149 3.58601L21.4139 9.58601C21.7889 9.96107 21.9995 10.4697 21.9995 11C21.9995 11.5303 21.7889 12.039 21.4139 12.414L12.8339 21M5.08194 11.09L13.9099 19.918" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
   </symbol>
