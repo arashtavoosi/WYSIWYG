@@ -82,12 +82,8 @@
                 <p>Try formatting this text, adding a link, or inserting a table.</p>
             </div>
 
-            <div class="status">
-                <div>Block: <strong id="blockState">none</strong></div>
-                <div>List: <strong id="listState">none</strong></div>
-                <div>Link: <strong id="linkState">none</strong></div>
-                <div>Table: <strong id="tableState">none</strong></div>
-                <div>Active: <strong id="activeState">none</strong></div>
+            <div class="status" aria-label="Current formatting context">
+                <div id="statusBreadcrumb" class="status-breadcrumb" aria-live="polite">Editor</div>
             </div>
         </div>
     </main>
@@ -97,19 +93,19 @@
         Ravan.mount('#editor-wrapper', {
             toolbarConfig: {
                 iconSpritePath: '../src/ui/toolbar-icons.svg',
+                codeView: {
+                    mode: 'after',
+                    editable: true,
+                    live: true
+                },
+                findReplace: true,
                 fileBrowser: {
                     endpoint: '/files',
                     path: '/',
                     supportedExtensions: '.jpg,.png,.svg'
                 }
             },
-            statusElements: {
-                active: document.getElementById('activeState'),
-                block: document.getElementById('blockState'),
-                link: document.getElementById('linkState'),
-                list: document.getElementById('listState'),
-                table: document.getElementById('tableState')
-            }
+            statusElement: document.getElementById('statusBreadcrumb')
         });
     </script>
 </body>

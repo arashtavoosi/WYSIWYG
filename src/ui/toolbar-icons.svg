@@ -233,4 +233,12 @@
   <symbol id="wysiwyg-icon-rule" viewBox="0 0 24 24" fill="none">
     <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
   </symbol>
+  <symbol id="wysiwyg-icon-code" viewBox="0 0 24 24" fill="none">
+    <path d="M8 7L3 12L8 17M16 7L21 12L16 17M14 3L10 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+  </symbol>
+  <symbol id="wysiwyg-icon-find-replace" viewBox="0 0 24 24" fill="none">
+    <circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="2"></circle>
+    <path d="M14.5 14.5L20 20M4 19H14M11 16L14 19L11 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+  </symbol>
+  
 </svg>

@@ -54,6 +54,12 @@
             path: '/',
             supportedExtensions: '.jpg,.jpeg,.png,.gif,.webp,.svg'
         },
+        codeView: {
+            mode: 'after',
+            editable: false,
+            live: false
+        },
+        findReplace: false,
         prompts: {
             image: { label: 'Image URL', fallback: 'https://' },
             link: { label: 'Link URL', fallback: 'https://', targetLabel: 'Link target', targetFallback: '' },
@@ -481,6 +487,36 @@
                         priority: 10,
                         onCommand: function (context) {
                             (context.clearFormatting || context.editor.clear)();
+                        }
+                    }
+                }
+            },
+            tools: {
+                title: 'Tools',
+                priority: 95,
+                children: {
+                    findReplace: {
+                        title: 'Find and Replace',
+                        iconId: 'find-replace', icon: 'Find',
+                        priority: 10,
+                        hide: function (context) { return !context.settings.findReplace; },
+                        onCommand: function (context) {
+                            context.showFindReplaceModal();
+                        }
+                    }
+                }
+            },
+            code: {
+                title: 'Code',
+                priority: 100,
+                children: {
+                    html: {
+                        title: 'HTML',
+                        iconId: 'code', icon: '<>',
+                        priority: 10,
+                        active: function (state) { return !!state.codeView; },
+                        onCommand: function (context) {
+                            context.toggleCodeView();
                         }
                     }
                 }

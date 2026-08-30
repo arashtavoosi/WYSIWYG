@@ -488,6 +488,163 @@ describe('editor adapter', () => {
         expect(editorElement.innerHTML).toBe('<p>Typed</p>');
     });
 
+    test('shows highlighted HTML after the editor and marks the toolbar button active', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p class="note">Text</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const adapter = createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+        const button = document.querySelector('button[title="HTML"]');
+
+        expect(button).not.toBeNull();
+        expect(document.querySelector('[data-code-view]')).toBeNull();
+
+        button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const source = document.querySelector('[data-code-view]');
+
+        expect(source.hidden).toBe(false);
+        expect(source.getAttribute('data-mode')).toBe('after');
+        expect(source.getValue()).toBe(adapter.editor.getHtml());
+        expect(source.querySelector('.wysiwyg-code-tag')).not.toBeNull();
+        expect(source.querySelector('textarea').hidden).toBe(true);
+        expect(button.getAttribute('aria-pressed')).toBe('true');
+
+        editorElement.innerHTML = '<p>Updated</p>';
+        editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(source.getValue()).toBe('<p>Updated</p>');
+
+        button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(source.hidden).toBe(true);
+        expect(button.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('supports editable live HTML and code-only mode', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Before</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                codeView: {
+                    mode: 'only',
+                    editable: true,
+                    live: true
+                }
+            }
+        });
+
+        const button = document.querySelector('button[title="HTML"]');
+
+        button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const source = document.querySelector('[data-code-view]');
+        const input = source.querySelector('textarea');
+
+        expect(editorElement.hidden).toBe(true);
+        expect(source.hidden).toBe(false);
+        expect(input.hidden).toBe(false);
+
+        input.value = '<p>Live</p>';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(editorElement.innerHTML).toBe('<p>Live</p>');
+
+        input.value = '<div><p>Live</p></div>';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        source.querySelector('.wysiwyg-code-view-beautify').click();
+
+        expect(input.value).toBe('<div>\n  <p>Live</p>\n</div>');
+        expect(editorElement.innerHTML).toBe('<div>\n  <p>Live</p>\n</div>');
+
+        source.querySelector('.wysiwyg-code-view-minify').click();
+
+        expect(input.value).toBe('<div><p>Live</p></div>');
+        expect(editorElement.innerHTML).toBe('<div><p>Live</p></div>');
+
+        input.value = '<p';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(input.value).toBe('<p');
+    });
+
+    test('refreshes live source after beautifying and editing the visual content', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><div><p>Before</p></div></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                codeView: {
+                    mode: 'after',
+                    editable: true,
+                    live: true
+                }
+            }
+        });
+
+        document.querySelector('button[title="HTML"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const source = document.querySelector('[data-code-view]');
+
+        source.querySelector('button').click();
+        expect(source.getValue()).toBe('<div>\n  <p>Before</p>\n</div>');
+
+        editorElement.focus();
+        editorElement.innerHTML = '<div><p>After</p></div>';
+        editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(source.getValue()).toBe('<div><p>After</p></div>');
+    });
+
+    test('defers editable non-live HTML until the source view closes', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Before</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                codeView: {
+                    editable: true,
+                    live: false
+                }
+            }
+        });
+
+        const button = document.querySelector('button[title="HTML"]');
+
+        button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const input = document.querySelector('[data-code-view] textarea');
+
+        input.value = '<p>After</p>';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(editorElement.innerHTML).toBe('<p>Before</p>');
+
+        button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.innerHTML).toBe('<p>After</p>');
+    });
+
     test('link command uses the modal prompt and restores the editor selection', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',

@@ -7,7 +7,7 @@ Small-footprint browser editor with a UI-agnostic core.
 - `src/core/editor-core.js`: public core API.
 - `src/core/*`: shared HTML utilities, selection formatting, block structure, linking, embeds, state, and markup normalization.
 - `src/ravan.js`: branded full-editor facade.
-- `src/ui/*`: toolbar wiring, toolbar metadata, toolbar state rendering, and small UI web components.
+- `src/ui/*`: toolbar wiring, toolbar metadata, toolbar state rendering, the slim HTML code view, and small UI web components.
 - `build/entries/*`: release bundle entry points.
 - `scripts/build.mjs`: esbuild bundling and minification script.
 - `demos/wysiwyg-v1.html`: no-build demo shell.
@@ -115,6 +115,40 @@ Include `src/ui/toolbar.css` when using the generated toolbar and its status are
 <link rel="stylesheet" href="src/ui/toolbar.css">
 <div editor-toolbar></div>
 ```
+
+Pass one `statusElement` to render the current context as a compact breadcrumb, such as `Table › Row 2 › Cell 3 › Bold`. Links include their URL in parentheses before `Link`.
+
+## HTML Code View
+
+The default toolbar includes an HTML button. Configure its source view through `toolbarConfig.codeView`:
+
+```js
+Ravan.mount(editorWrapperElement, {
+  toolbarConfig: {
+    codeView: {
+      mode: 'after',  // 'after' or 'only'
+      editable: true,
+      live: true
+    }
+  }
+});
+```
+
+`after` keeps the editor visible and places the highlighted source below it. `only` hides the editor while the source is open. Read-only views use `editable: false`; editable, non-live views apply their changes when the source view closes. The source highlighter is a small built-in tokenizer for HTML tags, attributes, strings, comments, and entities.
+
+The source panel also includes explicit `Beautify` and `Minify` actions. They use small built-in formatting passes, keep inline markup readable, and do not reformat while the user is typing.
+
+## Find and Replace
+
+Enable the optional modal-based Find and Replace tool with:
+
+```js
+Ravan.mount(editorWrapperElement, {
+  toolbarConfig: { findReplace: true }
+});
+```
+
+It finds across formatted text and provides Find next, Replace, and Replace all actions. Searches are case-insensitive and wrap to the start of the editor.
 
 ## Demo
 

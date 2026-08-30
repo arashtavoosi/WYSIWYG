@@ -163,6 +163,13 @@
     color: var(--text);
 }
 
+.status-breadcrumb {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @media (max-width: 640px) {
     .status {
         flex-direction: column;

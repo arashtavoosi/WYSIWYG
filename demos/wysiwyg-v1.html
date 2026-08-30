@@ -86,12 +86,8 @@
                 <p><table><thead><tr><th><br></th><th><br></th><th><br></th></tr></thead><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p><br></p>
             </div>
 
-            <div class="status">
-                <div>Block: <strong id="blockState">none</strong></div>
-                <div>List: <strong id="listState">none</strong></div>
-                <div>Link: <strong id="linkState">none</strong></div>
-                <div>Table: <strong id="tableState">none</strong></div>
-                <div>Active: <strong id="activeState">none</strong></div>
+            <div class="status" aria-label="Current formatting context">
+                <div id="statusBreadcrumb" class="status-breadcrumb" aria-live="polite">Editor</div>
             </div>
         </div>
     </div>
@@ -105,6 +101,7 @@
     <script src="../src/core/embed-content.js"></script>
     <script src="../src/core/editor-core.js"></script>
     <script src="../src/ui/web-components.js"></script>
+    <script src="../src/ui/code-view.js"></script>
     <script src="../src/ui/toolbar-config.js"></script>
     <script src="../src/ui/toolbar-view.js"></script>
     <script src="../src/ui/editor-adapter.js"></script>
@@ -113,19 +110,19 @@
         Ravan.mount('#editor-wrapper', {
             toolbarConfig: {
                 iconSpritePath: '../src/ui/toolbar-icons.svg',
+                codeView: {
+                    mode: 'after',
+                    editable: true,
+                    live: true
+                },
+                findReplace: true,
                 fileBrowser: {
                     endpoint: '/files',
                     path: '/',
                     supportedExtensions: '.jpg,.png,.svg'
                 }
             },
-            statusElements: {
-                active: document.getElementById('activeState'),
-                block: document.getElementById('blockState'),
-                link: document.getElementById('linkState'),
-                list: document.getElementById('listState'),
-                table: document.getElementById('tableState')
-            }
+            statusElement: document.getElementById('statusBreadcrumb')
         });
     </script>
 </body>

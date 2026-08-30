@@ -4,17 +4,19 @@
             require('../core/editor-core'),
             require('./toolbar-view'),
             require('./toolbar-config'),
-            require('../core/html-utility')
+            require('../core/html-utility'),
+            require('./code-view')
         );
     } else {
         root.createEditorAdapter = factory(
             root.createEditorCore,
             root.createToolbarView,
             root.WysiwygToolbarConfig,
-            root.WysiwygHtmlUtility
+            root.WysiwygHtmlUtility,
+            root.WysiwygCodeView
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createToolbarView, toolbarConfig, html) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createToolbarView, toolbarConfig, html, codeView) {
     function createToolbarElement(editorElement) {
         var documentRef = editorElement && editorElement.ownerDocument;
         var toolbarElement;
@@ -68,12 +70,18 @@
         var expandingTableSelection = false;
         var movingResizeTarget = false;
         var activeResizeTarget = null;
+        var codeViewElement = null;
+        var codeViewOpen = false;
+        var codeViewDirty = false;
+        var editorWasHidden = false;
+        var findReplaceModal = null;
         var view;
 
         toolbarElement.setAttribute('editor-toolbar', '');
 
         toolbarSettings.prompts = Object.assign({}, toolbarConfig.prompts, configOverrides.prompts || {});
         toolbarSettings.fileBrowser = Object.assign({}, toolbarConfig.fileBrowser, configOverrides.fileBrowser || {});
+        toolbarSettings.codeView = Object.assign({}, toolbarConfig.codeView, configOverrides.htmlView || {}, configOverrides.codeView || {});
         toolbarSettings.toolbar = config.toolbar || toolbarSettings.toolbar;
 
         function selectionIsInEditor(selection) {
@@ -107,6 +115,125 @@
             selection = window.getSelection();
             selection.removeAllRanges();
             selection.addRange(savedRange);
+        }
+
+        function getCodeViewSettings() {
+            var settings = toolbarSettings.codeView || {};
+
+            return {
+                mode: settings.mode === 'only' ? 'only' : 'after',
+                editable: !!settings.editable,
+                live: !!settings.live
+            };
+        }
+
+        function isCodeViewOnly() {
+            return codeViewOpen && getCodeViewSettings().mode === 'only';
+        }
+
+        function ensureCodeView() {
+            if (codeViewElement || !codeView || !codeView.createCodeView) {
+                return codeViewElement;
+            }
+
+            codeViewElement = codeView.createCodeView(editorElement.ownerDocument || document);
+            codeViewElement.addEventListener('code-input', handleCodeViewInput);
+            editorElement.parentNode.insertBefore(codeViewElement, editorElement.nextSibling);
+            return codeViewElement;
+        }
+
+        function handleCodeViewInput() {
+            var settings = getCodeViewSettings();
+            var value = codeViewElement.getValue();
+
+            codeViewDirty = true;
+            savedRange = null;
+
+            if (settings.editable && settings.live) {
+                editor.setHtml(value);
+            }
+
+            sync();
+        }
+
+        function openCodeView() {
+            var settings = getCodeViewSettings();
+
+            if (!ensureCodeView()) {
+                return false;
+            }
+
+            saveSelection();
+            codeViewElement.setMode(settings.mode);
+            codeViewElement.setEditable(settings.editable);
+            codeViewElement.setValue(editor.getHtml());
+            codeViewElement.show();
+            codeViewDirty = false;
+            codeViewOpen = true;
+
+            if (settings.mode === 'only') {
+                editorWasHidden = editorElement.hidden;
+                editorElement.hidden = true;
+            }
+
+            return true;
+        }
+
+        function closeCodeView() {
+            var settings;
+
+            if (!codeViewOpen) {
+                return false;
+            }
+
+            settings = getCodeViewSettings();
+
+            if (settings.editable && !settings.live && codeViewDirty) {
+                editor.setHtml(codeViewElement.getValue());
+                savedRange = null;
+            }
+
+            codeViewOpen = false;
+            codeViewElement.hide();
+            editorElement.hidden = editorWasHidden;
+
+            if (!editorElement.hidden) {
+                if (savedRange) {
+                    restoreSelection();
+                } else {
+                    html.placeCaretInside(editorElement);
+                }
+            }
+
+            codeViewDirty = false;
+            return true;
+        }
+
+        function toggleCodeView() {
+            return codeViewOpen ? closeCodeView() : openCodeView();
+        }
+
+        function syncCodeView() {
+            var settings;
+            var value;
+
+            if (!codeViewOpen || !codeViewElement) {
+                return;
+            }
+
+            settings = getCodeViewSettings();
+            codeViewElement.setMode(settings.mode);
+            codeViewElement.setEditable(settings.editable);
+
+            if (!codeViewElement.isFocused() && (!codeViewDirty || settings.live)) {
+                value = editor.getHtml();
+
+                if (codeViewElement.getValue() !== value) {
+                    codeViewElement.setValue(value);
+                }
+
+                codeViewDirty = false;
+            }
         }
 
         function promptUser(label, fallback) {
@@ -190,6 +317,95 @@
                 input.focus();
                 input.select();
             });
+        }
+
+        function showFindReplaceModal() {
+            var modal;
+            var form;
+            var findInput;
+            var replaceInput;
+            var status;
+            var closing = false;
+
+            if (findReplaceModal) {
+                findReplaceModal.show();
+                findReplaceModal.querySelector('[data-field="find"]').focus();
+                return findReplaceModal;
+            }
+
+            if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal')) {
+                return null;
+            }
+
+            modal = document.createElement('wysiwyg-modal');
+            modal.showCloseButton = true;
+            modal.clickOutsideToClose = true;
+            modal.moveable = true;
+            modal.innerHTML = [
+                '<strong slot="header">Find and Replace</strong>',
+                '<form class="wysiwyg-link-form"><label><span>Find</span><input data-field="find" type="search"></label><label><span>Replace with</span><input data-field="replace" type="text"></label></form>',
+                '<span slot="footer"><span data-field="status" aria-live="polite"></span> <button type="button" data-action="replace-all">Replace all</button> <button type="button" data-action="replace">Replace</button> <button type="submit" form="wysiwyg-find-replace-form">Find next</button></span>'
+            ].join('');
+            document.body.appendChild(modal);
+            findReplaceModal = modal;
+            form = modal.querySelector('form');
+            form.id = 'wysiwyg-find-replace-form';
+            findInput = modal.querySelector('[data-field="find"]');
+            replaceInput = modal.querySelector('[data-field="replace"]');
+            status = modal.querySelector('[data-field="status"]');
+
+            function findNext() {
+                restoreSelection();
+                status.textContent = editor.findText(findInput.value) ? 'Match found' : 'No match';
+                saveSelection();
+                findInput.focus();
+            }
+
+            function replace(all) {
+                var count;
+
+                restoreSelection();
+
+                if (!all && !editor.replaceText(findInput.value, replaceInput.value)) {
+                    editor.findText(findInput.value);
+                }
+
+                count = editor.replaceText(findInput.value, replaceInput.value, { all: all });
+                status.textContent = count ? count + (count === 1 ? ' match replaced' : ' matches replaced') : 'No match';
+
+                if (!all && count) {
+                    editor.findText(findInput.value);
+                }
+
+                saveSelection();
+                sync();
+                findInput.focus();
+            }
+
+            html.on(form, 'submit', function (event) {
+                event.preventDefault();
+                findNext();
+            });
+            html.on(modal.querySelector('[data-action="replace"]'), 'click', function () {
+                replace(false);
+            });
+            html.on(modal.querySelector('[data-action="replace-all"]'), 'click', function () {
+                replace(true);
+            });
+            html.on(modal, 'close', function () {
+                if (closing) {
+                    return;
+                }
+
+                closing = true;
+                findReplaceModal = null;
+                modal.remove();
+                restoreSelection();
+            });
+
+            modal.show();
+            findInput.focus();
+            return modal;
         }
 
         function getDirectoryPath(value) {
@@ -910,6 +1126,8 @@
         function createContext(entry, event, value) {
             var state = editor.getActiveFormats();
 
+            state.codeView = codeViewOpen;
+
             return {
                 editor: editor,
                 state: state,
@@ -924,9 +1142,11 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showFindReplaceModal: showFindReplaceModal,
                 showImageBrowserModal: showImageBrowserModal,
                 showTablePicker: showTablePicker,
                 clearFormatting: clearFormatting,
+                toggleCodeView: toggleCodeView,
                 settings: toolbarSettings
             };
         }
@@ -967,6 +1187,7 @@
         function sync() {
             var state = editor.getActiveFormats();
 
+            state.codeView = codeViewOpen;
             syncTableSelectionState(state);
             view.sync(state, {
                 editor: editor,
@@ -976,14 +1197,29 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showFindReplaceModal: showFindReplaceModal,
                 showImageBrowserModal: showImageBrowserModal,
                 showTablePicker: showTablePicker,
+                toggleCodeView: toggleCodeView,
                 settings: toolbarSettings
             });
-            syncTableTools(state);
-            syncImageTools(state);
-            syncResizeOverlay(state);
-            syncTableSelectionOverlay(state);
+            syncCodeView();
+
+            if (isCodeViewOnly()) {
+                closeTableTools();
+                closeImageTools();
+                if (resizeOverlay) {
+                    resizeOverlay.hide();
+                }
+                if (tableSelectionOverlay) {
+                    tableSelectionOverlay.hide();
+                }
+            } else {
+                syncTableTools(state);
+                syncImageTools(state);
+                syncResizeOverlay(state);
+                syncTableSelectionOverlay(state);
+            }
         }
 
         function runCommand(entry, event, value, options) {
@@ -1017,7 +1253,7 @@
             sync();
         }
 
-        view = createToolbarView(toolbarElement, config.statusElements, {
+        view = createToolbarView(toolbarElement, config.statusElement, {
             toolbar: toolbarSettings.toolbar,
             context: {
                 editor: editor,
@@ -1027,8 +1263,10 @@
                 sync: sync,
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
+                showFindReplaceModal: showFindReplaceModal,
                 showImageBrowserModal: showImageBrowserModal,
                 showTablePicker: showTablePicker,
+                toggleCodeView: toggleCodeView,
                 settings: toolbarSettings
             }
         });
@@ -1186,7 +1424,8 @@
             editor: editor,
             sync: sync,
             editorElement: editorElement,
-            toolbarElement: toolbarElement
+            toolbarElement: toolbarElement,
+            toggleCodeView: toggleCodeView
         };
     }
 

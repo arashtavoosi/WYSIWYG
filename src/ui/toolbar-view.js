@@ -248,8 +248,24 @@
         }
     }
 
-    function updateStatus(status, state) {
+    function formatBlock(block) {
+        var labels = {
+            blockquote: 'Quote',
+            li: 'List item',
+            p: 'Paragraph'
+        };
+
+        return labels[block] || (/^h[1-6]$/.test(block) ? block.toUpperCase() : block);
+    }
+
+    function updateBreadcrumb(element, state) {
+        var path = [];
         var active = [];
+        var table;
+
+        if (!element) {
+            return;
+        }
 
         ['bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript'].forEach(function (name) {
             if (state[name]) {
@@ -257,29 +273,42 @@
             }
         });
 
-        if (status.block) {
-            status.block.textContent = state.block || 'none';
+        if (state.table) {
+            table = 'Table';
+            if (state.table.rowIndex !== null && state.table.rowIndex !== undefined) {
+                table += ' › Row ' + (state.table.rowIndex + 1);
+            }
+            if (state.table.cellIndex !== null && state.table.cellIndex !== undefined) {
+                table += ' › Cell ' + (state.table.cellIndex + 1);
+            }
+            path.push(table);
         }
 
-        if (status.list) {
-            status.list.textContent = state.list || 'none';
+        if (state.list) {
+            path.push(state.list === 'ol' ? 'Numbered list' : 'Bulleted list');
         }
 
-        if (status.link) {
-            status.link.textContent = state.link ? (state.link.href || 'set') : 'none';
+        if (state.block) {
+            path.push(formatBlock(state.block));
         }
 
-        if (status.table) {
-            status.table.textContent = state.table ? 'inside' : 'none';
+        if (state.image) {
+            path.push('Image');
         }
 
-        if (status.active) {
-            status.active.textContent = active.length ? active.join(', ') : 'none';
+        if (state.link) {
+            path.push('Link' +(state.link.href ? '(' + state.link.href + ') ' : ''));
         }
+
+        element.textContent = path.length ? path.join(' › ') : 'Editor';
+        if (active.length) {
+            element.textContent += (path.length ? ' · ' : '') + active.join(', ');
+        }
+
+        element.title = state.link && state.link.href ? state.link.href : '';
     }
 
-    function createToolbarView(toolbarElement, statusElements, options) {
-        var status = statusElements || {};
+    function createToolbarView(toolbarElement, statusElement, options) {
         var entries = {};
         var counter = 0;
         var toolbar = (options || {}).toolbar || {};
@@ -410,7 +439,7 @@
                     }
                 });
 
-                updateStatus(status, state);
+                updateBreadcrumb(statusElement, state);
             },
             getEntryForElement: function (element) {
                 var control = element && element.closest ? element.closest('[data-toolbar-id]') : null;

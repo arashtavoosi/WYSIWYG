@@ -188,6 +188,99 @@
             return api;
         }
 
+        function findText(query, options, selection) {
+            var currentSelection = html.getCurrentSelection(selection);
+            var bookmark = html.getSelectionBookmark(currentSelection, rootNode);
+            var source = rootNode.textContent || '';
+            var needle = String(query || '');
+            var matchCase = options && options.matchCase;
+            var start = bookmark ? bookmark.endOffset : 0;
+            var index;
+
+            if (!needle) {
+                return null;
+            }
+
+            if (!matchCase) {
+                source = source.toLowerCase();
+                needle = needle.toLowerCase();
+            }
+
+            index = source.indexOf(needle, start);
+
+            if (index < 0 && (!options || options.wrap !== false) && start > 0) {
+                index = source.indexOf(needle);
+            }
+
+            if (index < 0) {
+                return null;
+            }
+
+            bookmark = { startOffset: index, endOffset: index + needle.length };
+            html.restoreSelectionBookmark(bookmark, currentSelection, rootNode);
+            return bookmark;
+        }
+
+        function replaceText(query, replacement, options, selection) {
+            var currentSelection = html.getCurrentSelection(selection);
+            var matchCase = options && options.matchCase;
+            var replaceAll = options && options.all;
+            var needle = String(query || '');
+            var value = String(replacement || '');
+            var source;
+            var matches = [];
+            var index;
+
+            if (!needle) {
+                return 0;
+            }
+
+            if (!replaceAll) {
+                if (!currentSelection || !currentSelection.rangeCount || (matchCase ? currentSelection.toString() : currentSelection.toString().toLowerCase()) !== (matchCase ? needle : needle.toLowerCase())) {
+                    return 0;
+                }
+
+                matches.push(html.getSelectionBookmark(currentSelection, rootNode));
+            } else {
+                source = rootNode.textContent || '';
+
+                if (!matchCase) {
+                    source = source.toLowerCase();
+                    needle = needle.toLowerCase();
+                }
+
+                index = source.indexOf(needle);
+
+                while (index >= 0) {
+                    matches.push({ startOffset: index, endOffset: index + needle.length });
+                    index = source.indexOf(needle, index + needle.length);
+                }
+            }
+
+            if (!matches.length || !matches[0]) {
+                return 0;
+            }
+
+            return performMutation(function () {
+                matches.reverse().forEach(function (match) {
+                    var range;
+                    var textNode;
+
+                    html.restoreSelectionBookmark(match, currentSelection, rootNode);
+                    range = currentSelection.getRangeAt(0);
+                    range.deleteContents();
+                    textNode = document.createTextNode(value);
+                    range.insertNode(textNode);
+                    range.setStartAfter(textNode);
+                    range.collapse(true);
+                    currentSelection.removeAllRanges();
+                    currentSelection.addRange(range);
+                });
+
+                return matches.length;
+            });
+        }
+
         function getFormattingOptions() {
             return {
                 expandCollapsedToWord: true,
@@ -225,6 +318,8 @@
                 return rootNode.innerHTML;
             },
 
+            findText: findText,
+
             getActiveFormats: function (selection) {
                 var state = selectionState.getActiveFormats(selection, rootNode);
 
@@ -255,6 +350,8 @@
                     return normalize();
                 });
             },
+
+            replaceText: replaceText,
 
             undo: function () {
                 if (!api.canUndo()) {
