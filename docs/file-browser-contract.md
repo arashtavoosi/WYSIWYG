@@ -72,7 +72,7 @@ Optional fields:
 - Breadcrumb buttons call `load(path)`.
 - Directory entries call `load(path)`.
 - File entries dispatch `file-select` with `event.detail.file`.
-- The default editor adapter writes the selected file's `path` to the image's `data-file-path` attribute and its `url` to `src`. This allows the same Image command to reopen the current virtual folder and replace a selected image.
+- The default editor adapter writes the selected file's `path` to the selected media element's `data-file-path` attribute and its `url` to `src`. This allows the Image, Video, and Audio commands to reopen the current virtual folder and replace a selected object of the same type.
 - Without `endpoint`, navigation dispatches `navigate` with `event.detail.path`; the host app can fetch and call `setData(data)`.
 - `supported-extensions=".jpg,.png"` filters visible files client-side. Directories are always shown.
 - `view-mode="list"` and `view-mode="thumbnail"` control the display mode.

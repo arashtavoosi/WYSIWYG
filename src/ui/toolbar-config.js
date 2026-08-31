@@ -43,6 +43,91 @@
         };
     }
 
+    function modalCommand(open, apply) {
+        return function (context) {
+            var result = open(context);
+
+            function finish(value) {
+                if (value) {
+                    context.restoreSelection();
+                    apply(context, value);
+                    context.saveSelection();
+                }
+            }
+
+            if (result && typeof result.then === 'function') {
+                return result.then(finish);
+            }
+
+            finish(result);
+        };
+    }
+
+    function mediaActive(type) {
+        return function (state) {
+            return !!(state.media && state.media.type === type);
+        };
+    }
+
+    function mediaSource(value) {
+        var file = value && typeof value === 'object' ? value : null;
+
+        return {
+            src: file ? file.url || file.path || file.src : value,
+            filePath: file && file.path ? file.path : ''
+        };
+    }
+
+    function mediaCommand(type) {
+        return modalCommand(function (context) {
+            var selected = context.state.media && context.state.media.type === type ? context.state.media : null;
+            var prompt = context.settings.prompts[type] || {
+                label: type.charAt(0).toUpperCase() + type.slice(1) + ' URL',
+                fallback: 'https://'
+            };
+
+            return context.showMediaBrowserModal ? context.showMediaBrowserModal(type, selected) : context.prompt(prompt.label, selected ? selected.src : prompt.fallback);
+        }, function (context, value) {
+            var selected = context.state.media && context.state.media.type === type ? context.state.media : null;
+            var source = mediaSource(value);
+            var attributes = {
+                type: type,
+                src: source.src,
+                filePath: source.filePath
+            };
+
+            if (!source.src) {
+                return;
+            }
+
+            if (selected) {
+                if (type === 'image') {
+                    attributes.alt = selected.alt;
+                    attributes.height = selected.height;
+                    attributes.title = selected.title;
+                    attributes.width = selected.width;
+                } else {
+                    attributes.title = selected.title;
+                }
+                context.editor.updateMedia(attributes);
+            } else {
+                if (type === 'image') {
+                    attributes.alt = '';
+                }
+                context.editor.insertMedia(attributes);
+                if (context.selectMedia) {
+                    context.selectMedia(type);
+                }
+            }
+        });
+    }
+
+    var codeBlockCommand = modalCommand(function (context) {
+        return context.showCodeBlockModal();
+    }, function (context, value) {
+        context.editor.insertCodeBlock(value.code, value.language);
+    });
+
     return {
         headingLevel: 2,
         imageAttributes: ['src', 'alt', 'title', 'width', 'height', 'filePath'],
@@ -52,7 +137,11 @@
         fileBrowser: {
             endpoint: '',
             path: '/',
-            supportedExtensions: '.jpg,.jpeg,.png,.gif,.webp,.svg'
+            supportedExtensions: {
+                image: '.jpg,.jpeg,.png,.gif,.webp,.svg',
+                video: '.mp4,.webm,.ogv,.mov,.m4v',
+                audio: '.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac'
+            }
         },
         codeView: {
             mode: 'after',
@@ -364,51 +453,8 @@
                         title: 'Image',
                         iconId: 'image', icon: 'Img',
                         priority: 30,
-                        active: function (state) { return !!state.image; },
-                        onCommand: function (context) {
-                            var selectedImage = context.state.image;
-                            var result = context.showImageBrowserModal ? context.showImageBrowserModal(selectedImage) : promptValue(context, context.settings.prompts.image, selectedImage ? selectedImage.src : undefined);
-
-                            function apply(value) {
-                                var file = value && typeof value === 'object' ? value : null;
-                                var src = file ? file.url || file.path || file.src : value;
-                                var attributes;
-
-                                if (!src) {
-                                    return;
-                                }
-
-                                attributes = {
-                                    src: src,
-                                    filePath: file && file.path ? file.path : ''
-                                };
-
-                                if (selectedImage) {
-                                    attributes.alt = selectedImage.alt;
-                                    attributes.height = selectedImage.height;
-                                    attributes.title = selectedImage.title;
-                                    attributes.width = selectedImage.width;
-                                    context.editor.updateImage(attributes);
-                                } else {
-                                    attributes.alt = '';
-                                    context.editor.insertImage(attributes);
-                                }
-                            }
-
-                            if (result && typeof result.then === 'function') {
-                                return result.then(function (value) {
-                                    if (value) {
-                                        context.restoreSelection();
-                                        apply(value);
-                                        context.saveSelection();
-                                    }
-                                });
-                            }
-
-                            if (result) {
-                                apply(result);
-                            }
-                        }
+                        active: mediaActive('image'),
+                        onCommand: mediaCommand('image')
                     },
                     removeImage: {
                         title: 'Remove image',
@@ -418,6 +464,26 @@
                         onCommand: function (context) {
                             context.editor.removeImage();
                         }
+                    },
+                    video: {
+                        title: 'Video',
+                        iconId: 'video', icon: 'Video',
+                        priority: 55,
+                        active: mediaActive('video'),
+                        onCommand: mediaCommand('video')
+                    },
+                    audio: {
+                        title: 'Audio',
+                        iconId: 'audio', icon: 'Audio',
+                        priority: 57,
+                        active: mediaActive('audio'),
+                        onCommand: mediaCommand('audio')
+                    },
+                    codeBlock: {
+                        title: 'Code block',
+                        iconId: 'code-tag', icon: '</>',
+                        priority: 58,
+                        onCommand: codeBlockCommand
                     },
                     br: {
                         title: 'Line break',

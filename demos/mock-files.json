@@ -3,8 +3,15 @@
     "items": [
       { "type": "directory", "name": "Nature", "path": "/nature" },
       { "type": "directory", "name": "Illustrations", "path": "/illustrations" },
+      { "type": "directory", "name": "Media", "path": "/media" },
       { "type": "file", "name": "sunset.svg", "path": "/sunset.svg", "extension": ".svg", "url": "/demos/images/sunset.svg", "thumbnailUrl": "/demos/images/sunset.svg", "mime": "image/svg+xml", "size": 531 },
       { "type": "file", "name": "readme.txt", "path": "/readme.txt", "extension": ".txt", "url": "/demos/files/readme.txt", "mime": "text/plain", "size": 131 }
+    ]
+  },
+  "/media": {
+    "items": [
+      { "type": "file", "name": "sample.mp4", "path": "/media/sample.mp4", "extension": ".mp4", "url": "/demos/media/sample.mp4", "mime": "video/mp4", "size": 17641 },
+      { "type": "file", "name": "sample.mp3", "path": "/media/sample.mp3", "extension": ".mp3", "url": "/demos/media/sample.mp3", "mime": "audio/mpeg", "size": 8376 }
     ]
   },
   "/nature": {

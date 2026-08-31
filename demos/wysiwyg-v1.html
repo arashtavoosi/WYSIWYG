@@ -119,7 +119,11 @@
                 fileBrowser: {
                     endpoint: '/files',
                     path: '/',
-                    supportedExtensions: '.jpg,.png,.svg'
+                    supportedExtensions: {
+                        image: '.jpg,.png,.svg',
+                        video: '.mp4,.webm,.ogv,.mov,.m4v',
+                        audio: '.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac'
+                    }
                 }
             },
             statusElement: document.getElementById('statusBreadcrumb')

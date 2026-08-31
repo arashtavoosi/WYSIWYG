@@ -10,6 +10,8 @@ const types = {
     '.html': 'text/html',
     '.js': 'text/javascript',
     '.json': 'application/json',
+    '.mp3': 'audio/mpeg',
+    '.mp4': 'video/mp4',
     '.svg': 'image/svg+xml',
     '.txt': 'text/plain'
 };

@@ -20,6 +20,9 @@
         var blockElement;
         var listElement;
         var linkElement;
+        var mediaElement;
+        var mediaState;
+        var mediaType;
         var imageElement;
         var quoteElement;
         var tableElement;
@@ -43,13 +46,16 @@
                 lineHeight: '',
                 link: null,
                 list: null,
+                media: false,
                 quote: false,
                 strikethrough: false,
                 subscript: false,
                 superscript: false,
                 textAlign: '',
                 table: false,
-                underline: false
+                underline: false,
+                video: false,
+                audio: false
             };
         }
 
@@ -58,7 +64,18 @@
         blockElement = html.getClosestTag(startElement, ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
         listElement = html.getClosestTag(startElement, ['ul', 'ol'], rootNode);
         linkElement = html.getClosestTag(startElement, 'a', rootNode);
-        imageElement = html.getSelectedElement(range, 'img') || html.getClosestTag(startElement, 'img', rootNode);
+        mediaElement = html.getSelectedElement(range, ['img', 'video', 'audio']) || html.getClosestTag(startElement, ['img', 'video', 'audio'], rootNode);
+        mediaType = mediaElement ? (mediaElement.tagName.toLowerCase() === 'img' ? 'image' : mediaElement.tagName.toLowerCase()) : null;
+        mediaState = mediaElement ? {
+            alt: mediaElement.getAttribute('alt') || '',
+            filePath: mediaElement.getAttribute('data-file-path') || '',
+            height: mediaElement.getAttribute('height') || '',
+            src: mediaElement.getAttribute('src') || '',
+            title: mediaElement.getAttribute('title') || '',
+            type: mediaType,
+            width: mediaElement.getAttribute('width') || ''
+        } : false;
+        imageElement = mediaType === 'image' ? mediaElement : null;
         quoteElement = html.getClosestTag(startElement, 'blockquote', rootNode);
         cellElement = html.getClosestTag(startElement, ['td', 'th'], rootNode);
         tableElement = html.getSelectedElement(range, 'table') || html.getClosestTag(startElement, 'table', rootNode);
@@ -90,6 +107,7 @@
                 title: linkElement.getAttribute('title') || ''
             } : null,
             list: listElement ? listElement.tagName.toLowerCase() : null,
+            media: mediaState,
             quote: !!quoteElement,
             strikethrough: !!html.getClosestTag(startElement, ['s', 'strike'], rootNode),
             subscript: !!html.getClosestTag(startElement, 'sub', rootNode),
@@ -100,7 +118,9 @@
                 headerRow: !!tableElement.querySelector('thead'),
                 rowIndex: cellElement ? html.getClosestTag(cellElement, 'tr', rootNode).rowIndex : null
             } : false,
-            underline: !!html.getClosestTag(startElement, 'u', rootNode)
+            underline: !!html.getClosestTag(startElement, 'u', rootNode),
+            video: mediaType === 'video' ? mediaState : false,
+            audio: mediaType === 'audio' ? mediaState : false
         };
 
         return state;

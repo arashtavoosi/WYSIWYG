@@ -34,6 +34,38 @@ describe('selection state', () => {
             title: '',
             width: ''
         });
+        expect(editor.getActiveFormats(selection).media).toEqual({
+            alt: 'A',
+            filePath: '/assets/a.png',
+            height: '',
+            src: 'a.png',
+            title: '',
+            type: 'image',
+            width: ''
+        });
+    });
+
+    test('reports selected video and audio media', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p><video src="movie.mp4" controls data-file-path="/movie.mp4"></video><audio src="sound.mp3" controls data-file-path="/sound.mp3"></audio></p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const video = editorElement.querySelector('video');
+        const audio = editorElement.querySelector('audio');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.selectNode(video);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        expect(editor.getActiveFormats(selection).video.type).toBe('video');
+        expect(editor.getActiveFormats(selection).media.src).toBe('movie.mp4');
+
+        range.selectNode(audio);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        expect(editor.getActiveFormats(selection).audio.type).toBe('audio');
+        expect(editor.getActiveFormats(selection).media.src).toBe('sound.mp3');
     });
 
     test('reports table cell context', () => {

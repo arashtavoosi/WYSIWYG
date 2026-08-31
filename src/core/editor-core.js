@@ -407,18 +407,41 @@
                 });
             },
 
-            insertImage: function (attributes, selection) {
+            insertCodeBlock: function (value, language, selection) {
                 return performMutation(function () {
-                    embedContent.insertImage(attributes, selection);
+                    embedContent.insertCodeBlock(value, language, selection);
+                    return api;
+                });
+            },
+
+            insertMedia: function (attributes, selection) {
+                return performMutation(function () {
+                    embedContent.insertMedia(attributes && attributes.type, attributes, selection);
+                    return api;
+                });
+            },
+
+            insertImage: function (attributes, selection) {
+                return api.insertMedia(Object.assign({}, attributes || {}, { type: 'image' }), selection);
+            },
+
+            insertResource: function (attributes, selection) {
+                return api.insertMedia(attributes, selection);
+            },
+
+            updateMedia: function (attributes, selection) {
+                return performMutation(function () {
+                    embedContent.updateMedia(attributes && attributes.type, attributes, selection);
                     return api;
                 });
             },
 
             updateImage: function (attributes, selection) {
-                return performMutation(function () {
-                    embedContent.updateImage(attributes, selection);
-                    return api;
-                });
+                return api.updateMedia(Object.assign({}, attributes || {}, { type: 'image' }), selection);
+            },
+
+            updateResource: function (attributes, selection) {
+                return api.updateMedia(attributes, selection);
             },
 
             removeImage: function (selection) {

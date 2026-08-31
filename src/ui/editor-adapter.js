@@ -81,6 +81,9 @@
 
         toolbarSettings.prompts = Object.assign({}, toolbarConfig.prompts, configOverrides.prompts || {});
         toolbarSettings.fileBrowser = Object.assign({}, toolbarConfig.fileBrowser, configOverrides.fileBrowser || {});
+        if (configOverrides.fileBrowser && configOverrides.fileBrowser.supportedExtensions && typeof configOverrides.fileBrowser.supportedExtensions === 'object' && !Array.isArray(configOverrides.fileBrowser.supportedExtensions)) {
+            toolbarSettings.fileBrowser.supportedExtensions = Object.assign({}, toolbarConfig.fileBrowser.supportedExtensions, configOverrides.fileBrowser.supportedExtensions);
+        }
         toolbarSettings.codeView = Object.assign({}, toolbarConfig.codeView, configOverrides.htmlView || {}, configOverrides.codeView || {});
         toolbarSettings.toolbar = config.toolbar || toolbarSettings.toolbar;
 
@@ -238,6 +241,79 @@
 
         function promptUser(label, fallback) {
             return window.prompt(label, fallback);
+        }
+
+        function showInsertModal(title, fields, focusSelector, read) {
+            var modal;
+            var form;
+            var resolved = false;
+
+            if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal')) {
+                return null;
+            }
+
+            modal = document.createElement('wysiwyg-modal');
+            modal.showCloseButton = true;
+            modal.clickOutsideToClose = true;
+            modal.moveable = true;
+            modal.innerHTML = [
+                '<strong slot="header">' + title + '</strong>',
+                '<form class="wysiwyg-link-form">' + fields + '</form>',
+                '<span slot="footer"><button type="button" data-action="cancel">Cancel</button> <button type="button" data-action="apply">Insert</button></span>'
+            ].join('');
+            document.body.appendChild(modal);
+            form = modal.querySelector('form');
+
+            return new Promise(function (resolve) {
+                function finish(value) {
+                    if (resolved) {
+                        return;
+                    }
+
+                    resolved = true;
+                    modal.close();
+                    modal.remove();
+                    restoreSelection();
+                    resolve(value);
+                }
+
+                function submit() {
+                    var value = read(modal);
+
+                    if (value) {
+                        finish(value);
+                    }
+                }
+
+                html.on(modal, 'close', function () {
+                    finish(null);
+                });
+                html.on(form, 'submit', function (event) {
+                    event.preventDefault();
+                    submit();
+                });
+                html.on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
+                    finish(null);
+                });
+                html.on(modal.querySelector('[data-action="apply"]'), 'click', submit);
+
+                modal.show();
+                modal.querySelector(focusSelector || '[data-field]').focus();
+            });
+        }
+
+        function showCodeBlockModal() {
+            var result = showInsertModal('Insert Code Block', '<label><span>Code</span><textarea data-field="code" rows="8"></textarea></label><label><span>Language</span><input data-field="language" type="text" placeholder="optional"></label>', '[data-field="code"]', function (modal) {
+                return {
+                    code: modal.querySelector('[data-field="code"]').value,
+                    language: modal.querySelector('[data-field="language"]').value
+                };
+            });
+
+            return result || (typeof customElements !== 'undefined' && customElements.get('wysiwyg-modal') ? null : {
+                code: promptUser('Code', ''),
+                language: promptUser('Language', '')
+            });
         }
 
         function showLinkModal(fallback, targetFallback) {
@@ -427,18 +503,28 @@
             return separator > 0 ? path.slice(0, separator) : '/';
         }
 
-        function showImageBrowserModal(currentImage) {
+        function showMediaBrowserModal(type, currentMedia) {
             var modal;
             var title;
             var browser;
             var resolved = false;
             var settings = toolbarSettings.fileBrowser || {};
-            var prompt = toolbarSettings.prompts.image;
+            var prompt = toolbarSettings.prompts[type] || {
+                label: type.charAt(0).toUpperCase() + type.slice(1) + ' URL',
+                fallback: 'https://'
+            };
+            var supportedExtensions = settings.supportedExtensions;
             var rootPath = settings.path || '/';
-            var initialPath = getDirectoryPath(currentImage && (currentImage.filePath || currentImage.src)) || rootPath;
+            var initialPath;
+
+            if (supportedExtensions && typeof supportedExtensions === 'object' && !Array.isArray(supportedExtensions)) {
+                supportedExtensions = supportedExtensions[type] || '';
+            }
+
+            initialPath = getDirectoryPath(currentMedia && (currentMedia.filePath || currentMedia.src)) || rootPath;
 
             if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal') || !customElements.get('wysiwyg-file-browser')) {
-                return promptUser(prompt.label, currentImage ? currentImage.src : prompt.fallback);
+                return promptUser(prompt.label, currentMedia ? currentMedia.src : prompt.fallback);
             }
 
             modal = document.createElement('wysiwyg-modal');
@@ -455,7 +541,7 @@
             title = modal.querySelector('[slot="header"]');
             browser = modal.querySelector('wysiwyg-file-browser');
             title.textContent = prompt.label;
-            browser.supportedExtensions = settings.supportedExtensions || '';
+            browser.supportedExtensions = supportedExtensions || '';
             browser.viewMode = settings.viewMode || 'thumbnail';
 
             if (settings.endpoint) {
@@ -498,6 +584,10 @@
 
                 modal.show();
             });
+        }
+
+        function showImageBrowserModal(currentImage) {
+            return showMediaBrowserModal('image', currentImage);
         }
 
         function showTablePicker(anchor) {
@@ -627,6 +717,61 @@
 
         function getSelectedImage() {
             return html.getSelectedElement(window.getSelection(), 'img');
+        }
+
+        function getSelectedMedia() {
+            return html.getSelectedElement(window.getSelection(), ['img', 'video', 'audio']);
+        }
+
+        function isMediaElement(element) {
+            return !!(element && ['IMG', 'VIDEO', 'AUDIO'].indexOf(element.tagName) !== -1);
+        }
+
+        function getMediaFromEvent(event) {
+            var target = event && event.target;
+            var media = target && target.closest && target.closest('img,video,audio');
+            var path;
+            var index;
+
+            if (media) {
+                return media;
+            }
+
+            path = event && event.composedPath ? event.composedPath() : [];
+            for (index = 0; index < path.length; index += 1) {
+                if (isMediaElement(path[index])) {
+                    return path[index];
+                }
+            }
+
+            return null;
+        }
+
+        function selectInsertedMedia(type) {
+            var selection = window.getSelection();
+            var range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+            var node = range && range.startContainer && range.startContainer.childNodes ? range.startContainer.childNodes[range.startOffset - 1] : null;
+            var tagName = type === 'image' ? 'IMG' : String(type || '').toUpperCase();
+
+            if (!node || node.tagName !== tagName || !editorElement.contains(node)) {
+                return null;
+            }
+
+            activeResizeTarget = node;
+            html.selectNode(node, selection);
+            saveSelection();
+            return node;
+        }
+
+        function selectMediaElement(media) {
+            if (!media) {
+                return false;
+            }
+
+            clearTableSelection();
+            activeResizeTarget = media;
+            html.selectNode(media);
+            return true;
         }
 
         function getImageLayout(image) {
@@ -768,7 +913,7 @@
         function syncTableSelectionOverlay(state) {
             var overlay;
 
-            if (!tableSelection || !tableSelection.table.isConnected || state.image || state.link) {
+            if (!tableSelection || !tableSelection.table.isConnected || state.media || state.link) {
                 if (tableSelectionOverlay) {
                     tableSelectionOverlay.hide();
                 }
@@ -800,7 +945,7 @@
             html.on(resizeOverlay, 'move-end', function (event) {
                 activeResizeTarget = event.detail.target;
 
-                if (activeResizeTarget && activeResizeTarget.tagName === 'IMG') {
+                if (isMediaElement(activeResizeTarget)) {
                     clearTableSelection();
                     html.selectNode(activeResizeTarget);
                     saveSelection();
@@ -821,7 +966,7 @@
             if (tableSelection) {
                 target = mode === 'table' ? tableSelection.table : mode === 'row' ? tableSelection.cell.parentNode : mode === 'cell' || mode === 'column' ? tableSelection.cell : null;
             } else {
-                target = activeResizeTarget || (state.image ? getSelectedImage() : null);
+                target = activeResizeTarget || (state.media ? getSelectedMedia() : null);
             }
 
             if (!target || !editorElement.contains(target)) {
@@ -1002,7 +1147,7 @@
         function syncTableTools(state) {
             var anchor;
 
-            if (tableSelection && !state.image && !state.link) {
+            if (tableSelection && !state.media && !state.link) {
                 anchor = tableSelection.mode === 'table' ? tableSelection.table : getCellsRect(tableSelection.cells);
                 openTableTools(anchor, tableSelection.mode);
             } else {
@@ -1143,7 +1288,10 @@
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
                 showFindReplaceModal: showFindReplaceModal,
+                showCodeBlockModal: showCodeBlockModal,
+                showMediaBrowserModal: showMediaBrowserModal,
                 showImageBrowserModal: showImageBrowserModal,
+                selectMedia: selectInsertedMedia,
                 showTablePicker: showTablePicker,
                 clearFormatting: clearFormatting,
                 toggleCodeView: toggleCodeView,
@@ -1155,7 +1303,7 @@
             var cell;
             var table;
 
-            if (state.image || state.link) {
+            if (state.media || state.link) {
                 clearTableSelection();
                 clearStaleTableResizeTarget();
                 return;
@@ -1198,7 +1346,10 @@
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
                 showFindReplaceModal: showFindReplaceModal,
+                showCodeBlockModal: showCodeBlockModal,
+                showMediaBrowserModal: showMediaBrowserModal,
                 showImageBrowserModal: showImageBrowserModal,
+                selectMedia: selectInsertedMedia,
                 showTablePicker: showTablePicker,
                 toggleCodeView: toggleCodeView,
                 settings: toolbarSettings
@@ -1264,7 +1415,10 @@
                 prompt: promptUser,
                 showLinkModal: showLinkModal,
                 showFindReplaceModal: showFindReplaceModal,
+                showCodeBlockModal: showCodeBlockModal,
+                showMediaBrowserModal: showMediaBrowserModal,
                 showImageBrowserModal: showImageBrowserModal,
+                selectMedia: selectInsertedMedia,
                 showTablePicker: showTablePicker,
                 toggleCodeView: toggleCodeView,
                 settings: toolbarSettings
@@ -1351,8 +1505,26 @@
             expandingTableSelection = !!(cell && (event.ctrlKey || event.metaKey) && tableSelection && tableSelection.table === html.getClosestTag(cell, 'table'));
         });
 
+        html.on(editorElement, 'mousedown', function (event) {
+            var media = getMediaFromEvent(event);
+
+            if (selectMediaElement(media)) {
+                saveSelection();
+                sync();
+            }
+        }, true);
+
+        html.on(editorElement, 'focus', function (event) {
+            var media = getMediaFromEvent(event);
+
+            if (selectMediaElement(media)) {
+                saveSelection();
+                sync();
+            }
+        }, true);
+
         html.on(editorElement, 'mouseup', function (event) {
-            var image = event.target.closest && event.target.closest('img');
+            var media = getMediaFromEvent(event);
             var link = event.target.closest && event.target.closest('a');
             var cell = event.target.closest && event.target.closest('th,td');
 
@@ -1360,7 +1532,7 @@
                 activeResizeTarget = resizeOverlay.target;
                 clearTableSelection();
 
-                if (activeResizeTarget.tagName === 'IMG') {
+                if (isMediaElement(activeResizeTarget)) {
                     html.selectNode(activeResizeTarget);
                 }
 
@@ -1370,10 +1542,8 @@
                 return;
             }
 
-            if (image) {
-                clearTableSelection();
-                activeResizeTarget = image;
-                html.selectNode(image);
+            if (media) {
+                selectMediaElement(media);
             } else if (link && cell) {
                 clearTableSelection();
                 activeResizeTarget = null;

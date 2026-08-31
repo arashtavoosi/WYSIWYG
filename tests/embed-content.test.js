@@ -17,6 +17,46 @@ function selectNode(node) {
 }
 
 describe('embed content', () => {
+    test('inserts and updates media through shared insertion helpers', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Start</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const paragraph = editorElement.querySelector('p');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.selectNodeContents(paragraph);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.insertMedia({ type: 'image', src: '/demo.png', alt: 'Demo', filePath: '/demo.png' }, selection);
+        editor.insertResource({ type: 'video', src: '/demo.mp4', filePath: '/demo.mp4' }, selection);
+        editor.insertMedia({ type: 'audio', src: '/demo.mp3', filePath: '/demo.mp3' }, selection);
+        editor.insertCodeBlock('const answer = 42;', 'js', selection);
+
+        expect(editorElement.querySelector('img').getAttribute('src')).toBe('/demo.png');
+        expect(editorElement.querySelector('img').getAttribute('data-file-path')).toBe('/demo.png');
+        expect(editorElement.querySelector('video[controls]').getAttribute('src')).toBe('/demo.mp4');
+        expect(editorElement.querySelector('video').getAttribute('data-file-path')).toBe('/demo.mp4');
+        expect(editorElement.querySelector('audio[controls]').getAttribute('src')).toBe('/demo.mp3');
+        expect(editorElement.querySelector('audio').getAttribute('data-file-path')).toBe('/demo.mp3');
+        expect(editorElement.querySelector('pre > code.language-js').textContent).toBe('const answer = 42;');
+        expect(editorElement.querySelector('pre').parentNode).toBe(editorElement);
+
+        selectNode(editorElement.querySelector('img'));
+        editor.updateMedia({ type: 'image', src: '/new.png', alt: 'New' }, selection);
+        selectNode(editorElement.querySelector('video'));
+        editor.updateResource({ type: 'video', src: '/new.mp4' }, selection);
+        selectNode(editorElement.querySelector('audio'));
+        editor.updateMedia({ type: 'audio', src: '/new.mp3' }, selection);
+
+        expect(editorElement.querySelector('img').getAttribute('src')).toBe('/new.png');
+        expect(editorElement.querySelector('video').getAttribute('src')).toBe('/new.mp4');
+        expect(editorElement.querySelector('audio').getAttribute('src')).toBe('/new.mp3');
+    });
+
     test('updates and removes selected images', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p><img src="old.png" alt="Old"></p></div>';
 

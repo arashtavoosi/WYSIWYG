@@ -25,8 +25,9 @@ const editor = createEditorCore(editorElement);
 Main methods:
 
 - inline: `toggleInline`, `setInlineStyle`, `clear`
-- blocks: `setBlock`, `toggleBlock`, `toggleList`, `insertBreak`, `insertRule`
+- blocks: `setBlock`, `toggleBlock`, `toggleList`, `insertBreak`, `insertRule`, `insertCodeBlock`
 - links: `upsertLink`, `removeLink`
+- media: `insertMedia({ type: 'image'|'video'|'audio', src })`, `updateMedia({ type, src })`
 - images: `insertImage`, `updateImage`, `removeImage`, `toggleImageFullSize`, `setImageStyle`, `setImageLayout`
 - tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `toggleTableFullSize`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
@@ -53,7 +54,7 @@ When `toolbarElement` is supplied, Ravan adds the `[editor-toolbar]` attribute w
 
 - `<wysiwyg-modal>` supports `open`, `show-close-button`, `click-outside-to-close`, `moveable`, `resizable`, and header/content/footer templates or slots.
 - `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"` plus `-start` and `-end` aligned variants such as `bottom-start`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
-- `<wysiwyg-resize-overlay>` supports `open`, `showFor(element)`, `hide()`, eight resize handles, a move handle, and `resize-start`/`resize`/`resize-end` plus `move-start`/`move`/`move-end` events.
+- `<wysiwyg-resize-overlay>` supports `open`, `showFor(element)`, `hide()`, eight resize handles, a move handle, and `resize-start`/`resize`/`resize-end` plus `move-start`/`move`/`move-end` events; images, videos, and audio use the same selection, resize, and move overlay.
 - `<wysiwyg-table-selection>` is the adapter's cell, row, column, multi-cell, and table selection overlay.
 - `<wysiwyg-file-browser>` supports breadcrumb navigation, `view-mode="list|thumbnail"`, `supported-extensions`, `endpoint`, `load(path)`, `setData(data)`, `navigate`, and `file-select`. Server contract: `docs/file-browser-contract.md`.
 
@@ -66,7 +67,7 @@ Template attributes accept selectors or inline HTML:
 <wysiwyg-file-browser supported-extensions=".jpg,.png" endpoint="/files"></wysiwyg-file-browser>
 ```
 
-The default image toolbar command opens `<wysiwyg-file-browser>` inside `<wysiwyg-modal>`. Configure its source through adapter toolbar config:
+The default Image, Video, and Audio toolbar commands open `<wysiwyg-file-browser>` inside `<wysiwyg-modal>`. Configure their source through adapter toolbar config:
 
 ```js
 Ravan.mount(editorWrapperElement, {
@@ -74,13 +75,17 @@ Ravan.mount(editorWrapperElement, {
     fileBrowser: {
       endpoint: '/files',
       path: '/',
-      supportedExtensions: '.jpg,.jpeg,.png,.gif,.webp,.svg'
+      supportedExtensions: {
+        image: '.jpg,.jpeg,.png,.gif,.webp,.svg',
+        video: '.mp4,.webm,.ogv,.mov,.m4v',
+        audio: '.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac'
+      }
     }
   }
 });
 ```
 
-The same Image command replaces a selected image. Images chosen from the browser keep `items[].path` in `data-file-path`, allowing the modal to reopen that virtual folder even when the rendered `src` uses a different media URL. Invalid folders fall back to the configured root path.
+The Image, Video, and Audio commands share the same browser flow. Each filters by its configured extensions and replaces the selected object of the same type; selected files keep `items[].path` in `data-file-path`, allowing the browser to reopen that virtual folder even when the rendered `src` uses a different media URL. Invalid folders fall back to the configured root path.
 
 ## Bundled Distribution
 
@@ -150,6 +155,8 @@ Ravan.mount(editorWrapperElement, {
 
 It finds across formatted text and provides Find next, Replace, and Replace all actions. Searches are case-insensitive and wrap to the start of the editor.
 
+The Insert toolbar provides browser-backed Image, Video, and Audio commands with per-type extension filtering and same-type source replacement. Code block reuses the existing modal and inserts semantic `<pre><code>` elements. Use Link for downloadable files.
+
 ## Demo
 
 Run the dependency-free demo server from the repo root:
@@ -162,7 +169,7 @@ Open `http://localhost:4173/demos/wysiwyg-v1.html`.
 
 After running `npm run build`, open `http://localhost:4173/demos/ravan-bundled.html` to verify the minified full-editor bundle.
 
-The demo server exposes `/files?path=...` from `demos/mock-files.json`. Its nested folders, supported and unsupported files, and sample images exercise breadcrumbs, navigation, extension filtering, list view, thumbnail view, and file selection.
+The demo server exposes `/files?path=...` from `demos/mock-files.json`. Its nested folders, supported and unsupported files, sample images, and short Media-folder MP4/MP3 files exercise breadcrumbs, navigation, extension filtering, list view, thumbnail view, and file selection.
 
 ## Tests
 

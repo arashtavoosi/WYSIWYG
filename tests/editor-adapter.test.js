@@ -136,9 +136,15 @@ describe('editor adapter', () => {
 
         const boldUse = document.querySelector('button[title="Bold"] use');
         const fontUse = document.querySelector('.toolbar-dropdown use');
+        const videoUse = document.querySelector('button[title="Video"] use');
+        const audioUse = document.querySelector('button[title="Audio"] use');
+        const codeBlockUse = document.querySelector('button[title="Code block"] use');
 
         expect(boldUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-bold');
         expect(fontUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-font-family');
+        expect(videoUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-video');
+        expect(audioUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-audio');
+        expect(codeBlockUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-code-tag');
     });
 
     test('custom render and onUpdate receive toolbar context', () => {
@@ -692,6 +698,140 @@ describe('editor adapter', () => {
 
         expect(document.querySelector('wysiwyg-modal')).toBe(null);
         expect(editorElement.innerHTML).toBe('<p>Create a <a href="https://example.org" target="_blank">link</a> here.</p>');
+    });
+
+    test('uses one browser flow to insert and replace image, video, and audio', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Image</p><p>Video</p><p>Audio</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const paragraphs = editorElement.querySelectorAll('p');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                fileBrowser: {
+                    supportedExtensions: {
+                        image: '.png',
+                        video: '.mp4',
+                        audio: '.mp3'
+                    },
+                    items: [
+                        { type: 'file', name: 'first.png', path: '/first.png', url: '/media/first.png', extension: '.png' },
+                        { type: 'file', name: 'second.png', path: '/second.png', url: '/media/second.png', extension: '.png' },
+                        { type: 'file', name: 'first.mp4', path: '/first.mp4', url: '/media/first.mp4', extension: '.mp4' },
+                        { type: 'file', name: 'second.mp4', path: '/second.mp4', url: '/media/second.mp4', extension: '.mp4' },
+                        { type: 'file', name: 'first.mp3', path: '/first.mp3', url: '/media/first.mp3', extension: '.mp3' },
+                        { type: 'file', name: 'second.mp3', path: '/second.mp3', url: '/media/second.mp3', extension: '.mp3' }
+                    ]
+                }
+            }
+        });
+
+        function setCaret(paragraph) {
+            range.selectNodeContents(paragraph);
+            range.collapse(false);
+            editorElement.focus();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            document.dispatchEvent(new Event('selectionchange'));
+        }
+
+        function openBrowser(title) {
+            document.querySelector('button[title="' + title + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            return document.querySelector('wysiwyg-modal').querySelector('wysiwyg-file-browser');
+        }
+
+        async function selectFile(browser, index) {
+            browser.shadowRoot.querySelector('[data-index="' + index + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            await Promise.resolve();
+            await Promise.resolve();
+        }
+
+        setCaret(paragraphs[0]);
+        let browser = openBrowser('Image');
+        expect(browser.supportedExtensions).toEqual(['.png']);
+        await selectFile(browser, 0);
+        const image = editorElement.querySelector('img');
+
+        expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(image);
+
+        image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        browser = openBrowser('Image');
+        await selectFile(browser, 1);
+        expect(editorElement.querySelector('img')).toBe(image);
+        expect(image.getAttribute('src')).toBe('/media/second.png');
+        expect(image.getAttribute('data-file-path')).toBe('/second.png');
+
+        setCaret(paragraphs[1]);
+        browser = openBrowser('Video');
+        expect(browser.supportedExtensions).toEqual(['.mp4']);
+        await selectFile(browser, 0);
+        const video = editorElement.querySelector('video');
+
+        expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(video);
+
+        video.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        browser = openBrowser('Video');
+        await selectFile(browser, 1);
+        expect(editorElement.querySelector('video')).toBe(video);
+        expect(video.getAttribute('src')).toBe('/media/second.mp4');
+        expect(video.getAttribute('data-file-path')).toBe('/second.mp4');
+
+        setCaret(paragraphs[2]);
+        browser = openBrowser('Audio');
+        expect(browser.supportedExtensions).toEqual(['.mp3']);
+        await selectFile(browser, 0);
+        const audio = editorElement.querySelector('audio');
+
+        expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(audio);
+
+        audio.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        browser = openBrowser('Audio');
+        await selectFile(browser, 1);
+        expect(editorElement.querySelector('audio')).toBe(audio);
+        expect(audio.getAttribute('src')).toBe('/media/second.mp3');
+        expect(audio.getAttribute('data-file-path')).toBe('/second.mp3');
+    });
+
+    test('uses the shared modal for code block insertion', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Start</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const paragraph = editorElement.querySelector('p');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        range.selectNodeContents(paragraph);
+        range.collapse(false);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        document.querySelector('button[title="Code block"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const modal = document.querySelector('wysiwyg-modal');
+
+        modal.querySelector('[data-field="code"]').value = 'const answer = 42;';
+        modal.querySelector('[data-field="language"]').value = 'js';
+        modal.querySelector('[data-action="apply"]').click();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(editorElement.querySelector('pre code').textContent).toBe('const answer = 42;');
     });
 
     test('image command uses a file browser modal', async () => {
@@ -1255,6 +1395,110 @@ describe('editor adapter', () => {
         expect(document.querySelector('wysiwyg-popup[data-mode="image"]')).not.toBeNull();
         expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(image);
         expect(document.querySelector('wysiwyg-table-selection')).toBeNull();
+    });
+
+    test('selects, resizes, and moves video and audio media', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<p id="source"><video src="video.mp4"></video><audio src="audio.mp3"></audio></p>',
+            '<p id="destination">Drop here</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const video = editorElement.querySelector('video');
+        const audio = editorElement.querySelector('audio');
+        const destination = document.getElementById('destination');
+        const dropRange = document.createRange();
+        const selection = window.getSelection();
+        const deselectRange = document.createRange();
+
+        video.getBoundingClientRect = function () {
+            return { left: 20, top: 30, right: 120, bottom: 90, width: 100, height: 60 };
+        };
+        audio.getBoundingClientRect = function () {
+            return { left: 20, top: 110, right: 140, bottom: 150, width: 120, height: 40 };
+        };
+        dropRange.setStart(destination.firstChild, 5);
+        dropRange.collapse(true);
+        Object.defineProperty(document, 'caretRangeFromPoint', {
+            configurable: true,
+            value: function () {
+                return dropRange;
+            }
+        });
+
+        const adapter = createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        video.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        let overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(overlay.open).toBe(true);
+        expect(overlay.target).toBe(video);
+        expect(document.querySelector('button[title="Video"]').getAttribute('aria-pressed')).toBe('true');
+
+        overlay.shadowRoot.querySelector('[data-resize="se"]').dispatchEvent(new MouseEvent('pointerdown', {
+            bubbles: true,
+            clientX: 120,
+            clientY: 90
+        }));
+        document.dispatchEvent(new MouseEvent('pointermove', {
+            bubbles: true,
+            clientX: 160,
+            clientY: 120
+        }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }));
+
+        expect(video.style.width).toBe('140px');
+        expect(video.style.height).toBe('90px');
+
+        audio.dispatchEvent(new MouseEvent('mousedown', { bubbles: false }));
+        overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(overlay.target).toBe(audio);
+        expect(document.querySelector('button[title="Audio"]').getAttribute('aria-pressed')).toBe('true');
+
+        audio.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        overlay = document.querySelector('wysiwyg-resize-overlay');
+
+        expect(overlay.target).toBe(audio);
+        expect(document.querySelector('button[title="Audio"]').getAttribute('aria-pressed')).toBe('true');
+
+        deselectRange.selectNodeContents(destination);
+        deselectRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(deselectRange);
+        document.dispatchEvent(new Event('selectionchange'));
+        editorElement.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        expect(overlay.open).toBe(false);
+
+        audio.dispatchEvent(new Event('focus'));
+        expect(overlay.target).toBe(audio);
+        expect(document.querySelector('button[title="Audio"]').getAttribute('aria-pressed')).toBe('true');
+
+        overlay.shadowRoot.querySelector('.move').dispatchEvent(new MouseEvent('pointerdown', {
+            bubbles: true,
+            clientX: 80,
+            clientY: 105
+        }));
+        document.dispatchEvent(new MouseEvent('pointermove', {
+            bubbles: true,
+            clientX: 160,
+            clientY: 180
+        }));
+        document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 160, clientY: 180 }));
+
+        expect(audio.parentNode).toBe(destination);
+        expect(adapter.editor.getActiveFormats().audio.src).toBe('audio.mp3');
+
+        delete document.caretRangeFromPoint;
     });
 
     test('moving an image between cells keeps image selection active', () => {

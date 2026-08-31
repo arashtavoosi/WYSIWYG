@@ -5,64 +5,136 @@
         root.WysiwygEmbedContent = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
+    var MEDIA_TAGS = { image: 'img', video: 'video', audio: 'audio' };
+
+    function insertNode(node, selection) {
+        var currentSelection = html.getCurrentSelection(selection);
+        var range;
+
+        if (!node || !currentSelection || currentSelection.rangeCount === 0) {
+            return false;
+        }
+
+        range = currentSelection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(node);
+        html.moveSelectionAfterNode(node, currentSelection);
+        return node;
+    }
+
     function createTableCell(tagName) {
         var cell = document.createElement(tagName);
         cell.appendChild(document.createElement('br'));
         return cell;
     }
 
-    function insertImage(attributes, selection) {
-        var currentSelection = html.getCurrentSelection(selection);
-        var range;
-        var image;
+    function insertMedia(type, attributes, selection) {
+        var media;
 
-        if (!attributes || !attributes.src || currentSelection.rangeCount === 0) {
+        if (!attributes || !attributes.src || !MEDIA_TAGS[type]) {
             return false;
         }
 
-        range = currentSelection.getRangeAt(0);
-        range.deleteContents();
-        image = document.createElement('img');
-        image.setAttribute('src', attributes.src);
+        media = document.createElement(MEDIA_TAGS[type]);
+        media.setAttribute('src', attributes.src);
 
-        ['alt', 'title', 'width', 'height'].forEach(function (name) {
-            if (attributes[name] !== undefined && attributes[name] !== null && attributes[name] !== '') {
-                image.setAttribute(name, attributes[name]);
+        if (type === 'image') {
+            ['alt', 'title', 'width', 'height'].forEach(function (name) {
+                if (attributes[name] !== undefined && attributes[name] !== null && attributes[name] !== '') {
+                    media.setAttribute(name, attributes[name]);
+                }
+            });
+        } else {
+            media.setAttribute('controls', '');
+            if (attributes.title) {
+                media.setAttribute('title', attributes.title);
             }
-        });
-
-        if (attributes.filePath) {
-            image.setAttribute('data-file-path', attributes.filePath);
         }
 
-        range.insertNode(image);
-        html.moveSelectionAfterNode(image, currentSelection);
+        if (attributes.filePath) {
+            media.setAttribute('data-file-path', attributes.filePath);
+        }
 
-        return image;
+        return insertNode(media, selection);
+    }
+
+    function insertImage(attributes, selection) {
+        return insertMedia('image', attributes, selection);
+    }
+
+    function insertResource(attributes, selection) {
+        return insertMedia(attributes && attributes.type, attributes, selection);
+    }
+
+    function insertCodeBlock(value, language, selection) {
+        var currentSelection = html.getCurrentSelection(selection);
+        var range;
+        var block;
+        var pre = document.createElement('pre');
+        var code = document.createElement('code');
+
+        if (!currentSelection || currentSelection.rangeCount === 0) {
+            return false;
+        }
+
+        code.textContent = value || '';
+        if (language) {
+            code.className = 'language-' + String(language).replace(/[^a-z0-9_-]/gi, '');
+        }
+        pre.appendChild(code);
+
+        range = currentSelection.getRangeAt(0);
+        block = html.getClosestTag(range.commonAncestorContainer, ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote']);
+        if (block && block.parentNode) {
+            block.parentNode.insertBefore(pre, block.nextSibling);
+            html.moveSelectionAfterNode(pre, currentSelection);
+            return pre;
+        }
+
+        return insertNode(pre, selection);
+    }
+
+    function updateMedia(type, attributes, selection) {
+        var tagName = MEDIA_TAGS[type];
+        var media = tagName && html.getSelectedElement(html.getCurrentSelection(selection), tagName);
+
+        if (!media || !attributes) {
+            return false;
+        }
+
+        if (type === 'image') {
+            ['src', 'alt', 'title', 'width', 'height'].forEach(function (name) {
+                if (attributes[name] === null || attributes[name] === undefined || attributes[name] === '') {
+                    media.removeAttribute(name);
+                } else {
+                    media.setAttribute(name, attributes[name]);
+                }
+            });
+        } else {
+            ['src', 'title'].forEach(function (name) {
+                if (attributes[name] === null || attributes[name] === '') {
+                    media.removeAttribute(name);
+                } else if (attributes[name] !== undefined) {
+                    media.setAttribute(name, attributes[name]);
+                }
+            });
+        }
+
+        if (attributes.filePath === null || attributes.filePath === '') {
+            media.removeAttribute('data-file-path');
+        } else if (attributes.filePath !== undefined) {
+            media.setAttribute('data-file-path', attributes.filePath);
+        }
+
+        return media;
     }
 
     function updateImage(attributes, selection) {
-        var image = html.getSelectedElement(html.getCurrentSelection(selection), 'img');
+        return updateMedia('image', attributes, selection);
+    }
 
-        if (!image || !attributes) {
-            return false;
-        }
-
-        ['src', 'alt', 'title', 'width', 'height'].forEach(function (name) {
-            if (attributes[name] === null || attributes[name] === undefined || attributes[name] === '') {
-                image.removeAttribute(name);
-            } else {
-                image.setAttribute(name, attributes[name]);
-            }
-        });
-
-        if (attributes.filePath === null || attributes.filePath === '') {
-            image.removeAttribute('data-file-path');
-        } else if (attributes.filePath !== undefined) {
-            image.setAttribute('data-file-path', attributes.filePath);
-        }
-
-        return image;
+    function updateResource(attributes, selection) {
+        return updateMedia(attributes && attributes.type, attributes, selection);
     }
 
     function getSelectedImage(selection, rootNode) {
@@ -535,7 +607,10 @@
     }
 
     return {
+        insertCodeBlock: insertCodeBlock,
         insertImage: insertImage,
+        insertMedia: insertMedia,
+        insertResource: insertResource,
         insertTable: insertTable,
         insertTableColumn: insertTableColumn,
         insertTableRow: insertTableRow,
@@ -550,6 +625,8 @@
         toggleTableHeaderRow: toggleTableHeaderRow,
         toggleImageFullSize: toggleImageFullSize,
         unmergeTableCell: unmergeTableCell,
-        updateImage: updateImage
+        updateImage: updateImage,
+        updateMedia: updateMedia,
+        updateResource: updateResource
     };
 }));

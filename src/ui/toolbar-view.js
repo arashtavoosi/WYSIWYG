@@ -294,6 +294,8 @@
 
         if (state.image) {
             path.push('Image');
+        } else if (state.media) {
+            path.push(state.media.type.charAt(0).toUpperCase() + state.media.type.slice(1));
         }
 
         if (state.link) {
