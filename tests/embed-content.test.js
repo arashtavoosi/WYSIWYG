@@ -57,6 +57,111 @@ describe('embed content', () => {
         expect(editorElement.querySelector('audio').getAttribute('src')).toBe('/new.mp3');
     });
 
+    test('inserts and updates video and audio playback attributes', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Start</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const paragraph = editorElement.querySelector('p');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.selectNodeContents(paragraph);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.insertMedia({
+            type: 'video',
+            src: 'movie.mp4',
+            controls: false,
+            autoplay: true,
+            loop: true,
+            muted: true,
+            playsinline: true,
+            poster: 'poster.jpg',
+            preload: 'metadata'
+        }, selection);
+
+        const video = editorElement.querySelector('video');
+
+        expect(video.hasAttribute('controls')).toBe(false);
+        expect(video.hasAttribute('autoplay')).toBe(true);
+        expect(video.hasAttribute('loop')).toBe(true);
+        expect(video.hasAttribute('muted')).toBe(true);
+        expect(video.hasAttribute('playsinline')).toBe(true);
+        expect(video.getAttribute('poster')).toBe('poster.jpg');
+        expect(video.getAttribute('preload')).toBe('metadata');
+
+        selectNode(video);
+        editor.updateMedia({
+            type: 'video',
+            controls: true,
+            autoplay: false,
+            loop: false,
+            muted: false,
+            playsinline: false,
+            poster: '',
+            preload: 'none'
+        }, selection);
+
+        expect(video.hasAttribute('controls')).toBe(true);
+        expect(video.hasAttribute('autoplay')).toBe(false);
+        expect(video.hasAttribute('loop')).toBe(false);
+        expect(video.hasAttribute('muted')).toBe(false);
+        expect(video.hasAttribute('playsinline')).toBe(false);
+        expect(video.hasAttribute('poster')).toBe(false);
+        expect(video.getAttribute('preload')).toBe('none');
+
+        range.selectNodeContents(paragraph);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        editor.insertMedia({ type: 'audio', src: 'sound.mp3', controls: false, loop: true, preload: 'auto' }, selection);
+
+        const audio = editorElement.querySelector('audio');
+
+        expect(audio.hasAttribute('controls')).toBe(false);
+        expect(audio.hasAttribute('loop')).toBe(true);
+        expect(audio.getAttribute('preload')).toBe('auto');
+
+        selectNode(audio);
+        editor.updateMedia({ type: 'audio', controls: true, loop: false }, selection);
+        expect(audio.hasAttribute('controls')).toBe(true);
+        expect(audio.hasAttribute('loop')).toBe(false);
+    });
+
+    test('inserts media at the editor end when there is no cursor', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Start</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const selection = window.getSelection();
+
+        selection.removeAllRanges();
+        editor.insertMedia({ type: 'audio', src: 'sound.mp3' });
+
+        expect(editorElement.querySelector('audio')).not.toBeNull();
+        expect(editorElement.lastElementChild.tagName).toBe('AUDIO');
+        expect(editorElement.querySelector('audio[controls]')).not.toBeNull();
+    });
+
+    test('removes selected video and audio media', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p><video src="movie.mp4"></video><audio src="sound.mp3"></audio></p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const selection = window.getSelection();
+
+        selectNode(editorElement.querySelector('video'));
+        editor.removeMedia(selection);
+        expect(editorElement.querySelector('video')).toBeNull();
+
+        selectNode(editorElement.querySelector('audio'));
+        editor.removeMedia(selection);
+        expect(editorElement.querySelector('audio')).toBeNull();
+    });
+
     test('updates and removes selected images', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p><img src="old.png" alt="Old"></p></div>';
 
@@ -200,6 +305,31 @@ describe('embed content', () => {
         expect(image.style.objectFit).toBe('');
         expect(image.style.width).toBe('');
         expect(image.style.height).toBe('80px');
+    });
+
+    test('updates selected video and audio presentation styles through generic media helpers', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p><video src="movie.mp4"></video><audio src="sound.mp3"></audio></p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const video = editorElement.querySelector('video');
+        const audio = editorElement.querySelector('audio');
+        const selection = window.getSelection();
+
+        selectNode(video);
+        editor.toggleMediaWidth(selection);
+        editor.setMediaStyle('objectFit', 'cover', selection);
+
+        expect(video.style.width).toBe('100%');
+        expect(video.style.objectFit).toBe('cover');
+
+        selectNode(audio);
+        editor.toggleMediaWidth(selection);
+
+        expect(audio.style.width).toBe('100%');
+
+        editor.toggleMediaWidth(selection);
+        expect(audio.style.width).toBe('');
     });
 
     test('column insertion keeps selection in the original row', () => {

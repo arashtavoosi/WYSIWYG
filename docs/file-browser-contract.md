@@ -72,7 +72,9 @@ Optional fields:
 - Breadcrumb buttons call `load(path)`.
 - Directory entries call `load(path)`.
 - File entries dispatch `file-select` with `event.detail.file`.
-- The default editor adapter writes the selected file's `path` to the selected media element's `data-file-path` attribute and its `url` to `src`. This allows the Image, Video, and Audio commands to reopen the current virtual folder and replace a selected object of the same type.
+- The default editor adapter writes the selected file's `path` to the selected media element's `data-file-path` attribute and its `url` to `src`. The single Media command reuses this flow for images, video, and audio, updating a selected object or replacing it when a different filter is chosen.
 - Without `endpoint`, navigation dispatches `navigate` with `event.detail.path`; the host app can fetch and call `setData(data)`.
 - `supported-extensions=".jpg,.png"` filters visible files client-side. Directories are always shown.
+- The optional `filters` property accepts entries such as `{ value: 'image', label: 'Image', extensions: '.jpg,.png', iconId: 'image' }`. The editor's Media modal supplies image, video, and audio filters and renders their configured SVG icons in the modal footer. `activeFilters` accepts multiple values and shows the union of their extensions; the legacy `activeFilter` property remains an alias for a single value. No active filter shows every supported extension.
+- Set `filterPlacement` to `external` when the host renders the filter buttons elsewhere; the browser still applies `activeFilters` to its file list.
 - `view-mode="list"` and `view-mode="thumbnail"` control the display mode.

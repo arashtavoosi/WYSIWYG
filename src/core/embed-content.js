@@ -6,6 +6,8 @@
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     var MEDIA_TAGS = { image: 'img', video: 'video', audio: 'audio' };
+    var MEDIA_BOOLEAN_ATTRIBUTES = ['controls', 'autoplay', 'loop', 'muted', 'playsinline'];
+    var MEDIA_STRING_ATTRIBUTES = ['src', 'title', 'poster', 'preload'];
 
     function insertNode(node, selection) {
         var currentSelection = html.getCurrentSelection(selection);
@@ -45,10 +47,16 @@
                 }
             });
         } else {
-            media.setAttribute('controls', '');
-            if (attributes.title) {
-                media.setAttribute('title', attributes.title);
-            }
+            MEDIA_BOOLEAN_ATTRIBUTES.forEach(function (name) {
+                if ((name === 'controls' && attributes[name] === undefined) || attributes[name]) {
+                    media.setAttribute(name, '');
+                }
+            });
+            MEDIA_STRING_ATTRIBUTES.forEach(function (name) {
+                if (attributes[name]) {
+                    media.setAttribute(name, attributes[name]);
+                }
+            });
         }
 
         if (attributes.filePath) {
@@ -111,7 +119,16 @@
                 }
             });
         } else {
-            ['src', 'title'].forEach(function (name) {
+            MEDIA_BOOLEAN_ATTRIBUTES.forEach(function (name) {
+                if (attributes[name] !== undefined) {
+                    if (attributes[name]) {
+                        media.setAttribute(name, '');
+                    } else {
+                        media.removeAttribute(name);
+                    }
+                }
+            });
+            MEDIA_STRING_ATTRIBUTES.forEach(function (name) {
                 if (attributes[name] === null || attributes[name] === '') {
                     media.removeAttribute(name);
                 } else if (attributes[name] !== undefined) {
@@ -137,23 +154,28 @@
         return updateMedia(attributes && attributes.type, attributes, selection);
     }
 
-    function getSelectedImage(selection, rootNode) {
-        var image = html.getSelectedElement(html.getCurrentSelection(selection), 'img');
+    function getSelectedMedia(selection, type, rootNode) {
+        var tagName = type && MEDIA_TAGS[type];
+        var media = html.getSelectedElement(html.getCurrentSelection(selection), tagName || ['img', 'video', 'audio']);
 
-        return image && (!rootNode || rootNode.contains(image)) ? image : null;
+        return media && (!rootNode || rootNode.contains(media)) ? media : null;
     }
 
-    function cleanImageStyle(image) {
-        if (!image.getAttribute('style')) {
-            image.removeAttribute('style');
+    function getSelectedImage(selection, rootNode) {
+        return getSelectedMedia(selection, 'image', rootNode);
+    }
+
+    function cleanMediaStyle(media) {
+        if (!media.getAttribute('style')) {
+            media.removeAttribute('style');
         }
     }
 
-    function setImageStyle(propertyName, value, selection, options) {
-        var image = getSelectedImage(selection, options && options.root);
+    function setMediaStyle(propertyName, value, selection, options, type) {
+        var media = getSelectedMedia(selection, type, options && options.root);
         var cssProperty;
 
-        if (!image || !propertyName) {
+        if (!media || !propertyName) {
             return false;
         }
 
@@ -162,25 +184,33 @@
         });
 
         if (value === undefined || value === null || value === '') {
-            image.style.removeProperty(cssProperty);
+            media.style.removeProperty(cssProperty);
         } else {
-            image.style.setProperty(cssProperty, value);
+            media.style.setProperty(cssProperty, value);
         }
 
-        cleanImageStyle(image);
-        return image;
+        cleanMediaStyle(media);
+        return media;
     }
 
-    function toggleImageFullSize(selection, options) {
-        var image = getSelectedImage(selection, options && options.root);
+    function setImageStyle(propertyName, value, selection, options) {
+        return setMediaStyle(propertyName, value, selection, options, 'image');
+    }
 
-        if (!image) {
+    function toggleMediaWidth(selection, options, type) {
+        var media = getSelectedMedia(selection, type, options && options.root);
+
+        if (!media) {
             return false;
         }
 
-        image.style.width = image.style.width === '100%' ? '' : '100%';
-        cleanImageStyle(image);
-        return image;
+        media.style.width = media.style.width === '100%' ? '' : '100%';
+        cleanMediaStyle(media);
+        return media;
+    }
+
+    function toggleImageFullSize(selection, options) {
+        return toggleMediaWidth(selection, options, 'image');
     }
 
     function setImageLayout(layout, selection, options) {
@@ -199,21 +229,25 @@
             image.style.float = layout === 'float-left' ? 'left' : 'right';
         }
 
-        cleanImageStyle(image);
+        cleanMediaStyle(image);
         return image;
     }
 
-    function removeImage(selection) {
+    function removeMedia(selection, type) {
         var currentSelection = html.getCurrentSelection(selection);
-        var image = html.getSelectedElement(currentSelection, 'img');
+        var media = html.getSelectedElement(currentSelection, type ? MEDIA_TAGS[type] : ['img', 'video', 'audio']);
 
-        if (!image) {
+        if (!media) {
             return false;
         }
 
-        html.moveSelectionAfterNode(image, currentSelection);
-        image.parentNode.removeChild(image);
+        html.moveSelectionAfterNode(media, currentSelection);
+        media.parentNode.removeChild(media);
         return true;
+    }
+
+    function removeImage(selection) {
+        return removeMedia(selection, 'image');
     }
 
     function insertTable(config, selection) {
@@ -615,14 +649,17 @@
         insertTableColumn: insertTableColumn,
         insertTableRow: insertTableRow,
         mergeTableCells: mergeTableCells,
+        removeMedia: removeMedia,
         removeImage: removeImage,
         removeTable: removeTable,
         removeTableColumn: removeTableColumn,
         removeTableRow: removeTableRow,
+        setMediaStyle: setMediaStyle,
         setImageLayout: setImageLayout,
         setImageStyle: setImageStyle,
         toggleTableFullSize: toggleTableFullSize,
         toggleTableHeaderRow: toggleTableHeaderRow,
+        toggleMediaWidth: toggleMediaWidth,
         toggleImageFullSize: toggleImageFullSize,
         unmergeTableCell: unmergeTableCell,
         updateImage: updateImage,

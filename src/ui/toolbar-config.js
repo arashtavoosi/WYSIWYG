@@ -63,10 +63,38 @@
         };
     }
 
-    function mediaActive(type) {
-        return function (state) {
-            return !!(state.media && state.media.type === type);
-        };
+    function mediaActive(state) {
+        return !!state.media;
+    }
+
+    function mediaTypeFor(value, context) {
+        var file = value && typeof value === 'object' ? value : null;
+        var source = file ? file.url || file.path || file.src || file.name : value;
+        var extension = String(file && file.extension || source || '').toLowerCase().match(/\.[^.]+(?=\?|#|$)/);
+        var supported = context.settings.fileBrowser && context.settings.fileBrowser.supportedExtensions;
+        var types = ['image', 'video', 'audio'];
+
+        if (file && types.indexOf(file.mediaType || file.type) !== -1) {
+            return file.mediaType || file.type;
+        }
+
+        if (file && file.mime) {
+            var mimeType = file.mime.split('/')[0];
+
+            if (types.indexOf(mimeType) !== -1) {
+                return mimeType;
+            }
+        }
+
+        if (!extension || !supported || typeof supported !== 'object' || Array.isArray(supported)) {
+            return null;
+        }
+
+        return types.find(function (type) {
+            return String(supported[type] || '').toLowerCase().split(',').map(function (item) {
+                return item.trim().charAt(0) === '.' ? item.trim() : '.' + item.trim();
+            }).indexOf(extension[0]) !== -1;
+        }) || null;
     }
 
     function mediaSource(value) {
@@ -78,18 +106,19 @@
         };
     }
 
-    function mediaCommand(type) {
+    function mediaCommand() {
         return modalCommand(function (context) {
-            var selected = context.state.media && context.state.media.type === type ? context.state.media : null;
-            var prompt = context.settings.prompts[type] || {
-                label: type.charAt(0).toUpperCase() + type.slice(1) + ' URL',
+            var selected = context.state.media || null;
+            var prompt = context.settings.prompts.media || {
+                label: 'Media URL',
                 fallback: 'https://'
             };
 
-            return context.showMediaBrowserModal ? context.showMediaBrowserModal(type, selected) : context.prompt(prompt.label, selected ? selected.src : prompt.fallback);
+            return context.showMediaBrowserModal ? context.showMediaBrowserModal(selected) : context.prompt(prompt.label, selected ? selected.src : prompt.fallback);
         }, function (context, value) {
-            var selected = context.state.media && context.state.media.type === type ? context.state.media : null;
+            var selected = context.state.media || null;
             var source = mediaSource(value);
+            var type = mediaTypeFor(value, context) || (selected && selected.type) || 'image';
             var attributes = {
                 type: type,
                 src: source.src,
@@ -100,7 +129,7 @@
                 return;
             }
 
-            if (selected) {
+            if (selected && type === selected.type) {
                 if (type === 'image') {
                     attributes.alt = selected.alt;
                     attributes.height = selected.height;
@@ -151,6 +180,7 @@
         findReplace: false,
         prompts: {
             image: { label: 'Image URL', fallback: 'https://' },
+            media: { label: 'Media URL', fallback: 'https://' },
             link: { label: 'Link URL', fallback: 'https://', targetLabel: 'Link target', targetFallback: '' },
             tableCols: { label: 'Table columns', fallback: '2' },
             tableRows: { label: 'Table rows', fallback: '2' }
@@ -449,35 +479,12 @@
                             context.editor.removeLink();
                         }
                     },
-                    image: {
-                        title: 'Image',
+                    media: {
+                        title: 'Media',
                         iconId: 'image', icon: 'Img',
                         priority: 30,
-                        active: mediaActive('image'),
-                        onCommand: mediaCommand('image')
-                    },
-                    removeImage: {
-                        title: 'Remove image',
-                        iconId: 'image-remove', icon: 'Img-',
-                        priority: 40,
-                        disabled: function (state) { return !state.image; },
-                        onCommand: function (context) {
-                            context.editor.removeImage();
-                        }
-                    },
-                    video: {
-                        title: 'Video',
-                        iconId: 'video', icon: 'Video',
-                        priority: 55,
-                        active: mediaActive('video'),
-                        onCommand: mediaCommand('video')
-                    },
-                    audio: {
-                        title: 'Audio',
-                        iconId: 'audio', icon: 'Audio',
-                        priority: 57,
-                        active: mediaActive('audio'),
-                        onCommand: mediaCommand('audio')
+                        active: mediaActive,
+                        onCommand: mediaCommand()
                     },
                     codeBlock: {
                         title: 'Code block',

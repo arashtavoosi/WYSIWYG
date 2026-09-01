@@ -27,7 +27,7 @@ Main methods:
 - inline: `toggleInline`, `setInlineStyle`, `clear`
 - blocks: `setBlock`, `toggleBlock`, `toggleList`, `insertBreak`, `insertRule`, `insertCodeBlock`
 - links: `upsertLink`, `removeLink`
-- media: `insertMedia({ type: 'image'|'video'|'audio', src })`, `updateMedia({ type, src })`
+- media: `insertMedia({ type: 'image'|'video'|'audio', src })`, `updateMedia({ type, src })`, `removeMedia()`, `setMediaStyle()`, `toggleMediaWidth()`; video/audio support `controls`, `autoplay`, `loop`, `muted`, and `preload`, while video also supports `poster` and `playsinline`
 - images: `insertImage`, `updateImage`, `removeImage`, `toggleImageFullSize`, `setImageStyle`, `setImageLayout`
 - tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `toggleTableFullSize`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
@@ -56,7 +56,7 @@ When `toolbarElement` is supplied, Ravan adds the `[editor-toolbar]` attribute w
 - `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"` plus `-start` and `-end` aligned variants such as `bottom-start`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
 - `<wysiwyg-resize-overlay>` supports `open`, `showFor(element)`, `hide()`, eight resize handles, a move handle, and `resize-start`/`resize`/`resize-end` plus `move-start`/`move`/`move-end` events; images, videos, and audio use the same selection, resize, and move overlay.
 - `<wysiwyg-table-selection>` is the adapter's cell, row, column, multi-cell, and table selection overlay.
-- `<wysiwyg-file-browser>` supports breadcrumb navigation, `view-mode="list|thumbnail"`, `supported-extensions`, `endpoint`, `load(path)`, `setData(data)`, `navigate`, and `file-select`. Server contract: `docs/file-browser-contract.md`.
+- `<wysiwyg-file-browser>` supports breadcrumb navigation, `view-mode="list|thumbnail"`, optional `filters`/`activeFilters` controls (with `activeFilter` as a single-value alias), `filterPlacement="browser|external"`, `supported-extensions`, `endpoint`, `load(path)`, `setData(data)`, `navigate`, and `file-select`. Server contract: `docs/file-browser-contract.md`.
 
 Template attributes accept selectors or inline HTML:
 
@@ -67,7 +67,7 @@ Template attributes accept selectors or inline HTML:
 <wysiwyg-file-browser supported-extensions=".jpg,.png" endpoint="/files"></wysiwyg-file-browser>
 ```
 
-The default Image, Video, and Audio toolbar commands open `<wysiwyg-file-browser>` inside `<wysiwyg-modal>`. Configure their source through adapter toolbar config:
+The default Media toolbar command opens `<wysiwyg-file-browser>` inside `<wysiwyg-modal>`. Its Image, Video, and Audio filter buttons use the configured extension groups:
 
 ```js
 Ravan.mount(editorWrapperElement, {
@@ -85,7 +85,13 @@ Ravan.mount(editorWrapperElement, {
 });
 ```
 
-The Image, Video, and Audio commands share the same browser flow. Each filters by its configured extensions and replaces the selected object of the same type; selected files keep `items[].path` in `data-file-path`, allowing the browser to reopen that virtual folder even when the rendered `src` uses a different media URL. Invalid folders fall back to the configured root path.
+The Media command filters by the selected object's type, or shows all supported media when nothing is selected. Its Image, Video, and Audio buttons live in the modal footer and can be selected together to show the union of their extensions. It inserts the type inferred from the selected file's extension, updates a selected object of the same type, and replaces it when a different media filter is chosen. Selected files keep `items[].path` in `data-file-path`, allowing the browser to reopen that virtual folder even when the rendered `src` uses a different media URL. Invalid folders fall back to the configured root path.
+
+Selecting an embedded object opens one shared media popup: images expose full-size, object-fit, and layout controls; video exposes full-size, object-fit, poster, and inline-playback controls; audio exposes full-width; and video/audio expose playback controls and preload.
+
+If the editor has no active caret, media insertion appends at the end of the editor.
+
+Delete and Backspace remove selected media, or a table only when the whole table is selected.
 
 ## Bundled Distribution
 
@@ -155,7 +161,7 @@ Ravan.mount(editorWrapperElement, {
 
 It finds across formatted text and provides Find next, Replace, and Replace all actions. Searches are case-insensitive and wrap to the start of the editor.
 
-The Insert toolbar provides browser-backed Image, Video, and Audio commands with per-type extension filtering and same-type source replacement. Code block reuses the existing modal and inserts semantic `<pre><code>` elements. Use Link for downloadable files.
+The Insert toolbar provides one browser-backed Media command with Image, Video, and Audio extension filters, source replacement, and media-type replacement. Code block reuses the existing modal and inserts semantic `<pre><code>` elements. Use Link for downloadable files.
 
 ## Demo
 

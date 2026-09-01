@@ -288,6 +288,10 @@
             path.push(state.list === 'ol' ? 'Numbered list' : 'Bulleted list');
         }
 
+        if (state.quote && state.block !== 'blockquote') {
+            path.push('Quote');
+        }
+
         if (state.block) {
             path.push(formatBlock(state.block));
         }

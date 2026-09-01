@@ -144,6 +144,51 @@ describe('web components', () => {
         expect(popup.style.top).toBe('70px');
     });
 
+    test('popup follows anchor size changes', () => {
+        const previousResizeObserver = global.ResizeObserver;
+        let notifyResize;
+
+        global.ResizeObserver = class {
+            constructor(callback) {
+                notifyResize = callback;
+            }
+
+            observe() {}
+            disconnect() {}
+        };
+
+        try {
+            document.body.innerHTML = '<div id="anchor"></div>';
+
+            const anchor = document.getElementById('anchor');
+            const popup = document.createElement('wysiwyg-popup');
+            let bottom = 120;
+
+            anchor.getBoundingClientRect = function () {
+                return { bottom: bottom, height: 20, left: 100, right: 140, top: bottom - 20, width: 40 };
+            };
+            document.body.appendChild(anchor);
+            document.body.appendChild(popup);
+            popup.shadowRoot.querySelector('.panel').getBoundingClientRect = function () {
+                return { width: 100, height: 40 };
+            };
+            popup.preferredPosition = 'bottom-start';
+            popup.showFor(anchor);
+
+            expect(popup.style.top).toBe('128px');
+            bottom = 180;
+            notifyResize();
+
+            expect(popup.style.top).toBe('188px');
+        } finally {
+            if (previousResizeObserver === undefined) {
+                delete global.ResizeObserver;
+            } else {
+                global.ResizeObserver = previousResizeObserver;
+            }
+        }
+    });
+
     test('resize overlay shows eight handles around a target', () => {
         document.body.innerHTML = '<img id="image" src="x.png">';
 
@@ -167,6 +212,48 @@ describe('web components', () => {
         expect(overlay.shadowRoot.querySelector('.move')).toBeTruthy();
         expect(overlay.shadowRoot.querySelector('.move svg')).toBeTruthy();
         expect(overlay.shadowRoot.querySelector('style').textContent).toContain('.move{left:0;top:-25px');
+    });
+
+    test('resize overlay follows target size changes', () => {
+        const previousResizeObserver = global.ResizeObserver;
+        let notifyResize;
+
+        global.ResizeObserver = class {
+            constructor(callback) {
+                notifyResize = callback;
+            }
+
+            observe() {}
+            disconnect() {}
+        };
+
+        try {
+            document.body.innerHTML = '<video id="video"></video>';
+
+            const video = document.getElementById('video');
+            const overlay = document.createElement('wysiwyg-resize-overlay');
+            let width = 300;
+            let height = 150;
+
+            video.getBoundingClientRect = function () {
+                return { left: 20, top: 30, width: width, height: height };
+            };
+
+            document.body.appendChild(overlay);
+            overlay.showFor(video);
+            width = 160;
+            height = 90;
+            notifyResize();
+
+            expect(overlay.style.width).toBe('160px');
+            expect(overlay.style.height).toBe('90px');
+        } finally {
+            if (previousResizeObserver === undefined) {
+                delete global.ResizeObserver;
+            } else {
+                global.ResizeObserver = previousResizeObserver;
+            }
+        }
     });
 
     test('resize overlay resizes the target from a drag handle', () => {
@@ -510,5 +597,58 @@ describe('web components', () => {
         expect(navigate).toHaveBeenCalledWith(expect.objectContaining({
             detail: { path: '/assets/images' }
         }));
+    });
+
+    test('file browser can filter generic entries with optional icon buttons', () => {
+        document.body.innerHTML = '';
+
+        const browser = document.createElement('wysiwyg-file-browser');
+
+        browser.iconSpritePath = '/assets/toolbar-icons.svg';
+        browser.filters = [
+            { value: 'image', label: 'Image', iconId: 'image', extensions: '.png' },
+            { value: 'video', label: 'Video', iconId: 'video', extensions: '.mp4' },
+            { value: 'audio', label: 'Audio', iconId: 'audio', extensions: '.mp3' }
+        ];
+        document.body.appendChild(browser);
+        browser.setData({
+            path: '/',
+            items: [
+                { type: 'file', name: 'image.png', path: '/image.png', extension: '.png' },
+                { type: 'file', name: 'video.mp4', path: '/video.mp4', extension: '.mp4' },
+                { type: 'file', name: 'audio.mp3', path: '/audio.mp3', extension: '.mp3' },
+                { type: 'file', name: 'notes.txt', path: '/notes.txt', extension: '.txt' }
+            ]
+        });
+
+        expect(browser.activeFilter).toBe('');
+        expect(browser.activeFilters).toEqual([]);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(4);
+        expect(browser.shadowRoot.querySelectorAll('[data-filter]')).toHaveLength(3);
+        expect(browser.shadowRoot.querySelector('[data-filter="image"] use').getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-image');
+
+        browser.shadowRoot.querySelector('[data-filter="image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(browser.activeFilters).toEqual(['image']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(1);
+        expect(browser.shadowRoot.querySelector('[data-filter="image"]').getAttribute('aria-pressed')).toBe('true');
+
+        browser.shadowRoot.querySelector('[data-filter="video"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(browser.activeFilters).toEqual(['image', 'video']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(2);
+        expect(browser.shadowRoot.querySelector('[data-filter="image"]').getAttribute('aria-pressed')).toBe('true');
+        expect(browser.shadowRoot.querySelector('[data-filter="video"]').getAttribute('aria-pressed')).toBe('true');
+
+        browser.shadowRoot.querySelector('[data-filter="image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(browser.activeFilters).toEqual(['video']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(1);
+
+        browser.shadowRoot.querySelector('[data-filter="video"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(browser.activeFilter).toBe('');
+        expect(browser.activeFilters).toEqual([]);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(4);
     });
 });

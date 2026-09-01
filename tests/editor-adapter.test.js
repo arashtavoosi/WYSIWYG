@@ -136,15 +136,14 @@ describe('editor adapter', () => {
 
         const boldUse = document.querySelector('button[title="Bold"] use');
         const fontUse = document.querySelector('.toolbar-dropdown use');
-        const videoUse = document.querySelector('button[title="Video"] use');
-        const audioUse = document.querySelector('button[title="Audio"] use');
+        const mediaUse = document.querySelector('button[title="Media"] use');
         const codeBlockUse = document.querySelector('button[title="Code block"] use');
 
         expect(boldUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-bold');
         expect(fontUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-font-family');
-        expect(videoUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-video');
-        expect(audioUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-audio');
+        expect(mediaUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-image');
         expect(codeBlockUse.getAttribute('href')).toBe('/assets/toolbar-icons.svg#wysiwyg-icon-code-tag');
+        expect(document.querySelector('button[title="Remove image"]')).toBeNull();
     });
 
     test('custom render and onUpdate receive toolbar context', () => {
@@ -700,7 +699,7 @@ describe('editor adapter', () => {
         expect(editorElement.innerHTML).toBe('<p>Create a <a href="https://example.org" target="_blank">link</a> here.</p>');
     });
 
-    test('uses one browser flow to insert and replace image, video, and audio', async () => {
+    test('uses one Media browser flow to filter, insert, and replace image, video, and audio', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true"><p>Image</p><p>Video</p><p>Audio</p></div>'
@@ -742,8 +741,8 @@ describe('editor adapter', () => {
             document.dispatchEvent(new Event('selectionchange'));
         }
 
-        function openBrowser(title) {
-            document.querySelector('button[title="' + title + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        function openBrowser() {
+            document.querySelector('button[title="Media"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
             return document.querySelector('wysiwyg-modal').querySelector('wysiwyg-file-browser');
         }
 
@@ -753,50 +752,119 @@ describe('editor adapter', () => {
             await Promise.resolve();
         }
 
+        function selectFilter(browser, type) {
+            browser.parentNode.querySelector('.media-filters [data-filter="' + type + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        }
+
         setCaret(paragraphs[0]);
-        let browser = openBrowser('Image');
-        expect(browser.supportedExtensions).toEqual(['.png']);
+        let browser = openBrowser();
+        expect(browser.activeFilter).toBe('');
+        expect(browser.activeFilters).toEqual([]);
+        expect(browser.supportedExtensions).toEqual(['.png', '.mp4', '.mp3']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(6);
+        expect(browser.shadowRoot.querySelectorAll('[data-filter]')).toHaveLength(0);
+        expect(browser.parentNode.querySelectorAll('.media-filters [data-filter]')).toHaveLength(3);
+        selectFilter(browser, 'image');
+        expect(browser.activeFilter).toBe('image');
+        expect(browser.activeFilters).toEqual(['image']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(2);
+        selectFilter(browser, 'video');
+        expect(browser.activeFilters).toEqual(['image', 'video']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(4);
+        selectFilter(browser, 'video');
+        expect(browser.activeFilters).toEqual(['image']);
         await selectFile(browser, 0);
         const image = editorElement.querySelector('img');
 
         expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(image);
 
         image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-        browser = openBrowser('Image');
+        browser = openBrowser();
+        expect(browser.activeFilter).toBe('image');
         await selectFile(browser, 1);
         expect(editorElement.querySelector('img')).toBe(image);
         expect(image.getAttribute('src')).toBe('/media/second.png');
         expect(image.getAttribute('data-file-path')).toBe('/second.png');
 
-        setCaret(paragraphs[1]);
-        browser = openBrowser('Video');
-        expect(browser.supportedExtensions).toEqual(['.mp4']);
+        image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        browser = openBrowser();
+        selectFilter(browser, 'image');
+        selectFilter(browser, 'video');
+        expect(browser.activeFilters).toEqual(['video']);
         await selectFile(browser, 0);
-        const video = editorElement.querySelector('video');
+        expect(editorElement.querySelector('img')).toBeNull();
+        expect(paragraphs[0].querySelector('video').getAttribute('src')).toBe('/media/first.mp4');
+
+        setCaret(paragraphs[1]);
+        browser = openBrowser();
+        selectFilter(browser, 'video');
+        expect(browser.activeFilter).toBe('video');
+        expect(browser.activeFilters).toEqual(['video']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(2);
+        await selectFile(browser, 0);
+        const video = paragraphs[1].querySelector('video');
 
         expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(video);
 
         video.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-        browser = openBrowser('Video');
+        browser = openBrowser();
+        expect(browser.activeFilter).toBe('video');
         await selectFile(browser, 1);
-        expect(editorElement.querySelector('video')).toBe(video);
+        expect(paragraphs[1].querySelector('video')).toBe(video);
         expect(video.getAttribute('src')).toBe('/media/second.mp4');
         expect(video.getAttribute('data-file-path')).toBe('/second.mp4');
 
         setCaret(paragraphs[2]);
-        browser = openBrowser('Audio');
-        expect(browser.supportedExtensions).toEqual(['.mp3']);
+        browser = openBrowser();
+        selectFilter(browser, 'audio');
+        expect(browser.activeFilter).toBe('audio');
+        expect(browser.activeFilters).toEqual(['audio']);
+        expect(browser.shadowRoot.querySelectorAll('[data-index]')).toHaveLength(2);
         await selectFile(browser, 0);
         const audio = editorElement.querySelector('audio');
 
         expect(document.querySelector('wysiwyg-resize-overlay').target).toBe(audio);
 
         audio.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-        browser = openBrowser('Audio');
+        browser = openBrowser();
+        expect(browser.activeFilter).toBe('audio');
         await selectFile(browser, 1);
         expect(editorElement.querySelector('audio')).toBe(audio);
         expect(audio.getAttribute('src')).toBe('/media/second.mp3');
         expect(audio.getAttribute('data-file-path')).toBe('/second.mp3');
+    });
+
+    test('Media command inserts at the editor end when no cursor is available', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Start</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            toolbarConfig: {
+                fileBrowser: {
+                    supportedExtensions: { image: '.png', video: '.mp4', audio: '.mp3' },
+                    items: [{ type: 'file', name: 'sound.mp3', path: '/sound.mp3', url: '/media/sound.mp3', extension: '.mp3', mime: 'audio/mpeg' }]
+                }
+            }
+        });
+
+        window.getSelection().removeAllRanges();
+        document.querySelector('button[title="Media"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const modal = document.querySelector('wysiwyg-modal');
+        const browser = modal.querySelector('wysiwyg-file-browser');
+
+        browser.shadowRoot.querySelector('[data-index="0"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(editorElement.querySelector('audio').getAttribute('src')).toBe('/media/sound.mp3');
+        expect(editorElement.querySelector('audio').getAttribute('data-file-path')).toBe('/sound.mp3');
     });
 
     test('uses the shared modal for code block insertion', async () => {
@@ -834,7 +902,7 @@ describe('editor adapter', () => {
         expect(editorElement.querySelector('pre code').textContent).toBe('const answer = 42;');
     });
 
-    test('image command uses a file browser modal', async () => {
+    test('Media command uses a file browser modal', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true"><p>Start</p></div>'
@@ -869,7 +937,7 @@ describe('editor adapter', () => {
         selection.addRange(range);
         document.dispatchEvent(new Event('selectionchange'));
 
-        document.querySelector('button[title="Image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('button[title="Media"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         const modal = document.querySelector('wysiwyg-modal');
         const browser = modal.querySelector('wysiwyg-file-browser');
@@ -888,7 +956,7 @@ describe('editor adapter', () => {
         expect(editorElement.querySelector('img').getAttribute('data-file-path')).toBe('/assets/hero.png');
     });
 
-    test('image command opens the selected image folder and replaces that image', async () => {
+    test('Media command opens the selected image folder and replaces that image', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true"><p>',
@@ -917,10 +985,10 @@ describe('editor adapter', () => {
         editorElement.focus();
         image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
 
-        expect(document.querySelector('button[title="Image"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Media"]').getAttribute('aria-pressed')).toBe('true');
         expect(document.querySelector('button[title="Update image URL"]')).toBeNull();
 
-        document.querySelector('button[title="Image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('button[title="Media"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         const modal = document.querySelector('wysiwyg-modal');
         const browser = modal.querySelector('wysiwyg-file-browser');
@@ -988,7 +1056,211 @@ describe('editor adapter', () => {
         expect(fullSize.querySelector('[data-selected-icon]')).toBeNull();
     });
 
-    test('image command falls back to the file browser root for an invalid image path', async () => {
+    test('media tools popup exposes playback controls for video and audio', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>',
+            '<video src="movie.mp4" controls poster="old.jpg" preload="metadata" style="object-fit: contain"></video>',
+            '<audio src="sound.mp3" controls></audio>',
+            '</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const video = editorElement.querySelector('video');
+        const audio = editorElement.querySelector('audio');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        video.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        let popup = document.querySelector('wysiwyg-popup[data-mode="video"]');
+
+        expect(popup).not.toBeNull();
+
+        const mediaPanel = popup.querySelector('[data-media-panel="image,video"]');
+        const imagePanel = popup.querySelector('[data-media-panel="image"]');
+        const sharedPanel = popup.querySelector('[data-media-panel="video,audio"]');
+        const audioPanel = popup.querySelector('[data-media-panel="audio"]');
+        const fullSize = popup.querySelector('[data-action="fullSize"]');
+        const fullWidth = popup.querySelector('[data-action="fullWidth"]');
+        const objectFit = popup.querySelector('[data-style="objectFit"]');
+        const controls = popup.querySelector('[data-media-attribute="controls"]');
+        const autoplay = popup.querySelector('[data-media-attribute="autoplay"]');
+        const poster = popup.querySelector('[data-media-attribute="poster"]');
+        const preload = popup.querySelector('[data-media-attribute="preload"]');
+        const playsInline = popup.querySelector('[data-media-attribute="playsinline"]');
+
+        expect(mediaPanel.hidden).toBe(false);
+        expect(imagePanel.hidden).toBe(true);
+        expect(sharedPanel.hidden).toBe(false);
+        expect(audioPanel.hidden).toBe(true);
+        expect(fullSize.getAttribute('aria-pressed')).toBe('false');
+        expect(fullWidth.closest('[data-media-panel="audio"]').hidden).toBe(true);
+        expect(objectFit.value).toBe('contain');
+        expect(controls.checked).toBe(true);
+        expect(autoplay.checked).toBe(false);
+        expect(poster.value).toBe('old.jpg');
+        expect(preload.value).toBe('metadata');
+        expect(playsInline.checked).toBe(false);
+
+        fullSize.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(video.style.width).toBe('100%');
+        expect(fullSize.getAttribute('aria-pressed')).toBe('true');
+
+        objectFit.value = 'cover';
+        objectFit.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(video.style.objectFit).toBe('cover');
+
+        autoplay.checked = true;
+        autoplay.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(video.hasAttribute('autoplay')).toBe(true);
+
+        controls.checked = false;
+        controls.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(video.hasAttribute('controls')).toBe(false);
+
+        poster.value = 'new.jpg';
+        poster.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(video.getAttribute('poster')).toBe('new.jpg');
+
+        preload.value = 'none';
+        preload.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(video.getAttribute('preload')).toBe('none');
+
+        playsInline.checked = true;
+        playsInline.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(video.hasAttribute('playsinline')).toBe(true);
+
+        audio.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        popup = document.querySelector('wysiwyg-popup[data-mode="audio"]');
+
+        expect(popup).not.toBeNull();
+        expect(popup.querySelector('[data-media-panel="image,video"]').hidden).toBe(true);
+        expect(popup.querySelector('[data-media-panel="audio"]').hidden).toBe(false);
+        expect(popup.querySelector('[data-action="fullSize"]').getAttribute('aria-pressed')).toBe('false');
+        expect(popup.querySelector('[data-action="fullWidth"]').getAttribute('aria-pressed')).toBe('false');
+        expect(popup.querySelector('[data-media-panel="video,audio"]').hidden).toBe(false);
+        expect(popup.querySelector('[data-media-panel="video"]').hidden).toBe(true);
+        expect(popup.querySelector('[data-media-attribute="controls"]').checked).toBe(true);
+        expect(popup.querySelector('[data-media-attribute="poster"]')).not.toBeNull();
+        expect(popup.querySelector('[data-media-attribute="poster"]').closest('[data-media-panel="video"]').hidden).toBe(true);
+
+        fullWidth.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(audio.style.width).toBe('100%');
+        expect(fullWidth.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('Delete and Backspace remove selected video and audio media', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>',
+            '<video src="movie.mp4"></video><audio src="sound.mp3"></audio>',
+            '</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const video = editorElement.querySelector('video');
+        const audio = editorElement.querySelector('audio');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        video.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const deleteEvent = new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true });
+        editorElement.dispatchEvent(deleteEvent);
+
+        expect(deleteEvent.defaultPrevented).toBe(true);
+        expect(editorElement.querySelector('video')).toBeNull();
+
+        audio.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const backspaceEvent = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+        editorElement.dispatchEvent(backspaceEvent);
+
+        expect(backspaceEvent.defaultPrevented).toBe(true);
+        expect(editorElement.querySelector('audio')).toBeNull();
+    });
+
+    test('Delete and Backspace remove a selected table', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td>First</td></tr></tbody></table>',
+            '<table><tbody><tr><td>Second</td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const tables = Array.from(editorElement.querySelectorAll('table'));
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        tables[0].querySelector('td').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        const selector = document.querySelector('wysiwyg-table-selection');
+        const tableButton = selector.shadowRoot.querySelector('[data-mode="table"]');
+
+        tableButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const deleteEvent = new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true, composed: true });
+        tableButton.dispatchEvent(deleteEvent);
+
+        expect(deleteEvent.defaultPrevented).toBe(true);
+        expect(editorElement.querySelectorAll('table')).toHaveLength(1);
+
+        tables[1].querySelector('td').dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        document.querySelector('wysiwyg-table-selection').shadowRoot.querySelector('[data-mode="table"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const backspaceEvent = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+        document.dispatchEvent(backspaceEvent);
+
+        expect(backspaceEvent.defaultPrevented).toBe(true);
+        expect(editorElement.querySelector('table')).toBeNull();
+    });
+
+    test('Delete only removes a table when the whole table is selected', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><table><tbody><tr><td>A</td><td>B</td></tr></tbody></table></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cell = editorElement.querySelector('td');
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar')
+        });
+
+        editorElement.focus();
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const deleteEvent = new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true });
+        editorElement.dispatchEvent(deleteEvent);
+
+        expect(deleteEvent.defaultPrevented).toBe(false);
+        expect(editorElement.querySelector('table')).not.toBeNull();
+
+        document.querySelector('wysiwyg-table-selection').shadowRoot.querySelector('[data-mode="table"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const tableDeleteEvent = new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true });
+        editorElement.dispatchEvent(tableDeleteEvent);
+
+        expect(tableDeleteEvent.defaultPrevented).toBe(true);
+        expect(editorElement.querySelector('table')).toBeNull();
+    });
+
+    test('Media command falls back to the file browser root for an invalid image path', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
             '<div id="editor" contenteditable="true"><p>',
@@ -1018,7 +1290,7 @@ describe('editor adapter', () => {
 
         editorElement.focus();
         image.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-        document.querySelector('button[title="Image"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        document.querySelector('button[title="Media"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         await new Promise(function (resolve) { setTimeout(resolve, 0); });
 
@@ -1441,7 +1713,7 @@ describe('editor adapter', () => {
 
         expect(overlay.open).toBe(true);
         expect(overlay.target).toBe(video);
-        expect(document.querySelector('button[title="Video"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Media"]').getAttribute('aria-pressed')).toBe('true');
 
         overlay.shadowRoot.querySelector('[data-resize="se"]').dispatchEvent(new MouseEvent('pointerdown', {
             bubbles: true,
@@ -1462,13 +1734,13 @@ describe('editor adapter', () => {
         overlay = document.querySelector('wysiwyg-resize-overlay');
 
         expect(overlay.target).toBe(audio);
-        expect(document.querySelector('button[title="Audio"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Media"]').getAttribute('aria-pressed')).toBe('true');
 
         audio.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
         overlay = document.querySelector('wysiwyg-resize-overlay');
 
         expect(overlay.target).toBe(audio);
-        expect(document.querySelector('button[title="Audio"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Media"]').getAttribute('aria-pressed')).toBe('true');
 
         deselectRange.selectNodeContents(destination);
         deselectRange.collapse(true);
@@ -1481,7 +1753,7 @@ describe('editor adapter', () => {
 
         audio.dispatchEvent(new Event('focus'));
         expect(overlay.target).toBe(audio);
-        expect(document.querySelector('button[title="Audio"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Media"]').getAttribute('aria-pressed')).toBe('true');
 
         overlay.shadowRoot.querySelector('.move').dispatchEvent(new MouseEvent('pointerdown', {
             bubbles: true,
@@ -1544,7 +1816,7 @@ describe('editor adapter', () => {
         destination.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 160, clientY: 80 }));
 
         expect(image.parentNode).toBe(destination);
-        expect(document.querySelector('button[title="Image"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Media"]').getAttribute('aria-pressed')).toBe('true');
         expect(document.querySelector('wysiwyg-popup[data-mode="image"]')).not.toBeNull();
         expect(overlay.open).toBe(true);
         expect(overlay.target).toBe(image);
@@ -1562,7 +1834,7 @@ describe('editor adapter', () => {
         source.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 40, clientY: 80 }));
 
         expect(image.parentNode).toBe(source);
-        expect(document.querySelector('button[title="Image"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Media"]').getAttribute('aria-pressed')).toBe('true');
         expect(overlay.target).toBe(image);
         expect(editorElement.querySelectorAll('tr')).toHaveLength(1);
         expect(editorElement.querySelectorAll('td')).toHaveLength(2);

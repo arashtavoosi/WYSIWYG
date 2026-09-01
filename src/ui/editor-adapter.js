@@ -62,7 +62,7 @@
         var toolbarElement = config.toolbarElement || findAdjacentToolbar(editorElement) || createToolbarElement(editorElement);
         var editor = createEditorCore(editorElement, config.editorOptions);
         var savedRange = null;
-        var imageToolsPopup = null;
+        var mediaToolsPopup = null;
         var tableToolsPopup = null;
         var resizeOverlay = null;
         var tableSelectionOverlay = null;
@@ -503,23 +503,116 @@
             return separator > 0 ? path.slice(0, separator) : '/';
         }
 
+        function mediaFilters(settings) {
+            var supported = settings.supportedExtensions;
+            var types = ['image', 'video', 'audio'];
+
+            if (!supported) {
+                return [];
+            }
+
+            if (typeof supported !== 'object' || Array.isArray(supported)) {
+                return [{ value: 'image', label: 'Image', iconId: 'image', extensions: supported }];
+            }
+
+            return types.map(function (type) {
+                return {
+                    value: type,
+                    label: type.charAt(0).toUpperCase() + type.slice(1),
+                    iconId: type,
+                    extensions: supported[type] || ''
+                };
+            }).filter(function (filter) {
+                return filter.extensions;
+            });
+        }
+
+        function mediaExtensions(settings) {
+            var supported = settings.supportedExtensions;
+
+            if (!supported || typeof supported !== 'object' || Array.isArray(supported)) {
+                return supported || '';
+            }
+
+            return Object.keys(supported).map(function (type) {
+                return supported[type];
+            }).filter(Boolean).join(',');
+        }
+
+        function syncMediaFilterButtons(container, browser) {
+            var active = browser.activeFilters || [];
+
+            Array.prototype.forEach.call(container.querySelectorAll('[data-filter]'), function (button) {
+                var selected = active.indexOf(button.getAttribute('data-filter')) !== -1;
+
+                button.setAttribute('aria-pressed', String(selected));
+                button.style.borderColor = selected ? '#2563eb' : '#d1d5db';
+                button.style.backgroundColor = selected ? '#dbeafe' : '#fff';
+            });
+        }
+
+        function renderMediaFilterButtons(container, browser, filters) {
+            if (!container) {
+                return;
+            }
+
+            container.innerHTML = '';
+            filters.forEach(function (filter) {
+                var button = document.createElement('button');
+                var icon;
+
+                button.type = 'button';
+                button.setAttribute('data-filter', filter.value);
+                button.setAttribute('aria-label', filter.label || filter.value);
+                button.setAttribute('title', filter.label || filter.value);
+                button.style.cssText = 'display:grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;cursor:pointer';
+
+                if (filter.iconId) {
+                    icon = createIcon(filter.iconId, 'wysiwyg-media-filter-icon');
+                    icon.style.cssText = 'width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round';
+                    button.appendChild(icon);
+                } else {
+                    button.textContent = filter.label || filter.value;
+                }
+
+                html.on(button, 'click', function (event) {
+                    event.preventDefault();
+                    browser.toggleFilter(filter.value);
+                    syncMediaFilterButtons(container, browser);
+                });
+                container.appendChild(button);
+            });
+
+            syncMediaFilterButtons(container, browser);
+        }
+
         function showMediaBrowserModal(type, currentMedia) {
             var modal;
             var title;
             var browser;
             var resolved = false;
             var settings = toolbarSettings.fileBrowser || {};
-            var prompt = toolbarSettings.prompts[type] || {
-                label: type.charAt(0).toUpperCase() + type.slice(1) + ' URL',
-                fallback: 'https://'
-            };
-            var supportedExtensions = settings.supportedExtensions;
+            var requestedType = typeof type === 'string' ? type : '';
+            var selectedType;
+            var prompt;
+            var filters;
+            var visibleExtensions;
+            var filterContainer;
             var rootPath = settings.path || '/';
             var initialPath;
 
-            if (supportedExtensions && typeof supportedExtensions === 'object' && !Array.isArray(supportedExtensions)) {
-                supportedExtensions = supportedExtensions[type] || '';
+            if (type && typeof type === 'object' && currentMedia === undefined) {
+                currentMedia = type;
+                requestedType = '';
             }
+
+            selectedType = currentMedia && currentMedia.type || requestedType;
+            prompt = (requestedType && toolbarSettings.prompts[requestedType]) || toolbarSettings.prompts.media || {
+                label: 'Media URL',
+                fallback: 'https://'
+            };
+            filters = mediaFilters(settings);
+            visibleExtensions = requestedType && settings.supportedExtensions && typeof settings.supportedExtensions === 'object' && !Array.isArray(settings.supportedExtensions) ? settings.supportedExtensions[requestedType] : mediaExtensions(settings);
 
             initialPath = getDirectoryPath(currentMedia && (currentMedia.filePath || currentMedia.src)) || rootPath;
 
@@ -534,15 +627,22 @@
             modal.innerHTML = [
                 '<strong slot="header"></strong>',
                 '<wysiwyg-file-browser></wysiwyg-file-browser>',
-                '<span slot="footer"><button type="button" data-action="cancel">Cancel</button></span>'
+                '<span slot="footer" style="align-items:center;justify-content:space-between;width:100%"><span class="media-filters" role="group" aria-label="Filter files" style="display:flex;gap:4px"></span><button type="button" data-action="cancel">Cancel</button></span>'
             ].join('');
             document.body.appendChild(modal);
 
             title = modal.querySelector('[slot="header"]');
             browser = modal.querySelector('wysiwyg-file-browser');
+            filterContainer = modal.querySelector('.media-filters');
             title.textContent = prompt.label;
-            browser.supportedExtensions = supportedExtensions || '';
+            browser.supportedExtensions = visibleExtensions || '';
+            browser.filters = filters;
+            browser.filterPlacement = 'external';
+            browser.activeFilters = selectedType ? [selectedType] : [];
+            browser.iconSpritePath = toolbarSettings.iconSpritePath || '';
+            browser.iconPrefix = toolbarSettings.iconPrefix || 'wysiwyg-icon-';
             browser.viewMode = settings.viewMode || 'thumbnail';
+            renderMediaFilterButtons(filterContainer, browser, filters);
 
             if (settings.endpoint) {
                 browser.endpoint = settings.endpoint;
@@ -579,7 +679,14 @@
                     finish(null);
                 });
                 html.on(browser, 'file-select', function (event) {
-                    finish(event.detail.file);
+                    var file = event.detail.file;
+                    var activeFilters = browser.activeFilters || [];
+
+                    if (file && activeFilters.length === 1 && !file.mediaType) {
+                        file = Object.assign({}, file, { mediaType: activeFilters[0] });
+                    }
+
+                    finish(file);
                 });
 
                 modal.show();
@@ -715,10 +822,6 @@
             return html.getSelectedElement(selection, 'td') || html.getSelectedElement(selection, 'th');
         }
 
-        function getSelectedImage() {
-            return html.getSelectedElement(window.getSelection(), 'img');
-        }
-
         function getSelectedMedia() {
             return html.getSelectedElement(window.getSelection(), ['img', 'video', 'audio']);
         }
@@ -774,6 +877,43 @@
             return true;
         }
 
+        function getKeyboardResizeTarget(event) {
+            var target = resizeOverlay && resizeOverlay.open ? resizeOverlay.target : null;
+            var eventTarget = event && event.target;
+            var focused = document.activeElement;
+            var controls = [resizeOverlay, tableSelectionOverlay, tableToolsPopup, mediaToolsPopup];
+            var wholeTable = tableSelection && tableSelection.mode === 'table' && tableSelection.table === target;
+            var inEditor = editorElement.contains(eventTarget) || editorElement.contains(focused);
+            var inControl = controls.some(function (control) {
+                return control && (control === eventTarget || control === focused || control.contains(eventTarget) || control.contains(focused));
+            });
+
+            return target && editorElement.contains(target) && (inEditor || inControl || wholeTable) ? target : null;
+        }
+
+        function removeResizeTarget(target) {
+            var table = target.tagName === 'TABLE' ? target : html.getClosestTag(target, 'table');
+            var wholeTable = table && tableSelection && tableSelection.table === table && tableSelection.mode === 'table' && target === table;
+
+            if (!isMediaElement(target) && !wholeTable) {
+                return false;
+            }
+
+            restoreSelection();
+
+            if (isMediaElement(target)) {
+                if (getSelectedMedia() !== target) {
+                    html.selectNode(target);
+                }
+                editor.removeMedia();
+            } else {
+                html.selectNode(table);
+                editor.removeTable();
+            }
+
+            return !editorElement.contains(target);
+        }
+
         function getImageLayout(image) {
             if (image.style.float === 'left') {
                 return 'float-left';
@@ -786,14 +926,14 @@
             return image.style.display === 'block' ? 'block' : 'inline';
         }
 
-        function getImageToolTarget() {
-            var image = getSelectedImage();
+        function getMediaToolTarget() {
+            var media = getSelectedMedia();
 
-            if (image && editorElement.contains(image)) {
-                return image;
+            if (media && editorElement.contains(media)) {
+                return media;
             }
 
-            return activeResizeTarget && activeResizeTarget.tagName === 'IMG' && editorElement.contains(activeResizeTarget) ? activeResizeTarget : null;
+            return activeResizeTarget && isMediaElement(activeResizeTarget) && editorElement.contains(activeResizeTarget) ? activeResizeTarget : null;
         }
 
         function isTableResizeTarget(target) {
@@ -1155,84 +1295,149 @@
             }
         }
 
-        function closeImageTools() {
-            if (imageToolsPopup) {
-                imageToolsPopup.remove();
-                imageToolsPopup = null;
-                html.off(document, 'keydown', closeImageToolsOnEscape);
+        function closeMediaTools() {
+            if (mediaToolsPopup) {
+                mediaToolsPopup.remove();
+                mediaToolsPopup = null;
+                html.off(document, 'keydown', closeMediaToolsOnEscape);
             }
         }
 
-        function closeImageToolsOnEscape(event) {
+        function closeMediaToolsOnEscape(event) {
             if (event.key === 'Escape') {
-                closeImageTools();
+                closeMediaTools();
             }
         }
 
-        function syncImageToolControls(image) {
-            var fullSize = imageToolsPopup.querySelector('[data-action="fullSize"]');
-            var objectFit = imageToolsPopup.querySelector('[data-style="objectFit"]');
-            var layout = imageToolsPopup.querySelector('[data-style="layout"]');
-            var selectedIcon = fullSize.querySelector('[data-selected-icon]');
-            var selected = image.style.width === '100%';
+        function mediaElementType(media) {
+            var tagName = media && media.tagName ? media.tagName.toLowerCase() : '';
 
-            fullSize.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            return tagName === 'img' ? 'image' : tagName;
+        }
+
+        function syncMediaToggle(button, selected) {
+            var selectedIcon;
+
+            if (!button) {
+                return;
+            }
+
+            selectedIcon = button.querySelector('[data-selected-icon]');
+            button.setAttribute('aria-pressed', selected ? 'true' : 'false');
 
             if (selected && !selectedIcon) {
-                selectedIcon = createIcon('check', 'wysiwyg-image-tool-icon');
-                selectedIcon.classList.add('wysiwyg-image-tool-check');
+                selectedIcon = createIcon('check', 'wysiwyg-media-tool-icon');
+                selectedIcon.classList.add('wysiwyg-media-tool-check');
                 selectedIcon.setAttribute('data-selected-icon', '');
-                fullSize.appendChild(selectedIcon);
+                button.appendChild(selectedIcon);
             } else if (!selected && selectedIcon) {
                 selectedIcon.remove();
             }
-
-            objectFit.value = image.style.objectFit || '';
-            layout.value = getImageLayout(image);
         }
 
-        function openImageTools(image) {
+        function syncMediaToolControls(media) {
+            var type = mediaElementType(media);
+            var fullSize = mediaToolsPopup.querySelector('[data-action="fullSize"]');
+            var fullWidth = mediaToolsPopup.querySelector('[data-action="fullWidth"]');
+            var objectFit = mediaToolsPopup.querySelector('[data-style="objectFit"]');
+            var layout = mediaToolsPopup.querySelector('[data-style="layout"]');
+            var selected = (type === 'image' || type === 'video') && media.style.width === '100%';
+            var fullWidthSelected = type === 'audio' && media.style.width === '100%';
+
+            mediaToolsPopup.setAttribute('data-mode', type);
+            Array.prototype.forEach.call(mediaToolsPopup.querySelectorAll('[data-media-panel]'), function (panel) {
+                panel.hidden = (panel.getAttribute('data-media-panel') || '').split(',').indexOf(type) === -1;
+            });
+
+            syncMediaToggle(fullSize, selected);
+            syncMediaToggle(fullWidth, fullWidthSelected);
+
+            objectFit.value = type === 'image' || type === 'video' ? media.style.objectFit || '' : '';
+            layout.value = type === 'image' ? getImageLayout(media) : 'inline';
+
+            Array.prototype.forEach.call(mediaToolsPopup.querySelectorAll('[data-media-attribute]'), function (control) {
+                var name = control.getAttribute('data-media-attribute');
+
+                if (control.type === 'checkbox') {
+                    control.checked = media.hasAttribute(name);
+                } else {
+                    control.value = media.getAttribute(name) || '';
+                }
+            });
+        }
+
+        function openMediaTools(media) {
             if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-popup')) {
                 return false;
             }
 
-            if (!imageToolsPopup) {
-                imageToolsPopup = document.createElement('wysiwyg-popup');
-                imageToolsPopup.preferredPosition = 'bottom-start';
-                imageToolsPopup.setAttribute('data-mode', 'image');
-                imageToolsPopup.innerHTML = [
+            if (!mediaToolsPopup) {
+                mediaToolsPopup = document.createElement('wysiwyg-popup');
+                mediaToolsPopup.preferredPosition = 'bottom-start';
+                mediaToolsPopup.innerHTML = [
                     '<style>',
-                    '.wysiwyg-image-tools{display:grid;gap:8px;min-width:190px}',
-                    '.wysiwyg-image-tool{display:flex;align-items:center;gap:7px;width:100%;height:30px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;padding:0 8px;cursor:pointer;font:500 12px/1.2 system-ui,sans-serif}',
-                    '.wysiwyg-image-tool:hover,.wysiwyg-image-tool[aria-pressed="true"]{border-color:#2563eb;background:#dbeafe}',
-                    '.wysiwyg-image-tool-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}',
-                    '.wysiwyg-image-tool-check{margin-left:auto}',
-                    '.wysiwyg-image-tools label{display:grid;gap:3px;color:#475569;font:500 12px/1.2 system-ui,sans-serif}',
-                    '.wysiwyg-image-tools select{width:100%;height:30px;padding:0 24px 0 8px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;font:inherit}',
+                    '.wysiwyg-media-tools{display:grid;gap:8px;min-width:190px}',
+                    '.wysiwyg-media-panel{display:grid;gap:8px}',
+                    '.wysiwyg-media-panel[hidden]{display:none}',
+                    '.wysiwyg-media-tool{display:flex;align-items:center;gap:7px;width:100%;height:30px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;padding:0 8px;cursor:pointer;font:500 12px/1.2 system-ui,sans-serif}',
+                    '.wysiwyg-media-tool:hover,.wysiwyg-media-tool[aria-pressed="true"]{border-color:#2563eb;background:#dbeafe}',
+                    '.wysiwyg-media-tool-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;overflow:visible}',
+                    '.wysiwyg-media-tool-check{margin-left:auto}',
+                    '.wysiwyg-media-tools label{display:grid;gap:3px;color:#475569;font:500 12px/1.2 system-ui,sans-serif}',
+                    '.wysiwyg-media-tools select,.wysiwyg-media-tools input[type="url"]{width:100%;height:30px;box-sizing:border-box;padding:0 8px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;font:inherit}',
+                    '.wysiwyg-media-tools .wysiwyg-media-check{display:flex;align-items:center;gap:7px}',
+                    '.wysiwyg-media-tools .wysiwyg-media-check input{width:auto;height:auto;margin:0}',
                     '</style>',
-                    '<div class="wysiwyg-image-tools">',
-                    '<button type="button" class="wysiwyg-image-tool" data-action="fullSize" title="Full-size image" aria-label="Full-size image" aria-pressed="false"></button>',
+                    '<div class="wysiwyg-media-tools wysiwyg-image-tools">',
+                    '<div data-media-panel="image,video" class="wysiwyg-media-panel">',
+                    '<button type="button" class="wysiwyg-media-tool wysiwyg-image-tool" data-action="fullSize" title="Full-size" aria-label="Full-size" aria-pressed="false"></button>',
                     '<label><span>Object fit</span><select data-style="objectFit" aria-label="Object fit"><option value="">Default</option><option value="fill">Fill</option><option value="contain">Contain</option><option value="cover">Cover</option><option value="none">None</option><option value="scale-down">Scale down</option></select></label>',
+                    '</div>',
+                    '<div data-media-panel="image" class="wysiwyg-media-panel">',
                     '<label><span>Layout</span><select data-style="layout" aria-label="Image layout"><option value="inline">Inline</option><option value="block">Block</option><option value="float-left">Float left</option><option value="float-right">Float right</option></select></label>',
+                    '</div>',
+                    '<div data-media-panel="audio" class="wysiwyg-media-panel">',
+                    '<button type="button" class="wysiwyg-media-tool wysiwyg-media-width-tool" data-action="fullWidth" title="Full-width audio" aria-label="Full-width audio" aria-pressed="false"></button>',
+                    '</div>',
+                    '<div data-media-panel="video,audio" class="wysiwyg-media-panel">',
+                    '<label class="wysiwyg-media-check"><input type="checkbox" data-media-attribute="controls"><span>Controls</span></label>',
+                    '<label class="wysiwyg-media-check"><input type="checkbox" data-media-attribute="autoplay"><span>Autoplay</span></label>',
+                    '<label class="wysiwyg-media-check"><input type="checkbox" data-media-attribute="loop"><span>Loop</span></label>',
+                    '<label class="wysiwyg-media-check"><input type="checkbox" data-media-attribute="muted"><span>Muted</span></label>',
+                    '<label><span>Preload</span><select data-media-attribute="preload" aria-label="Preload"><option value="">Default</option><option value="none">None</option><option value="metadata">Metadata</option><option value="auto">Auto</option></select></label>',
+                    '</div>',
+                    '<div data-media-panel="video" class="wysiwyg-media-panel">',
+                    '<label><span>Poster URL</span><input type="url" data-media-attribute="poster" aria-label="Poster URL"></label>',
+                    '<label class="wysiwyg-media-check"><input type="checkbox" data-media-attribute="playsinline"><span>Inline playback</span></label>',
+                    '</div>',
                     '</div>'
                 ].join('');
-                imageToolsPopup.querySelector('[data-action="fullSize"]').appendChild(createIcon('image-full-size', 'wysiwyg-image-tool-icon'));
-                imageToolsPopup.querySelector('[data-action="fullSize"]').appendChild(document.createTextNode('Full-size'));
-                document.body.appendChild(imageToolsPopup);
-                html.on(imageToolsPopup, 'click', function (event) {
-                    var button = event.target.closest && event.target.closest('[data-action="fullSize"]');
+                mediaToolsPopup.querySelector('[data-action="fullSize"]').appendChild(createIcon('image-full-size', 'wysiwyg-media-tool-icon'));
+                mediaToolsPopup.querySelector('[data-action="fullSize"]').appendChild(document.createTextNode('Full-size'));
+                mediaToolsPopup.querySelector('[data-action="fullWidth"]').appendChild(createIcon('image-full-size', 'wysiwyg-media-tool-icon'));
+                mediaToolsPopup.querySelector('[data-action="fullWidth"]').appendChild(document.createTextNode('Full-width'));
+                document.body.appendChild(mediaToolsPopup);
+                html.on(mediaToolsPopup, 'click', function (event) {
+                    var button = event.target.closest && event.target.closest('[data-action]');
+                    var action = button && button.getAttribute('data-action');
+                    var target = getMediaToolTarget();
+                    var type = mediaElementType(target);
 
-                    if (!button) {
+                    if (!button || (action === 'fullSize' && type !== 'image' && type !== 'video') || (action === 'fullWidth' && type !== 'audio')) {
                         return;
                     }
 
                     restoreSelection();
-                    editor.toggleImageFullSize();
+                    editor.toggleMediaWidth();
                     saveSelection();
                     sync();
                 });
-                html.on(imageToolsPopup, 'change', function (event) {
-                    var control = event.target.closest && event.target.closest('[data-style]');
+                html.on(mediaToolsPopup, 'change', function (event) {
+                    var control = event.target.closest && event.target.closest('[data-style],[data-media-attribute]');
+                    var target;
+                    var type;
+                    var name;
+                    var attributes;
 
                     if (!control) {
                         return;
@@ -1240,32 +1445,51 @@
 
                     restoreSelection();
 
-                    if (control.getAttribute('data-style') === 'objectFit') {
-                        editor.setImageStyle('objectFit', control.value);
+                    target = getMediaToolTarget();
+                    type = mediaElementType(target);
+                    if (control.hasAttribute('data-style')) {
+                        if (type !== 'image' && type !== 'video') {
+                            return;
+                        }
+
+                        if (control.getAttribute('data-style') === 'objectFit') {
+                            editor.setMediaStyle('objectFit', control.value);
+                        } else if (type === 'image') {
+                            editor.setImageLayout(control.value);
+                        } else {
+                            return;
+                        }
                     } else {
-                        editor.setImageLayout(control.value);
+                        if (type !== 'video' && type !== 'audio') {
+                            return;
+                        }
+
+                        name = control.getAttribute('data-media-attribute');
+                        attributes = { type: type };
+                        attributes[name] = control.type === 'checkbox' ? control.checked : control.value;
+                        editor.updateMedia(attributes);
                     }
 
                     saveSelection();
                     sync();
                 });
-                html.on(document, 'keydown', closeImageToolsOnEscape);
+                html.on(document, 'keydown', closeMediaToolsOnEscape);
             }
 
-            syncImageToolControls(image);
-            imageToolsPopup.showFor(image);
+            syncMediaToolControls(media);
+            mediaToolsPopup.showFor(media);
             return true;
         }
 
-        function syncImageTools(state) {
-            var image = state.image ? getImageToolTarget() : null;
+        function syncMediaTools(state) {
+            var media = state.media ? getMediaToolTarget() : null;
 
-            if (!image || !editorElement.contains(image)) {
-                closeImageTools();
+            if (!media || !editorElement.contains(media)) {
+                closeMediaTools();
                 return;
             }
 
-            openImageTools(image);
+            openMediaTools(media);
         }
 
         function createContext(entry, event, value) {
@@ -1358,7 +1582,7 @@
 
             if (isCodeViewOnly()) {
                 closeTableTools();
-                closeImageTools();
+                closeMediaTools();
                 if (resizeOverlay) {
                     resizeOverlay.hide();
                 }
@@ -1367,7 +1591,7 @@
                 }
             } else {
                 syncTableTools(state);
-                syncImageTools(state);
+                syncMediaTools(state);
                 syncResizeOverlay(state);
                 syncTableSelectionOverlay(state);
             }
@@ -1563,6 +1787,25 @@
             saveSelection();
             sync();
         });
+
+        html.on(document, 'keydown', function (event) {
+            var target;
+
+            if (event.defaultPrevented || ['Delete', 'Backspace'].indexOf(event.key) === -1) {
+                return;
+            }
+
+            target = getKeyboardResizeTarget(event);
+            if (!target || !removeResizeTarget(target)) {
+                return;
+            }
+
+            event.preventDefault();
+            clearTableSelection();
+            activeResizeTarget = null;
+            saveSelection();
+            sync();
+        }, true);
 
         html.on(document, 'mouseup', function () {
             expandingTableSelection = false;

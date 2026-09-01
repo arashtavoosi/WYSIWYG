@@ -21,6 +21,13 @@
         });
     }
 
+    function normalizeExtensions(value) {
+        return (Array.isArray(value) ? value : String(value || '').split(',')).map(function (extension) {
+            extension = String(extension || '').trim().toLowerCase();
+            return extension && extension.charAt(0) === '.' ? extension : extension ? '.' + extension : '';
+        }).filter(Boolean);
+    }
+
     function defineComponents() {
         var WysiwygModalElement;
         var WysiwygPopupElement;
@@ -216,17 +223,24 @@
                 ].join('');
                 this._panel = this.shadowRoot.querySelector('.panel');
                 this._syncPosition = this.updatePosition.bind(this);
+                this._resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._syncPosition) : null;
             }
 
             connectedCallback() {
                 html.on(window, 'resize', this._syncPosition);
                 html.on(window, 'scroll', this._syncPosition, true);
+                if (this._resizeObserver) {
+                    this._resizeObserver.observe(this._panel);
+                }
                 this.updatePosition();
             }
 
             disconnectedCallback() {
                 html.off(window, 'resize', this._syncPosition);
                 html.off(window, 'scroll', this._syncPosition, true);
+                if (this._resizeObserver) {
+                    this._resizeObserver.disconnect();
+                }
             }
 
             attributeChangedCallback() {
@@ -252,6 +266,13 @@
 
             showFor(anchor) {
                 this.anchor = anchor || this.anchor;
+                if (this._resizeObserver) {
+                    this._resizeObserver.disconnect();
+                    this._resizeObserver.observe(this._panel);
+                    if (this.anchor && this.anchor.nodeType === 1) {
+                        this._resizeObserver.observe(this.anchor);
+                    }
+                }
                 this.open = true;
                 this.updatePosition();
             }
@@ -384,6 +405,7 @@
                 this._onMove = this._move.bind(this);
                 this._onStop = this._stop.bind(this);
                 this._syncPosition = this.updatePosition.bind(this);
+                this._resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._syncPosition) : null;
             }
 
             connectedCallback() {
@@ -399,6 +421,9 @@
                 html.off(window, 'scroll', this._syncPosition, true);
                 html.off(document, 'pointermove', this._onMove);
                 html.off(document, 'pointerup', this._onStop);
+                if (this._resizeObserver) {
+                    this._resizeObserver.disconnect();
+                }
             }
 
             get open() {
@@ -415,6 +440,12 @@
 
             set target(value) {
                 this.targetElement = value || null;
+                if (this._resizeObserver) {
+                    this._resizeObserver.disconnect();
+                    if (this.targetElement) {
+                        this._resizeObserver.observe(this.targetElement);
+                    }
+                }
                 this.updatePosition();
             }
 
@@ -719,6 +750,11 @@
             constructor() {
                 super();
                 this._data = { path: '/', items: [] };
+                this._filters = [];
+                this._activeFilters = [];
+                this._filterPlacement = 'browser';
+                this._iconSpritePath = '';
+                this._iconPrefix = 'wysiwyg-icon-';
                 this._settingPath = false;
                 this.attachShadow({ mode: 'open' });
                 this.shadowRoot.innerHTML = [
@@ -729,11 +765,12 @@
                     'button{font:inherit;color:inherit;cursor:pointer}',
                     '.crumbs button{border:0;background:transparent;color:#2563eb;padding:2px;text-decoration:none}',
                     '.crumbs button:hover{text-decoration:underline}.crumbs button[aria-current="page"]{color:#475569;font-weight:600;cursor:default}.crumbs span{color:#94a3b8}',
-                    '.modes{display:flex;gap:4px}',
-                    '.modes button,.item{background:#fff;border:1px solid #d1d5db;border-radius:4px}',
-                    '.modes button:hover,.modes button[aria-pressed="true"],.item:hover{border-color:#2563eb;background:#dbeafe}',
-                    '.modes button{display:grid;place-items:center;width:30px;height:30px;padding:0}',
-                    '.modes svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}',
+                    '.controls{display:flex;gap:8px;align-items:center}',
+                    '.filters,.modes{display:flex;gap:4px}',
+                    '.filters button,.modes button,.item{background:#fff;border:1px solid #d1d5db;border-radius:4px}',
+                    '.filters button:hover,.filters button[aria-pressed="true"],.modes button:hover,.modes button[aria-pressed="true"],.item:hover{border-color:#2563eb;background:#dbeafe}',
+                    '.filters button,.modes button{display:grid;place-items:center;width:30px;height:30px;padding:0}',
+                    '.filters svg,.modes svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}',
                     '.items{display:grid;gap:4px}',
                     ':host([view-mode="thumbnail"]) .items{grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}',
                     '.item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;text-align:left;min-width:0;padding:4px 7px}',
@@ -743,7 +780,7 @@
                     '.thumb{width:64px;height:44px;object-fit:cover;border:1px solid #e5e7eb;background:#f8fafc}',
                     ':host(:not([view-mode="thumbnail"])) .thumb{display:none}',
                     '</style>',
-                    '<div class="bar"><nav class="crumbs" aria-label="Breadcrumb"></nav><div class="modes"><button type="button" data-mode="list" aria-label="List view" title="List view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button><button type="button" data-mode="thumbnail" aria-label="Thumbnail view" title="Thumbnail view"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button></div></div>',
+                    '<div class="bar"><nav class="crumbs" aria-label="Breadcrumb"></nav><div class="controls"><div class="filters" role="group" aria-label="Filter files"></div><div class="modes"><button type="button" data-mode="list" aria-label="List view" title="List view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button><button type="button" data-mode="thumbnail" aria-label="Thumbnail view" title="Thumbnail view"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button></div></div></div>',
                     '<div class="items" role="listbox"></div>'
                 ].join('');
                 this._crumbs = this.shadowRoot.querySelector('.crumbs');
@@ -801,11 +838,79 @@
                 this.setAttribute('view-mode', value === 'thumbnail' ? 'thumbnail' : 'list');
             }
 
+            get filters() {
+                return this._filters;
+            }
+
+            set filters(value) {
+                this._filters = Array.isArray(value) ? value.filter(function (filter) {
+                    return filter && (filter.value || filter.id);
+                }).map(function (filter) {
+                    return Object.assign({}, filter, { value: String(filter.value || filter.id) });
+                }) : [];
+
+                this._activeFilters = this._activeFilters.filter(function (filterValue) {
+                    return !!this._filterFor(filterValue);
+                }, this);
+
+                this._render();
+            }
+
+            get activeFilter() {
+                return this._activeFilters[0] || '';
+            }
+
+            set activeFilter(value) {
+                this.activeFilters = value ? [value] : [];
+            }
+
+            get activeFilters() {
+                return this._activeFilters.slice();
+            }
+
+            set activeFilters(value) {
+                this._activeFilters = [].concat(value || []).filter(function (filterValue, index, all) {
+                    return filterValue && this._filterFor(filterValue) && all.indexOf(filterValue) === index;
+                }, this);
+                this._render();
+            }
+
+            toggleFilter(value) {
+                var active = this.activeFilters;
+                var index = active.indexOf(value);
+
+                this.activeFilters = index === -1 ? active.concat(value) : active.slice(0, index).concat(active.slice(index + 1));
+            }
+
+            get filterPlacement() {
+                return this._filterPlacement;
+            }
+
+            set filterPlacement(value) {
+                this._filterPlacement = value === 'external' ? 'external' : 'browser';
+                this._render();
+            }
+
+            get iconSpritePath() {
+                return this._iconSpritePath;
+            }
+
+            set iconSpritePath(value) {
+                this._iconSpritePath = value || '';
+                this._render();
+            }
+
+            get iconPrefix() {
+                return this._iconPrefix;
+            }
+
+            set iconPrefix(value) {
+                this._iconPrefix = value || 'wysiwyg-icon-';
+                this._render();
+            }
+
             get supportedExtensions() {
-                return (this.getAttribute('supported-extensions') || '').split(',').map(function (extension) {
-                    extension = extension.trim().toLowerCase();
-                    return extension && extension.charAt(0) === '.' ? extension : extension ? '.' + extension : '';
-                }).filter(Boolean);
+                return normalizeExtensions(this.getAttribute('supported-extensions'));
             }
 
             set supportedExtensions(value) {
@@ -853,12 +958,19 @@
 
             _click(event) {
                 var mode = event.target.closest && event.target.closest('[data-mode]');
+                var filter = event.target.closest && event.target.closest('[data-filter]');
                 var crumb = event.target.closest && event.target.closest('[data-crumb]');
                 var item = event.target.closest && event.target.closest('[data-index]');
                 var entry;
 
                 if (mode) {
                     this.viewMode = mode.getAttribute('data-mode');
+                    return;
+                }
+
+                if (filter) {
+                    event.preventDefault();
+                    this.toggleFilter(filter.getAttribute('data-filter'));
                     return;
                 }
 
@@ -886,11 +998,40 @@
             }
 
             _visibleItems() {
-                var extensions = this.supportedExtensions;
+                var activeFilters = this.activeFilters;
+                var extensions = [];
+                var unrestricted = false;
+
+                activeFilters.forEach(function (value) {
+                    var filter = this._filterFor(value);
+                    var filterExtensions = normalizeExtensions(filter && (filter.extensions || filter.supportedExtensions));
+
+                    if (!filterExtensions.length) {
+                        unrestricted = true;
+                    }
+
+                    filterExtensions.forEach(function (extension) {
+                        if (extensions.indexOf(extension) === -1) {
+                            extensions.push(extension);
+                        }
+                    });
+                }, this);
+
+                if (!activeFilters.length) {
+                    extensions = this.supportedExtensions;
+                } else if (unrestricted) {
+                    extensions = [];
+                }
 
                 return (this._data.items || []).filter(function (item) {
                     var extension = (item.extension || (item.name && item.name.match(/\.[^.]+$/) || [''])[0]).toLowerCase();
                     return item.type === 'directory' || !extensions.length || extensions.indexOf(extension) !== -1;
+                });
+            }
+
+            _filterFor(value) {
+                return this._filters.find(function (filter) {
+                    return filter.value === value;
                 });
             }
 
@@ -915,6 +1056,8 @@
                 var breadcrumbs = this._breadcrumbs();
                 var items = this._visibleItems();
                 var mode = this.viewMode;
+                var filtersElement = this.shadowRoot.querySelector('.filters');
+                var self = this;
 
                 if (!this._crumbs || !this._items) {
                     return;
@@ -924,6 +1067,18 @@
                     var current = index === breadcrumbs.length - 1 ? ' aria-current="page"' : '';
                     return '<button type="button" data-crumb="' + escapeHtml(crumb.path) + '"' + current + '>' + escapeHtml(index ? crumb.name : 'Root') + '</button>';
                 }).join('<span>/</span>');
+                if (filtersElement) {
+                    filtersElement.hidden = this.filterPlacement === 'external';
+                    filtersElement.setAttribute('aria-hidden', String(this.filterPlacement === 'external'));
+                    filtersElement.innerHTML = this.filterPlacement === 'external' ? '' : this.filters.map(function (filter) {
+                        var value = filter.value;
+                        var label = filter.label || value;
+                        var href = self.iconSpritePath + '#' + self.iconPrefix + (filter.iconId || '');
+                        var icon = filter.iconId ? '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="' + escapeHtml(href) + '" xlink:href="' + escapeHtml(href) + '"></use></svg>' : '';
+
+                        return '<button type="button" data-filter="' + escapeHtml(value) + '" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '" aria-pressed="' + String(self.activeFilters.indexOf(value) !== -1) + '">' + icon + (icon ? '' : escapeHtml(label)) + '</button>';
+                    }).join('');
+                }
                 this.shadowRoot.querySelectorAll('[data-mode]').forEach(function (button) {
                     button.setAttribute('aria-pressed', String(button.getAttribute('data-mode') === mode));
                 });

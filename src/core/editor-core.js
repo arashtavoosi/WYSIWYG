@@ -169,6 +169,31 @@
             return result;
         }
 
+        function getInsertionSelection(selection) {
+            var currentSelection = html.getCurrentSelection(selection);
+            var range;
+
+            if (currentSelection && currentSelection.rangeCount) {
+                range = currentSelection.getRangeAt(0);
+
+                if (rootNode.contains(range.commonAncestorContainer)) {
+                    return currentSelection;
+                }
+            }
+
+            if (!window.getSelection || !document.createRange) {
+                return currentSelection;
+            }
+
+            currentSelection = window.getSelection();
+            range = document.createRange();
+            range.selectNodeContents(rootNode);
+            range.collapse(false);
+            currentSelection.removeAllRanges();
+            currentSelection.addRange(range);
+            return currentSelection;
+        }
+
         function performSelectionMutation(callback, selection) {
             var before = rootNode.innerHTML;
             var bookmark = html.getSelectionBookmark(selection, rootNode);
@@ -416,7 +441,7 @@
 
             insertMedia: function (attributes, selection) {
                 return performMutation(function () {
-                    embedContent.insertMedia(attributes && attributes.type, attributes, selection);
+                    embedContent.insertMedia(attributes && attributes.type, attributes, getInsertionSelection(selection));
                     return api;
                 });
             },
@@ -444,6 +469,13 @@
                 return api.updateMedia(attributes, selection);
             },
 
+            removeMedia: function (selection) {
+                return performMutation(function () {
+                    embedContent.removeMedia(selection);
+                    return api;
+                });
+            },
+
             removeImage: function (selection) {
                 return performMutation(function () {
                     embedContent.removeImage(selection);
@@ -458,9 +490,23 @@
                 });
             },
 
+            setMediaStyle: function (propertyName, value, selection) {
+                return performMutation(function () {
+                    embedContent.setMediaStyle(propertyName, value, selection, { root: rootNode });
+                    return api;
+                });
+            },
+
             setImageStyle: function (propertyName, value, selection) {
                 return performMutation(function () {
                     embedContent.setImageStyle(propertyName, value, selection, { root: rootNode });
+                    return api;
+                });
+            },
+
+            toggleMediaWidth: function (selection) {
+                return performMutation(function () {
+                    embedContent.toggleMediaWidth(selection, { root: rootNode });
                     return api;
                 });
             },

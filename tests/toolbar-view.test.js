@@ -38,4 +38,18 @@ describe('toolbar status breadcrumb', () => {
 
         expect(document.getElementById('status').textContent).toBe('Editor');
     });
+
+    test('includes quote context for a paragraph inside a blockquote', () => {
+        document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div>';
+
+        const view = createToolbarView(
+            document.getElementById('toolbar'),
+            document.getElementById('status'),
+            { toolbar: {} }
+        );
+
+        view.sync({ block: 'p', quote: true });
+
+        expect(document.getElementById('status').textContent).toBe('Quote › Paragraph');
+    });
 });
