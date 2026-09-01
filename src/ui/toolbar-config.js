@@ -152,7 +152,7 @@
     }
 
     var codeBlockCommand = modalCommand(function (context) {
-        return context.showCodeBlockModal();
+        return context.showCodeBlockModal(context.state.codeBlock);
     }, function (context, value) {
         context.editor.insertCodeBlock(value.code, value.language);
     });
@@ -490,6 +490,7 @@
                         title: 'Code block',
                         iconId: 'code-tag', icon: '</>',
                         priority: 58,
+                        active: function (state) { return !!state.codeBlock; },
                         onCommand: codeBlockCommand
                     },
                     br: {

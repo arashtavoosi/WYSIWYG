@@ -52,4 +52,18 @@ describe('toolbar status breadcrumb', () => {
 
         expect(document.getElementById('status').textContent).toBe('Quote › Paragraph');
     });
+
+    test('includes code block context', () => {
+        document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div>';
+
+        const view = createToolbarView(
+            document.getElementById('toolbar'),
+            document.getElementById('status'),
+            { toolbar: {} }
+        );
+
+        view.sync({ block: 'pre', codeBlock: { code: 'const answer = 42;', language: 'js' } });
+
+        expect(document.getElementById('status').textContent).toBe('Code block');
+    });
 });

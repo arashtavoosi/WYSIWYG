@@ -57,6 +57,40 @@ describe('embed content', () => {
         expect(editorElement.querySelector('audio').getAttribute('src')).toBe('/new.mp3');
     });
 
+    test('updates an existing code block when the cursor is inside it', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Start</p><pre><code class="language-js">old()</code></pre></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const codeText = editorElement.querySelector('code').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.setStart(codeText, 2);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.insertCodeBlock('new()', 'python', selection);
+
+        expect(editorElement.querySelectorAll('pre')).toHaveLength(1);
+        expect(editorElement.querySelector('pre code').textContent).toBe('new()');
+        expect(editorElement.querySelector('pre code').className).toBe('language-python');
+    });
+
+    test('inserts a code block at the editor end when there is no cursor', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Start</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const selection = window.getSelection();
+
+        selection.removeAllRanges();
+        editor.insertCodeBlock('const answer = 42;', 'js');
+
+        expect(editorElement.querySelector('pre code').textContent).toBe('const answer = 42;');
+    });
+
     test('inserts and updates video and audio playback attributes', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Start</p></div>';
 

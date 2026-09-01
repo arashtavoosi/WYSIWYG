@@ -68,6 +68,27 @@ describe('selection state', () => {
         expect(editor.getActiveFormats(selection).media.src).toBe('sound.mp3');
     });
 
+    test('reports code block context and language', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Before</p><pre><code class="language-js">const answer = 42;</code></pre><p>After</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const codeText = editorElement.querySelector('code').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.setStart(codeText, 6);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        expect(editor.getActiveFormats(selection).block).toBe('pre');
+        expect(editor.getActiveFormats(selection).codeBlock).toEqual({
+            code: 'const answer = 42;',
+            language: 'js'
+        });
+    });
+
     test('reports table cell context', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>C</td><td>D</td></tr></tbody></table></div>';
 

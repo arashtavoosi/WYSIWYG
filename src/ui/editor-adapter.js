@@ -243,7 +243,7 @@
             return window.prompt(label, fallback);
         }
 
-        function showInsertModal(title, fields, focusSelector, read) {
+        function showInsertModal(title, fields, focusSelector, read, initialize) {
             var modal;
             var form;
             var resolved = false;
@@ -297,22 +297,30 @@
                 });
                 html.on(modal.querySelector('[data-action="apply"]'), 'click', submit);
 
+                if (initialize) {
+                    initialize(modal);
+                }
                 modal.show();
                 modal.querySelector(focusSelector || '[data-field]').focus();
             });
         }
 
-        function showCodeBlockModal() {
+        function showCodeBlockModal(currentCodeBlock) {
             var result = showInsertModal('Insert Code Block', '<label><span>Code</span><textarea data-field="code" rows="8"></textarea></label><label><span>Language</span><input data-field="language" type="text" placeholder="optional"></label>', '[data-field="code"]', function (modal) {
                 return {
                     code: modal.querySelector('[data-field="code"]').value,
                     language: modal.querySelector('[data-field="language"]').value
                 };
+            }, function (modal) {
+                if (currentCodeBlock) {
+                    modal.querySelector('[data-field="code"]').value = currentCodeBlock.code || '';
+                    modal.querySelector('[data-field="language"]').value = currentCodeBlock.language || '';
+                }
             });
 
             return result || (typeof customElements !== 'undefined' && customElements.get('wysiwyg-modal') ? null : {
-                code: promptUser('Code', ''),
-                language: promptUser('Language', '')
+                code: promptUser('Code', currentCodeBlock ? currentCodeBlock.code : ''),
+                language: promptUser('Language', currentCodeBlock ? currentCodeBlock.language : '')
             });
         }
 

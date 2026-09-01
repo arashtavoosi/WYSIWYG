@@ -27,6 +27,10 @@
         var quoteElement;
         var tableElement;
         var cellElement;
+        var codeBlockElement;
+        var codeElement;
+        var codeLanguage;
+        var codeBlockState;
         var state;
 
         if (!currentSelection || currentSelection.rangeCount === 0) {
@@ -36,6 +40,7 @@
                 canRedo: false,
                 canUndo: false,
                 collapsed: true,
+                codeBlock: false,
                 color: '',
                 fontFamily: '',
                 fontSize: '',
@@ -61,7 +66,17 @@
 
         range = currentSelection.getRangeAt(0);
         startElement = html.getElement(range.startContainer);
-        blockElement = html.getClosestTag(startElement, ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
+        codeBlockElement = html.getSelectedElement(range, 'pre') || html.getClosestTag(startElement, 'pre', rootNode);
+        if (codeBlockElement && rootNode && !rootNode.contains(codeBlockElement)) {
+            codeBlockElement = null;
+        }
+        codeElement = codeBlockElement && codeBlockElement.querySelector('code');
+        codeLanguage = codeElement && (codeElement.className || '').match(/(?:^|\s)language-([^\s]+)/);
+        codeBlockState = codeBlockElement ? {
+            code: codeElement ? codeElement.textContent : codeBlockElement.textContent,
+            language: codeLanguage ? codeLanguage[1] : ''
+        } : false;
+        blockElement = codeBlockElement || html.getClosestTag(startElement, ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode);
         listElement = html.getClosestTag(startElement, ['ul', 'ol'], rootNode);
         linkElement = html.getClosestTag(startElement, 'a', rootNode);
         mediaElement = html.getSelectedElement(range, ['img', 'video', 'audio']) || html.getClosestTag(startElement, ['img', 'video', 'audio'], rootNode);
@@ -86,6 +101,7 @@
             canRedo: false,
             canUndo: false,
             collapsed: range.collapsed,
+            codeBlock: codeBlockState,
             color: getInlineStyleValue(startElement, 'color'),
             fontFamily: getInlineStyleValue(startElement, 'fontFamily'),
             fontSize: getInlineStyleValue(startElement, 'fontSize'),

@@ -434,7 +434,7 @@
 
             insertCodeBlock: function (value, language, selection) {
                 return performMutation(function () {
-                    embedContent.insertCodeBlock(value, language, selection);
+                    embedContent.insertCodeBlock(value, language, getInsertionSelection(selection));
                     return api;
                 });
             },

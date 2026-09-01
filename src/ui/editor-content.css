@@ -11,6 +11,20 @@
     outline: none;
 }
 
+[editor-content] pre {
+    margin: 16px 0;
+    padding: 14px 16px;
+    border: 1px solid var(--wysiwyg-code-border, #cbd5e1);
+    border-radius: 6px;
+    background: var(--wysiwyg-code-bg, #f8fafc);
+    overflow-x: auto;
+    white-space: pre;
+}
+
+[editor-content] pre code {
+    font: 0.9em/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 [editor-content] table {
     border-collapse: collapse;
     margin: 16px 0;

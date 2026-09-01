@@ -251,6 +251,7 @@
     function formatBlock(block) {
         var labels = {
             blockquote: 'Quote',
+            pre: 'Code block',
             li: 'List item',
             p: 'Paragraph'
         };
@@ -292,7 +293,9 @@
             path.push('Quote');
         }
 
-        if (state.block) {
+        if (state.codeBlock) {
+            path.push('Code block');
+        } else if (state.block) {
             path.push(formatBlock(state.block));
         }
 

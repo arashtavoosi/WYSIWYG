@@ -902,6 +902,51 @@ describe('editor adapter', () => {
         expect(editorElement.querySelector('pre code').textContent).toBe('const answer = 42;');
     });
 
+    test('highlights code block context and prefills the code block modal', async () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="status"></div>',
+            '<div id="editor" contenteditable="true"><p>Start</p><pre><code class="language-js">const answer = 42;</code></pre></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const codeText = editorElement.querySelector('code').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            editorElement: editorElement,
+            toolbarElement: document.getElementById('toolbar'),
+            statusElement: document.getElementById('status')
+        });
+
+        range.setStart(codeText, 6);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        const button = document.querySelector('button[title="Code block"]');
+
+        expect(button.getAttribute('aria-pressed')).toBe('true');
+        expect(document.getElementById('status').textContent).toBe('Code block');
+
+        button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const modal = document.querySelector('wysiwyg-modal');
+        expect(modal.querySelector('[data-field="code"]').value).toBe('const answer = 42;');
+        expect(modal.querySelector('[data-field="language"]').value).toBe('js');
+
+        modal.querySelector('[data-field="code"]').value = 'const answer = 43;';
+        modal.querySelector('[data-action="apply"]').click();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(editorElement.querySelectorAll('pre')).toHaveLength(1);
+        expect(editorElement.querySelector('pre code').textContent).toBe('const answer = 43;');
+    });
+
     test('Media command uses a file browser modal', async () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
