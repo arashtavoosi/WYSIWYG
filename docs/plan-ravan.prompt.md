@@ -135,7 +135,7 @@ Output: HTML string
 4. Phase 1 — add getActiveFormats(selection) using the same ancestor-walk pattern already present in toggleFormat so the UI can reflect cursor/selection state without duplicating DOM traversal. This closes one of the biggest missing seams in the current implementation.
 5. Phase 2 — build a UI adapter that calls the core API. Move toolbar event binding, selectionchange handling, and button active-state rendering into the adapter instead of leaving them inside demo pages.
 6. Phase 2 — keep presentation dumb. The HTML demo should only provide toolbar markup, editor container, and adapter initialization. Prefer data attributes for commands so the toolbar can be extended without adding more hardcoded handlers. This can run in parallel with the visual cleanup of the demo once the adapter contract from step 3 is fixed.
-7. Phase 2 — use demos/wysiwyg-v1.html as the behavior baseline because it already exercises the new core directly.
+7. Phase 2 — use demos/ravan.html as the behavior baseline because it already exercises the new core directly.
 8. Phase 3 — harden the core with tests before broadening features. Expand editor-core.test.js around the retained API only: collapsed selection behavior, partial unformat inside nested tags, active-format detection, inline style application, link insertion, list transforms, heading transforms, image insertion, and cleanup after repeated edits. This depends on steps 3 and 4.
 9. Phase 3 — defer only truly non-core features to keep footprint under control. Explicitly exclude undo/redo, keyboard shortcuts, advanced table editing UX, drag-and-drop media workflows, collaborative editing, paste sanitization policies beyond the minimum viable path, and arbitrary DOM utility chaining from the first clean architecture pass.
 10. Update README.md to document the new split: what belongs to core, what belongs to the UI adapter, and what the canonical output HTML looks like.
@@ -171,7 +171,7 @@ Own the command registry for the toolbar. Define a small data structure such as 
 10. `ui/toolbar-view.js`
 Own DOM class toggling for toolbar state only, for example active or disabled buttons. This keeps button presentation separate from event binding and from editor behavior.
 
-11. `demos/wysiwyg-v1.html`
+11. `demos/ravan.html`
 Keep as the semantic baseline demo. Its long-term role should be only markup, minimal styles, script includes, and one bootstrap call that wires the toolbar to the core through the adapter. It should remain the smallest end-to-end example because it already reflects the semantic direction.
 
 12. `tests/editor-core.test.js`
@@ -189,7 +189,7 @@ Use as the core contract suite. Tests should target semantic commands and cleanu
 2. Keep read-only inspection in `core/selection-state.js`.
 3. Keep block transforms in `core/block-structure.js`.
 4. Keep link creation and removal in `core/linking.js`.
-5. Keep demos/wysiwyg-v1.html as the architectural baseline.
+5. Keep demos/ravan.html as the architectural baseline.
 
 **Concrete File Creation And Migration Sequence**
 1. Create `core/editor-core.js`.
@@ -235,7 +235,7 @@ First implementation: reflect active button state from `getActiveFormats()`.
 Purpose: bind toolbar events to the core API and subscribe to selection changes.
 First implementation: no editor logic beyond routing user intent to the core and reflecting state back into the toolbar.
 
-11. Refactor `demos/wysiwyg-v1.html` into the canonical minimal demo.
+11. Refactor `demos/ravan.html` into the canonical minimal demo.
 Purpose: keep one very small end-to-end page that uses the new modules.
 Migration action: replace direct inline event handlers with a tiny bootstrap call.
 
@@ -254,17 +254,17 @@ Purpose: document the final API, supported commands, output conventions, and the
 5. Add `block-structure` for headings, quote, lists, br, and hr.
 6. Add `embed-content` for image and basic table insertion.
 7. Add the UI adapter for future richer demos.
-8. Keep `demos/wysiwyg-v1.html` as the smallest canonical demo.
+8. Keep `demos/ravan.html` as the smallest canonical demo.
 9. Expand tests after each module extraction instead of waiting for the end.
 
 **Relevant files**
-- /Users/arashtavoosi/Code/GitHub/WYSIWYG/demos/wysiwyg-v1.html — use as the semantic reference flow and possibly the minimal example page.
-- /Users/arashtavoosi/Code/GitHub/WYSIWYG/src/core/editor-core.js — keep as the public editor API and command façade.
-- /Users/arashtavoosi/Code/GitHub/WYSIWYG/src/core/selection-formatting.js — keep inline selection mutation separate from UI logic.
-- /Users/arashtavoosi/Code/GitHub/WYSIWYG/src/core/block-structure.js — keep block transforms separate from inline formatting.
-- /Users/arashtavoosi/Code/GitHub/WYSIWYG/src/core/linking.js — keep link creation and unlinking separate from generic inline styling.
-- /Users/arashtavoosi/Code/GitHub/WYSIWYG/tests/editor-core.test.js — keep as the regression suite for the active core API.
-- /Users/arashtavoosi/Code/GitHub/WYSIWYG/README.md — document the separation and intended extension points.
+- /Users/arashtavoosi/Code/GitHub/Ravan/demos/ravan.html — use as the semantic reference flow and possibly the minimal example page.
+- /Users/arashtavoosi/Code/GitHub/Ravan/src/core/editor-core.js — keep as the public editor API and command façade.
+- /Users/arashtavoosi/Code/GitHub/Ravan/src/core/selection-formatting.js — keep inline selection mutation separate from UI logic.
+- /Users/arashtavoosi/Code/GitHub/Ravan/src/core/block-structure.js — keep block transforms separate from inline formatting.
+- /Users/arashtavoosi/Code/GitHub/Ravan/src/core/linking.js — keep link creation and unlinking separate from generic inline styling.
+- /Users/arashtavoosi/Code/GitHub/Ravan/tests/editor-core.test.js — keep as the regression suite for the active core API.
+- /Users/arashtavoosi/Code/GitHub/Ravan/README.md — document the separation and intended extension points.
 
 **Verification**
 1. Run the Jest suite and confirm existing toggle/clear/simplify behavior still passes after the internal split.

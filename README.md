@@ -10,7 +10,7 @@ Small-footprint browser editor with a UI-agnostic core.
 - `src/ui/*`: toolbar wiring, toolbar metadata, toolbar state rendering, the slim HTML code view, and small UI web components.
 - `build/entries/*`: release bundle entry points.
 - `scripts/build.mjs`: esbuild bundling and minification script.
-- `demos/wysiwyg-v1.html`: no-build demo shell.
+- `demos/ravan.html`: no-build demo shell.
 - `demos/ravan-bundled.html`: demo that loads `dist/ravan.min.js`.
 - `tests/*`: Jest/jsdom coverage.
 
@@ -171,7 +171,7 @@ Run the dependency-free demo server from the repo root:
 npm run demo
 ```
 
-Open `http://localhost:4173/demos/wysiwyg-v1.html`.
+Open `http://localhost:4173/demos/ravan.html`.
 
 After running `npm run build`, open `http://localhost:4173/demos/ravan-bundled.html` to verify the minified full-editor bundle.
 

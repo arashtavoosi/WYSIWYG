@@ -40,7 +40,7 @@ http.createServer(function (request, response) {
         return;
     }
 
-    const relativePath = decodeURIComponent(url.pathname === '/' ? '/demos/wysiwyg-v1.html' : url.pathname);
+    const relativePath = decodeURIComponent(url.pathname === '/' ? '/demos/ravan.html' : url.pathname);
     const filePath = path.resolve(root, '.' + relativePath);
 
     if (filePath.indexOf(root + path.sep) !== 0) {
@@ -57,5 +57,5 @@ http.createServer(function (request, response) {
         send(response, 200, types[path.extname(filePath)] || 'application/octet-stream', body);
     });
 }).listen(port, function () {
-    console.log('Demo: http://localhost:' + port + '/demos/wysiwyg-v1.html');
+    console.log('Demo: http://localhost:' + port + '/demos/ravan.html');
 });

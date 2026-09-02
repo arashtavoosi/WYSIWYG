@@ -1,8 +1,12 @@
 {
-  "name": "wysiwyg",
+  "name": "ravan",
   "version": "1.0.0",
   "description": "",
   "main": "src/core/editor-core.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arashtavoosi/Ravan.git"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "demo": "node demos/mock-server.js",

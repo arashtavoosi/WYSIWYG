@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This repository is a small-footprint WYSIWYG editor.
+This repository is the small-footprint Ravan editor.
 
 The app is organized around these principles:
 
@@ -26,7 +26,7 @@ Top-level folders:
 Active entry points:
 
 1. `src/core/editor-core.js`
-2. `demos/wysiwyg-v1.html`
+2. `demos/ravan.html`
 3. `tests/editor-core.test.js`
 4. focused module tests in `tests`
 
@@ -132,7 +132,7 @@ Small toolbar metadata such as prompt labels and defaults.
 
 ### Demo
 
-1. `demos/wysiwyg-v1.html`
+1. `demos/ravan.html`
 This is the only active demo and current baseline.
 
 It should stay as:
@@ -415,6 +415,6 @@ Future agents should read these first before making changes:
 7. `src/ui/editor-adapter.js`
 8. `src/ui/toolbar-config.js`
 9. `src/ui/toolbar-view.js`
-10. `demos/wysiwyg-v1.html`
+10. `demos/ravan.html`
 11. `tests/editor-core.test.js`
-12. `docs/plan-wysiwyg.prompt.md`
+12. `docs/plan-ravan.prompt.md`
