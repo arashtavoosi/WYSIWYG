@@ -19,7 +19,7 @@ Small-footprint browser editor with a UI-agnostic core.
 - `src/editor-config.js`: normalizes the public editor configuration into its feature-owned sections.
 - `build/entries/*`: release bundle entry points.
 - `scripts/build.mjs`: esbuild bundling and minification script.
-- `demos/ravan.html`: no-build demo shell.
+- `demos/ravan.html`: source-module demo shell using the minified loader.
 - `demos/ravan-bundled.html`: demo that loads `dist/ravan.min.js`.
 - `tests/*`: Jest/jsdom coverage.
 
@@ -134,16 +134,18 @@ This creates:
 
 - `dist/ravan-core.min.js`: core-only IIFE exposing `createEditorCore`.
 - `dist/ravan.min.js`: full-editor IIFE exposing `Ravan`.
-- `.map` sidecars for both bundles.
+- `dist/ravan-loader.min.js`: minified loader that preserves source-module and bundle loading.
+- `dist/editor-content.min.css` and `dist/toolbar.min.css`: minified editor styles.
+- `.map` sidecars for all five outputs.
 
-The source modules and no-build demo remain available for development and debugging. The package `main` continues to point to the core API.
+The source modules remain available for development and debugging. The package `main` continues to point to the core API.
 
 ## Automatic Loading
 
 `RavanLoader` is optional. It can load the source modules in dependency order or the full bundle, then mount the editor:
 
 ```html
-<script src="../src/ravan-loader.js"></script>
+<script src="../dist/ravan-loader.min.js"></script>
 <script>
   RavanLoader.mount('#editor-wrapper', {
     codeView: { enabled: true },
@@ -213,15 +215,14 @@ The Insert toolbar provides one browser-backed Media command with Image, Video, 
 
 ## Demo
 
-Run the dependency-free demo server from the repo root:
+Build the demo assets and run the dependency-free demo server from the repo root:
 
 ```sh
+npm run build
 npm run demo
 ```
 
-Open `http://localhost:4173/demos/ravan.html`.
-
-After running `npm run build`, open `http://localhost:4173/demos/ravan-bundled.html` to verify the minified full-editor bundle.
+Open either demo. `ravan.html` loads source modules through the minified loader; `ravan-bundled.html` loads the minified full-editor bundle through the same loader.
 
 The demo server exposes `/files?path=...` from `demos/mock-files.json`. Its nested folders, supported and unsupported files, sample images, and short Media-folder MP4/MP3 files exercise breadcrumbs, navigation, extension filtering, list view, thumbnail view, and file selection.
 
