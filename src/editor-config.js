@@ -1,6 +1,6 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./ui/toolbar-schema'));
+        module.exports = factory(require('./ui/toolbar/schema'));
     } else {
         root.RavanEditorConfig = factory(root.RavanToolbarSchema);
     }

@@ -5,9 +5,17 @@ Small-footprint browser editor with a UI-agnostic core.
 ## Structure
 
 - `src/core/editor-core.js`: public core API.
-- `src/core/*`: shared HTML utilities, selection formatting, block structure, linking, embeds, state, and markup normalization.
+- `src/core/commands/*`: inline, block, list, link, media, table, and code-block mutations.
+- `src/core/history.js`: snapshot history with undo and redo.
+- `src/core/selection.js`: editor-scoped ranges and bookmarks.
+- `src/core/normalization.js` and `src/core/state.js`: markup cleanup and read-only selection state.
 - `src/ravan.js`: branded full-editor facade.
-- `src/ui/*`: toolbar wiring, toolbar command schema, toolbar state rendering, the slim HTML code view, and small UI web components.
+- `src/ravan-loader.js`: optional source/bundle loader that chooses the runtime files from the editor configuration.
+- `src/ui/toolbar/*`: declarative schema, toolbar view, and event controller.
+- `src/ui/dialogs/*`: reusable dialog services.
+- `src/ui/overlays/*`: reusable overlay creation and lifecycle helpers.
+- `src/ui/components/*`: no-build custom elements.
+- `src/ui/code-view.js`: the slim HTML code view.
 - `src/editor-config.js`: normalizes the public editor configuration into its feature-owned sections.
 - `build/entries/*`: release bundle entry points.
 - `scripts/build.mjs`: esbuild bundling and minification script.
@@ -71,7 +79,7 @@ Every section is optional. `toolbar.items` replaces the default command tree, wh
 
 ## UI Web Components
 
-`src/ui/web-components.js` defines five no-build custom elements:
+`src/ui/components/web-components.js` defines five no-build custom elements:
 
 - `<wysiwyg-modal>` supports `open`, `show-close-button`, `click-outside-to-close`, `moveable`, `resizable`, and header/content/footer templates or slots.
 - `<wysiwyg-popup>` supports `open`, `preferred-position="auto|top|right|bottom|left"` plus `-start` and `-end` aligned variants such as `bottom-start`, and `showFor(anchor)` for positioning near an element, range, rect, or the current selection.
@@ -129,6 +137,27 @@ This creates:
 - `.map` sidecars for both bundles.
 
 The source modules and no-build demo remain available for development and debugging. The package `main` continues to point to the core API.
+
+## Automatic Loading
+
+`RavanLoader` is optional. It can load the source modules in dependency order or the full bundle, then mount the editor:
+
+```html
+<script src="../src/ravan-loader.js"></script>
+<script>
+  RavanLoader.mount('#editor-wrapper', {
+    codeView: { enabled: true },
+    findReplace: { enabled: true }
+  }, {
+    mode: 'source',
+    baseUrl: '../src/'
+  });
+</script>
+```
+
+The loader always includes the core command modules and selects optional code-view and custom-element modules from `codeView`, `findReplace`, media settings, and the configured toolbar items. Use `mode: 'bundle'` with `bundleUrl` when the minified distribution is preferred.
+
+Loader settings may also be placed under `loader` in the configuration passed to `RavanLoader.mount`; they are consumed by the loader and are not editor behavior settings.
 
 ## Editor Content CSS
 

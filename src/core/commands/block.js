@@ -1,8 +1,8 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./html-utility'));
+        module.exports = factory(require('../html-utility'));
     } else {
-        root.WysiwygBlockStructure = factory(root.WysiwygHtmlUtility);
+        root.WysiwygBlockCommands = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     var BLOCK_TAGS = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'];
@@ -108,44 +108,6 @@
         });
     }
 
-    function toggleList(listType, selection, options) {
-        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
-            var currentList = html.getClosestTag(block, ['ul', 'ol'], config.root);
-            var list;
-            var item;
-            var parent;
-
-            if (currentList && currentList.tagName.toLowerCase() === listType.toLowerCase()) {
-                parent = currentList.parentNode;
-
-                Array.from(currentList.children).forEach(function (child) {
-                    var paragraph = document.createElement('p');
-
-                    moveChildren(child, paragraph);
-                    parent.insertBefore(paragraph, currentList);
-                });
-
-                parent.removeChild(currentList);
-                parent.normalize();
-                return true;
-            }
-
-            if (currentList) {
-                html.replaceTag(currentList, listType);
-                return true;
-            }
-
-            list = document.createElement(listType);
-            item = document.createElement('li');
-            moveChildren(block, item);
-            list.appendChild(item);
-            block.parentNode.replaceChild(list, block);
-            html.placeCaretInside(item);
-
-            return true;
-        });
-    }
-
     function insertBreak(selection) {
         return withSelectionRange(selection, function (range, currentSelection) {
             var br = document.createElement('br');
@@ -223,7 +185,6 @@
         insertRule: insertRule,
         setBlockStyle: setBlockStyle,
         setBlock: setBlock,
-        toggleBlock: toggleBlock,
-        toggleList: toggleList
+        toggleBlock: toggleBlock
     };
 }));

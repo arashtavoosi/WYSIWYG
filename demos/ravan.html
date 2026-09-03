@@ -92,23 +92,9 @@
         </div>
     </div>
 
-    <script src="../src/core/html-utility.js"></script>
-    <script src="../src/core/selection-formatting.js"></script>
-    <script src="../src/core/markup-normalization.js"></script>
-    <script src="../src/core/selection-state.js"></script>
-    <script src="../src/core/linking.js"></script>
-    <script src="../src/core/block-structure.js"></script>
-    <script src="../src/core/embed-content.js"></script>
-    <script src="../src/core/editor-core.js"></script>
-    <script src="../src/ui/web-components.js"></script>
-    <script src="../src/ui/code-view.js"></script>
-    <script src="../src/ui/toolbar-schema.js"></script>
-    <script src="../src/editor-config.js"></script>
-    <script src="../src/ui/toolbar-view.js"></script>
-    <script src="../src/ui/editor-adapter.js"></script>
-    <script src="../src/ravan.js"></script>
+    <script src="../src/ravan-loader.js"></script>
     <script>
-        Ravan.mount('#editor-wrapper', {
+        RavanLoader.mount('#editor-wrapper', {
             assets: {
                 icons: {
                     url: '../src/ui/toolbar-icons.svg'
@@ -136,6 +122,9 @@
             elements: {
                 status: document.getElementById('statusBreadcrumb')
             }
+        }, {
+            mode: 'source',
+            baseUrl: '../src/'
         });
     </script>
 </body>

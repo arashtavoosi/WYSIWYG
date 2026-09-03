@@ -3,7 +3,7 @@
  */
 
 const createEditorAdapter = require('../src/ui/editor-adapter');
-require('../src/ui/web-components');
+require('../src/ui/components/web-components');
 
 describe('editor adapter', () => {
     test('renders nested toolbar groups, default buttons, dropdowns, and color pickers', () => {

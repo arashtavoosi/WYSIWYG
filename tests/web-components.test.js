@@ -3,7 +3,7 @@
  */
 
 const html = require('../src/core/html-utility');
-require('../src/ui/web-components');
+require('../src/ui/components/web-components');
 
 describe('web components', () => {
     test('modal renders template regions and supports close behavior', () => {

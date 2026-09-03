@@ -88,9 +88,9 @@
         </div>
     </main>
 
-    <script src="../dist/ravan.min.js"></script>
+    <script src="../src/ravan-loader.js"></script>
     <script>
-        Ravan.mount('#editor-wrapper', {
+        RavanLoader.mount('#editor-wrapper', {
             assets: {
                 icons: {
                     url: '../src/ui/toolbar-icons.svg'
@@ -118,6 +118,9 @@
             elements: {
                 status: document.getElementById('statusBreadcrumb')
             }
+        }, {
+            mode: 'bundle',
+            bundleUrl: '../dist/ravan.min.js'
         });
     </script>
 </body>

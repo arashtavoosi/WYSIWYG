@@ -2,7 +2,7 @@
     if (typeof module === 'object' && module.exports) {
         module.exports = factory(require('./html-utility'));
     } else {
-        root.WysiwygSelectionState = factory(root.WysiwygHtmlUtility);
+        root.WysiwygEditorState = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     function getInlineStyleValue(element, propertyName) {

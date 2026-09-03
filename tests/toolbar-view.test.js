@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-const createToolbarView = require('../src/ui/toolbar-view');
+const createToolbarView = require('../src/ui/toolbar/view');
 
 describe('toolbar status breadcrumb', () => {
     test('renders structural context and active inline formats in one value', () => {

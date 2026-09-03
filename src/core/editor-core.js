@@ -1,26 +1,36 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
         module.exports = factory(
-            require('./selection-formatting'),
-            require('./markup-normalization'),
-            require('./selection-state'),
-            require('./linking'),
-            require('./block-structure'),
-            require('./embed-content'),
+            require('./commands/inline'),
+            require('./normalization'),
+            require('./state'),
+            require('./commands/link'),
+            require('./commands/block'),
+            require('./commands/list'),
+            require('./commands/media'),
+            require('./commands/table'),
+            require('./commands/code-block'),
+            require('./selection'),
+            require('./history'),
             require('./html-utility')
         );
     } else {
         root.createEditorCore = factory(
-            root.WysiwygSelectionFormatting,
-            root.WysiwygMarkupNormalization,
-            root.WysiwygSelectionState,
-            root.WysiwygLinking,
-            root.WysiwygBlockStructure,
-            root.WysiwygEmbedContent,
+            root.WysiwygInlineCommands,
+            root.WysiwygNormalization,
+            root.WysiwygEditorState,
+            root.WysiwygLinkCommands,
+            root.WysiwygBlockCommands,
+            root.WysiwygListCommands,
+            root.WysiwygMediaCommands,
+            root.WysiwygTableCommands,
+            root.WysiwygCodeBlockCommands,
+            root.WysiwygSelection,
+            root.createEditorHistory,
             root.WysiwygHtmlUtility
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (selectionFormatting, markupNormalization, selectionState, linking, blockStructure, embedContent, html) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (inlineCommands, normalization, state, linkCommands, blockCommands, listCommands, mediaCommands, tableCommands, codeBlockCommands, createSelection, createHistory, html) {
     function normalizeInlineCommand(name) {
         var map = {
             bold: 'strong',
@@ -34,188 +44,51 @@
         return map[name] || name;
     }
 
-    function getNodePath(rootNode, node) {
-        var path = [];
-
-        while (node && node !== rootNode) {
-            path.unshift(Array.prototype.indexOf.call(node.parentNode.childNodes, node));
-            node = node.parentNode;
-        }
-
-        return node === rootNode ? path : null;
-    }
-
-    function getNodeFromPath(rootNode, path) {
-        var node = rootNode;
-        var index;
-
-        if (!path) {
-            return null;
-        }
-
-        for (index = 0; index < path.length; index += 1) {
-            node = node.childNodes[path[index]];
-
-            if (!node) {
-                return null;
-            }
-        }
-
-        return node;
-    }
-
     function createEditorCore(rootNode, options) {
         var config = options || {};
-        var historyLimit = Math.max(1, Number(config.historyLimit) || 50);
-        var history = [];
-        var historyIndex = -1;
+        var selectionManager;
+        var history;
 
-        if (!selectionFormatting || !markupNormalization || !selectionState || !linking || !blockStructure || !embedContent || !html) {
+        if (!inlineCommands || !normalization || !state || !linkCommands || !blockCommands || !listCommands || !mediaCommands || !tableCommands || !codeBlockCommands || !createSelection || !createHistory || !html) {
             throw new Error('Editor core dependencies are not available');
         }
 
-        function getSelectionBookmark() {
-            var selection = typeof window !== 'undefined' && window.getSelection ? window.getSelection() : null;
-            var range;
-
-            if (!selection || selection.rangeCount === 0) {
-                return null;
-            }
-
-            range = selection.getRangeAt(0);
-
-            if (!rootNode.contains(range.commonAncestorContainer)) {
-                return null;
-            }
-
-            return {
-                collapsed: range.collapsed,
-                endOffset: range.endOffset,
-                endPath: getNodePath(rootNode, range.endContainer),
-                startOffset: range.startOffset,
-                startPath: getNodePath(rootNode, range.startContainer)
-            };
-        }
-
-        function restoreSelectionBookmark(bookmark) {
-            var selection = typeof window !== 'undefined' && window.getSelection ? window.getSelection() : null;
-            var range;
-            var startNode;
-            var endNode;
-
-            if (!selection || !bookmark) {
-                return;
-            }
-
-            startNode = getNodeFromPath(rootNode, bookmark.startPath);
-            endNode = getNodeFromPath(rootNode, bookmark.endPath);
-
-            if (!startNode || !endNode) {
-                return;
-            }
-
-            range = document.createRange();
-            range.setStart(startNode, Math.min(bookmark.startOffset, startNode.nodeType === Node.TEXT_NODE ? startNode.length : startNode.childNodes.length));
-            range.setEnd(endNode, Math.min(bookmark.endOffset, endNode.nodeType === Node.TEXT_NODE ? endNode.length : endNode.childNodes.length));
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
-
-        function createSnapshot() {
-            return {
-                html: rootNode.innerHTML,
-                selection: getSelectionBookmark()
-            };
-        }
-
-        function pushSnapshot() {
-            var snapshot = createSnapshot();
-
-            if (historyIndex >= 0 && history[historyIndex].html === snapshot.html) {
-                history[historyIndex].selection = snapshot.selection;
-                return api;
-            }
-
-            history = history.slice(0, historyIndex + 1);
-            history.push(snapshot);
-
-            while (history.length > historyLimit) {
-                history.shift();
-            }
-
-            historyIndex = history.length - 1;
-
-            return api;
-        }
-
-        function applySnapshot(snapshot) {
-            if (!snapshot) {
-                return api;
-            }
-
-            rootNode.innerHTML = snapshot.html;
-            restoreSelectionBookmark(snapshot.selection);
-            return api;
-        }
+        selectionManager = createSelection(rootNode);
+        history = createHistory(rootNode, selectionManager, { limit: config.historyLimit });
 
         function performMutation(callback) {
             var before = rootNode.innerHTML;
             var result = callback();
 
             if (rootNode.innerHTML !== before) {
-                pushSnapshot();
+                history.record();
             }
 
             return result;
         }
 
-        function getInsertionSelection(selection) {
-            var currentSelection = html.getCurrentSelection(selection);
-            var range;
-
-            if (currentSelection && currentSelection.rangeCount) {
-                range = currentSelection.getRangeAt(0);
-
-                if (rootNode.contains(range.commonAncestorContainer)) {
-                    return currentSelection;
-                }
-            }
-
-            if (!window.getSelection || !document.createRange) {
-                return currentSelection;
-            }
-
-            currentSelection = window.getSelection();
-            range = document.createRange();
-            range.selectNodeContents(rootNode);
-            range.collapse(false);
-            currentSelection.removeAllRanges();
-            currentSelection.addRange(range);
-            return currentSelection;
-        }
-
         function performSelectionMutation(callback, selection) {
             var before = rootNode.innerHTML;
-            var bookmark = html.getSelectionBookmark(selection, rootNode);
+            var bookmark = selectionManager.getBookmark(selection);
             var result = callback();
 
-            html.restoreSelectionBookmark(bookmark, selection, rootNode);
+            selectionManager.restoreBookmark(bookmark, selection);
 
             if (rootNode.innerHTML !== before) {
-                pushSnapshot();
+                history.record();
             }
 
             return result;
         }
 
         function normalize() {
-            markupNormalization.simplifyAllFormattingTags(rootNode);
+            normalization.simplifyAllFormattingTags(rootNode);
             return api;
         }
 
         function findText(query, options, selection) {
-            var currentSelection = html.getCurrentSelection(selection);
-            var bookmark = html.getSelectionBookmark(currentSelection, rootNode);
+            var currentSelection = selectionManager.getCurrent(selection);
+            var bookmark = selectionManager.getBookmark(currentSelection);
             var source = rootNode.textContent || '';
             var needle = String(query || '');
             var matchCase = options && options.matchCase;
@@ -242,12 +115,12 @@
             }
 
             bookmark = { startOffset: index, endOffset: index + needle.length };
-            html.restoreSelectionBookmark(bookmark, currentSelection, rootNode);
+            selectionManager.restoreBookmark(bookmark, currentSelection);
             return bookmark;
         }
 
         function replaceText(query, replacement, options, selection) {
-            var currentSelection = html.getCurrentSelection(selection);
+            var currentSelection = selectionManager.getCurrent(selection);
             var matchCase = options && options.matchCase;
             var replaceAll = options && options.all;
             var needle = String(query || '');
@@ -265,7 +138,7 @@
                     return 0;
                 }
 
-                matches.push(html.getSelectionBookmark(currentSelection, rootNode));
+                matches.push(selectionManager.getBookmark(currentSelection));
             } else {
                 source = rootNode.textContent || '';
 
@@ -291,7 +164,7 @@
                     var range;
                     var textNode;
 
-                    html.restoreSelectionBookmark(match, currentSelection, rootNode);
+                    selectionManager.restoreBookmark(match, currentSelection);
                     range = currentSelection.getRangeAt(0);
                     range.deleteContents();
                     textNode = document.createTextNode(value);
@@ -310,8 +183,8 @@
             return {
                 expandCollapsedToWord: true,
                 root: rootNode,
-                removeEmptyFormattingElements: markupNormalization.removeEmptyFormattingElements,
-                removeEmptyFormattingNodes: markupNormalization.removeEmptyFormattingNodes
+                removeEmptyFormattingElements: normalization.removeEmptyFormattingElements,
+                removeEmptyFormattingNodes: normalization.removeEmptyFormattingNodes
             };
         }
 
@@ -321,10 +194,10 @@
                     var formattingOptions = getFormattingOptions();
 
                     formattingOptions.elements = options && options.elements;
-                    selectionFormatting.clearFormatting(selection, formattingOptions);
+                    inlineCommands.clearFormatting(selection, formattingOptions);
 
                     if (!options || !options.elements || options.elements.length === 0) {
-                        blockStructure.clearBlockStyle('textAlign', selection, { root: rootNode });
+                        blockCommands.clearBlockStyle('textAlign', selection, { root: rootNode });
                     }
 
                     return normalize();
@@ -332,11 +205,11 @@
             },
 
             canRedo: function () {
-                return historyIndex >= 0 && historyIndex < history.length - 1;
+                return history.canRedo();
             },
 
             canUndo: function () {
-                return historyIndex > 0;
+                return history.canUndo();
             },
 
             getHtml: function () {
@@ -346,27 +219,24 @@
             findText: findText,
 
             getActiveFormats: function (selection) {
-                var state = selectionState.getActiveFormats(selection, rootNode);
+                var activeState = state.getActiveFormats(selection, rootNode);
 
-                state.canUndo = api.canUndo();
-                state.canRedo = api.canRedo();
+                activeState.canUndo = api.canUndo();
+                activeState.canRedo = api.canRedo();
 
-                return state;
+                return activeState;
             },
 
             normalize: normalize,
 
             recordSnapshot: function () {
-                return pushSnapshot();
+                history.record();
+                return api;
             },
 
             redo: function () {
-                if (!api.canRedo()) {
-                    return api;
-                }
-
-                historyIndex += 1;
-                return applySnapshot(history[historyIndex]);
+                history.redo();
+                return api;
             },
 
             setHtml: function (html) {
@@ -379,24 +249,20 @@
             replaceText: replaceText,
 
             undo: function () {
-                if (!api.canUndo()) {
-                    return api;
-                }
-
-                historyIndex -= 1;
-                return applySnapshot(history[historyIndex]);
+                history.undo();
+                return api;
             },
 
             removeLink: function (selection) {
                 return performMutation(function () {
-                    linking.removeLink(selection, { root: rootNode });
+                    linkCommands.removeLink(selection, { root: rootNode });
                     return normalize();
                 });
             },
 
             setBlock: function (type, options, selection) {
                 return performMutation(function () {
-                    blockStructure.setBlock(type, selection, {
+                    blockCommands.setBlock(type, selection, {
                         level: options && options.level,
                         root: rootNode
                     });
@@ -406,7 +272,7 @@
 
             setBlockStyle: function (propertyName, value, selection) {
                 return performMutation(function () {
-                    blockStructure.setBlockStyle(propertyName, value, selection, { root: rootNode });
+                    blockCommands.setBlockStyle(propertyName, value, selection, { root: rootNode });
                     return api;
                 });
             },
@@ -420,28 +286,28 @@
 
                 styleObj[propertyName] = value;
                 return performSelectionMutation(function () {
-                    selectionFormatting.applyStyle(styleObj, selection, { expandCollapsedToWord: true, root: rootNode });
+                    inlineCommands.applyStyle(styleObj, selection, { expandCollapsedToWord: true, root: rootNode });
                     return api;
                 }, selection);
             },
 
             insertBreak: function (selection) {
                 return performMutation(function () {
-                    blockStructure.insertBreak(selection);
+                    blockCommands.insertBreak(selection);
                     return api;
                 });
             },
 
             insertCodeBlock: function (value, language, selection) {
                 return performMutation(function () {
-                    embedContent.insertCodeBlock(value, language, getInsertionSelection(selection));
+                    codeBlockCommands.insertCodeBlock(value, language, selectionManager.getInsertionSelection(selection));
                     return api;
                 });
             },
 
             insertMedia: function (attributes, selection) {
                 return performMutation(function () {
-                    embedContent.insertMedia(attributes && attributes.type, attributes, getInsertionSelection(selection));
+                    mediaCommands.insertMedia(attributes && attributes.type, attributes, selectionManager.getInsertionSelection(selection));
                     return api;
                 });
             },
@@ -456,7 +322,7 @@
 
             updateMedia: function (attributes, selection) {
                 return performMutation(function () {
-                    embedContent.updateMedia(attributes && attributes.type, attributes, selection);
+                    mediaCommands.updateMedia(attributes && attributes.type, attributes, selection);
                     return api;
                 });
             },
@@ -471,147 +337,147 @@
 
             removeMedia: function (selection) {
                 return performMutation(function () {
-                    embedContent.removeMedia(selection);
+                    mediaCommands.removeMedia(selection);
                     return api;
                 });
             },
 
             removeImage: function (selection) {
                 return performMutation(function () {
-                    embedContent.removeImage(selection);
+                    mediaCommands.removeImage(selection);
                     return api;
                 });
             },
 
             setImageLayout: function (layout, selection) {
                 return performMutation(function () {
-                    embedContent.setImageLayout(layout, selection, { root: rootNode });
+                    mediaCommands.setImageLayout(layout, selection, { root: rootNode });
                     return api;
                 });
             },
 
             setMediaStyle: function (propertyName, value, selection) {
                 return performMutation(function () {
-                    embedContent.setMediaStyle(propertyName, value, selection, { root: rootNode });
+                    mediaCommands.setMediaStyle(propertyName, value, selection, { root: rootNode });
                     return api;
                 });
             },
 
             setImageStyle: function (propertyName, value, selection) {
                 return performMutation(function () {
-                    embedContent.setImageStyle(propertyName, value, selection, { root: rootNode });
+                    mediaCommands.setImageStyle(propertyName, value, selection, { root: rootNode });
                     return api;
                 });
             },
 
             toggleMediaWidth: function (selection) {
                 return performMutation(function () {
-                    embedContent.toggleMediaWidth(selection, { root: rootNode });
+                    mediaCommands.toggleMediaWidth(selection, { root: rootNode });
                     return api;
                 });
             },
 
             toggleImageFullSize: function (selection) {
                 return performMutation(function () {
-                    embedContent.toggleImageFullSize(selection, { root: rootNode });
+                    mediaCommands.toggleImageFullSize(selection, { root: rootNode });
                     return api;
                 });
             },
 
             insertRule: function (selection) {
                 return performMutation(function () {
-                    blockStructure.insertRule(selection, { root: rootNode });
+                    blockCommands.insertRule(selection, { root: rootNode });
                     return api;
                 });
             },
 
             insertTable: function (config, selection) {
                 return performMutation(function () {
-                    embedContent.insertTable(config, selection);
+                    tableCommands.insertTable(config, selection);
                     return api;
                 });
             },
 
             insertTableRow: function (position, selection) {
                 return performMutation(function () {
-                    embedContent.insertTableRow(position, selection);
+                    tableCommands.insertTableRow(position, selection);
                     return api;
                 });
             },
 
             mergeTableCells: function (cells, selection) {
                 return performMutation(function () {
-                    embedContent.mergeTableCells(cells, selection);
+                    tableCommands.mergeTableCells(cells, selection);
                     return api;
                 });
             },
 
             removeTableRow: function (selection) {
                 return performMutation(function () {
-                    embedContent.removeTableRow(selection);
+                    tableCommands.removeTableRow(selection);
                     return api;
                 });
             },
 
             insertTableColumn: function (position, selection) {
                 return performMutation(function () {
-                    embedContent.insertTableColumn(position, selection);
+                    tableCommands.insertTableColumn(position, selection);
                     return api;
                 });
             },
 
             removeTableColumn: function (selection) {
                 return performMutation(function () {
-                    embedContent.removeTableColumn(selection);
+                    tableCommands.removeTableColumn(selection);
                     return api;
                 });
             },
 
             toggleTableHeaderRow: function (selection) {
                 return performMutation(function () {
-                    embedContent.toggleTableHeaderRow(selection);
+                    tableCommands.toggleTableHeaderRow(selection);
                     return api;
                 });
             },
 
             toggleTableFullSize: function (selection) {
                 return performMutation(function () {
-                    embedContent.toggleTableFullSize(selection, { root: rootNode });
+                    tableCommands.toggleTableFullSize(selection, { root: rootNode });
                     return api;
                 });
             },
 
             unmergeTableCell: function (cell, selection) {
                 return performMutation(function () {
-                    embedContent.unmergeTableCell(cell, selection);
+                    tableCommands.unmergeTableCell(cell, selection);
                     return api;
                 });
             },
 
             removeTable: function (selection) {
                 return performMutation(function () {
-                    embedContent.removeTable(selection);
+                    tableCommands.removeTable(selection);
                     return api;
                 });
             },
 
             toggleInline: function (name, selection) {
                 return performSelectionMutation(function () {
-                    selectionFormatting.toggleFormat(normalizeInlineCommand(name), selection, getFormattingOptions());
+                    inlineCommands.toggleFormat(normalizeInlineCommand(name), selection, getFormattingOptions());
                     return normalize();
                 }, selection);
             },
 
             toggleBlock: function (type, selection) {
                 return performMutation(function () {
-                    blockStructure.toggleBlock(type, selection, { root: rootNode });
+                    blockCommands.toggleBlock(type, selection, { root: rootNode });
                     return api;
                 });
             },
 
             adjustIndent: function (direction, selection) {
                 return performMutation(function () {
-                    blockStructure.adjustIndent(direction, selection, {
+                    blockCommands.adjustIndent(direction, selection, {
                         root: rootNode,
                         indentStep: config.indentStep
                     });
@@ -621,14 +487,14 @@
 
             toggleList: function (type, selection) {
                 return performSelectionMutation(function () {
-                    blockStructure.toggleList(type, selection, { root: rootNode });
+                    listCommands.toggleList(type, selection, { root: rootNode });
                     return api;
                 }, selection);
             },
 
             upsertLink: function (attributes, selection) {
                 return performMutation(function () {
-                    linking.upsertLink(attributes, selection, { expandCollapsedToWord: true, root: rootNode });
+                    linkCommands.upsertLink(attributes, selection, { expandCollapsedToWord: true, root: rootNode });
                     return normalize();
                 });
             }
@@ -639,7 +505,7 @@
             normalize();
         }
 
-        pushSnapshot();
+        history.record();
 
         return api;
     }

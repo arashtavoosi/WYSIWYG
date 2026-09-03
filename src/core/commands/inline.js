@@ -1,8 +1,8 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./html-utility'));
+        module.exports = factory(require('../html-utility'));
     } else {
-        root.WysiwygSelectionFormatting = factory(root.WysiwygHtmlUtility);
+        root.WysiwygInlineCommands = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     function isSelectionWithinTag(range, tagName, rootNode) {

@@ -2,7 +2,7 @@
     if (typeof module === 'object' && module.exports) {
         module.exports = factory();
     } else {
-        root.WysiwygMarkupNormalization = factory();
+        root.WysiwygNormalization = factory();
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     function hasMeaningfulContent(node) {

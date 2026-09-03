@@ -3,7 +3,7 @@
         module.exports = factory(
             require('./core/editor-core'),
             require('./ui/editor-adapter'),
-            require('./ui/web-components'),
+            require('./ui/components/web-components'),
             require('./core/html-utility'),
             require('./editor-config')
         );

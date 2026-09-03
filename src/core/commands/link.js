@@ -1,8 +1,8 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./html-utility'));
+        module.exports = factory(require('../html-utility'));
     } else {
-        root.WysiwygLinking = factory(root.WysiwygHtmlUtility);
+        root.WysiwygLinkCommands = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
     function setAnchorAttributes(anchor, attributes) {

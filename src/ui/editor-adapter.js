@@ -2,7 +2,10 @@
     if (typeof module === 'object' && module.exports) {
         module.exports = factory(
             require('../core/editor-core'),
-            require('./toolbar-view'),
+            require('./toolbar/view'),
+            require('./toolbar/controller'),
+            require('./dialogs/service'),
+            require('./overlays/manager'),
             require('../editor-config'),
             require('../core/html-utility'),
             require('./code-view')
@@ -11,12 +14,15 @@
         root.createEditorAdapter = factory(
             root.createEditorCore,
             root.createToolbarView,
+            root.createToolbarController,
+            root.createRavanDialogService,
+            root.createRavanOverlayManager,
             root.RavanEditorConfig,
             root.WysiwygHtmlUtility,
             root.WysiwygCodeView
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createToolbarView, editorConfig, html, codeView) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createToolbarView, createToolbarController, createDialogService, createOverlayManager, editorConfig, html, codeView) {
     function createToolbarElement(editorElement) {
         var documentRef = editorElement && editorElement.ownerDocument;
         var toolbarElement;
@@ -76,8 +82,18 @@
         var editorWasHidden = false;
         var findReplaceModal = null;
         var view;
+        var toolbarController;
+        var dialogs;
+        var overlays;
 
         toolbarElement.setAttribute('editor-toolbar', '');
+        dialogs = createDialogService({
+            document: editorElement.ownerDocument || document,
+            restoreSelection: restoreSelection
+        });
+        overlays = createOverlayManager({
+            document: editorElement.ownerDocument || document
+        });
 
         function selectionIsInEditor(selection) {
             var range;
@@ -235,74 +251,8 @@
             }
         }
 
-        function promptUser(label, fallback) {
-            return window.prompt(label, fallback);
-        }
-
-        function showInsertModal(title, fields, focusSelector, read, initialize) {
-            var modal;
-            var form;
-            var resolved = false;
-
-            if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal')) {
-                return null;
-            }
-
-            modal = document.createElement('wysiwyg-modal');
-            modal.showCloseButton = true;
-            modal.clickOutsideToClose = true;
-            modal.moveable = true;
-            modal.innerHTML = [
-                '<strong slot="header">' + title + '</strong>',
-                '<form class="wysiwyg-link-form">' + fields + '</form>',
-                '<span slot="footer"><button type="button" data-action="cancel">Cancel</button> <button type="button" data-action="apply">Insert</button></span>'
-            ].join('');
-            document.body.appendChild(modal);
-            form = modal.querySelector('form');
-
-            return new Promise(function (resolve) {
-                function finish(value) {
-                    if (resolved) {
-                        return;
-                    }
-
-                    resolved = true;
-                    modal.close();
-                    modal.remove();
-                    restoreSelection();
-                    resolve(value);
-                }
-
-                function submit() {
-                    var value = read(modal);
-
-                    if (value) {
-                        finish(value);
-                    }
-                }
-
-                html.on(modal, 'close', function () {
-                    finish(null);
-                });
-                html.on(form, 'submit', function (event) {
-                    event.preventDefault();
-                    submit();
-                });
-                html.on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
-                    finish(null);
-                });
-                html.on(modal.querySelector('[data-action="apply"]'), 'click', submit);
-
-                if (initialize) {
-                    initialize(modal);
-                }
-                modal.show();
-                modal.querySelector(focusSelector || '[data-field]').focus();
-            });
-        }
-
         function showCodeBlockModal(currentCodeBlock) {
-            var result = showInsertModal('Insert Code Block', '<label><span>Code</span><textarea data-field="code" rows="8"></textarea></label><label><span>Language</span><input data-field="language" type="text" placeholder="optional"></label>', '[data-field="code"]', function (modal) {
+            var result = dialogs.showInsertModal('Insert Code Block', '<label><span>Code</span><textarea data-field="code" rows="8"></textarea></label><label><span>Language</span><input data-field="language" type="text" placeholder="optional"></label>', '[data-field="code"]', function (modal) {
                 return {
                     code: modal.querySelector('[data-field="code"]').value,
                     language: modal.querySelector('[data-field="language"]').value
@@ -315,8 +265,8 @@
             });
 
             return result || (typeof customElements !== 'undefined' && customElements.get('wysiwyg-modal') ? null : {
-                code: promptUser('Code', currentCodeBlock ? currentCodeBlock.code : ''),
-                language: promptUser('Language', currentCodeBlock ? currentCodeBlock.language : '')
+                code: dialogs.prompt('Code', currentCodeBlock ? currentCodeBlock.code : ''),
+                language: dialogs.prompt('Language', currentCodeBlock ? currentCodeBlock.language : '')
             });
         }
 
@@ -332,7 +282,7 @@
             var targetValue = targetFallback === undefined || targetFallback === null ? (prompt.targetFallback || '') : targetFallback;
 
             if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal')) {
-                var href = promptUser(prompt.label, fallback);
+                var href = dialogs.prompt(prompt.label, fallback);
 
                 if (!href) {
                     return href;
@@ -340,7 +290,7 @@
 
                 return {
                     href: href,
-                    target: promptUser(targetLabel, targetValue) || ''
+                    target: dialogs.prompt(targetLabel, targetValue) || ''
                 };
             }
 
@@ -621,7 +571,7 @@
             initialPath = getDirectoryPath(currentMedia && (currentMedia.filePath || currentMedia.src)) || rootPath;
 
             if (typeof customElements === 'undefined' || !customElements.get('wysiwyg-modal') || !customElements.get('wysiwyg-file-browser')) {
-                return promptUser(prompt.label, currentMedia ? currentMedia.src : prompt.fallback);
+                return dialogs.prompt(prompt.label, currentMedia ? currentMedia.src : prompt.fallback);
             }
 
             modal = document.createElement('wysiwyg-modal');
@@ -1042,12 +992,11 @@
         }
 
         function ensureTableSelectionOverlay() {
-            if (tableSelectionOverlay || typeof customElements === 'undefined' || !customElements.get('wysiwyg-table-selection')) {
+            if (tableSelectionOverlay || !overlays.canCreate('wysiwyg-table-selection')) {
                 return tableSelectionOverlay;
             }
 
-            tableSelectionOverlay = document.createElement('wysiwyg-table-selection');
-            document.body.appendChild(tableSelectionOverlay);
+            tableSelectionOverlay = overlays.create('wysiwyg-table-selection');
             html.on(tableSelectionOverlay, 'table-select', function (event) {
                 selectTableMode(event.detail.mode);
             });
@@ -1072,13 +1021,11 @@
         }
 
         function ensureResizeOverlay() {
-            if (resizeOverlay || typeof customElements === 'undefined' || !customElements.get('wysiwyg-resize-overlay')) {
+            if (resizeOverlay || !overlays.canCreate('wysiwyg-resize-overlay')) {
                 return resizeOverlay;
             }
 
-            resizeOverlay = document.createElement('wysiwyg-resize-overlay');
-            resizeOverlay.boundary = editorElement;
-            document.body.appendChild(resizeOverlay);
+            resizeOverlay = overlays.create('wysiwyg-resize-overlay', { boundary: editorElement });
             html.on(resizeOverlay, 'move-start', function () {
                 movingResizeTarget = true;
             });
@@ -1513,7 +1460,7 @@
                 saveSelection: saveSelection,
                 restoreSelection: restoreSelection,
                 sync: sync,
-                prompt: promptUser,
+                prompt: dialogs.prompt,
                 showLinkModal: showLinkModal,
                 showFindReplaceModal: showFindReplaceModal,
                 showCodeBlockModal: showCodeBlockModal,
@@ -1571,7 +1518,7 @@
                 saveSelection: saveSelection,
                 restoreSelection: restoreSelection,
                 sync: sync,
-                prompt: promptUser,
+                prompt: dialogs.prompt,
                 showLinkModal: showLinkModal,
                 showFindReplaceModal: showFindReplaceModal,
                 showCodeBlockModal: showCodeBlockModal,
@@ -1601,37 +1548,6 @@
             }
         }
 
-        function runCommand(entry, event, value, options) {
-            var commandOptions = options || {};
-            var result;
-
-            if (!entry || !entry.node.onCommand) {
-                return;
-            }
-
-            if (commandOptions.restore !== false) {
-                restoreSelection();
-            }
-
-            result = entry.node.onCommand(createContext(entry, event, value));
-
-            if (result && typeof result.then === 'function') {
-                return result.then(function () {
-                    if (commandOptions.saveSelection) {
-                        saveSelection();
-                    }
-
-                    sync();
-                });
-            }
-
-            if (commandOptions.saveSelection) {
-                saveSelection();
-            }
-
-            sync();
-        }
-
         view = createToolbarView(toolbarElement, config.elements.status, {
             items: config.toolbar.items,
             icons: config.assets.icons,
@@ -1641,7 +1557,7 @@
                 saveSelection: saveSelection,
                 restoreSelection: restoreSelection,
                 sync: sync,
-                prompt: promptUser,
+                prompt: dialogs.prompt,
                 showLinkModal: showLinkModal,
                 showFindReplaceModal: showFindReplaceModal,
                 showCodeBlockModal: showCodeBlockModal,
@@ -1654,66 +1570,13 @@
             }
         });
 
-        html.on(toolbarElement, 'mousedown', function (event) {
-            if (event.target.closest('button, select, input')) {
-                saveSelection();
-            }
-
-            if (event.target.closest('button, input')) {
-                event.preventDefault();
-            }
-        });
-
-        html.on(toolbarElement, 'click', function (event) {
-            var button = event.target.closest('button');
-            var entry;
-
-            if (!button) {
-                return;
-            }
-
-            entry = view.getEntryForElement(button);
-            runCommand(entry, event, button.value);
-        });
-
-        html.on(toolbarElement, 'change', function (event) {
-            var control = event.target.closest('select, input');
-            var entry;
-
-            if (!control) {
-                return;
-            }
-
-            entry = view.getEntryForElement(control);
-
-            if (!entry) {
-                return;
-            }
-
-            if (control.type === 'color' && control.__wysiwygLastInputValue === control.value) {
-                control.__wysiwygLastInputValue = null;
-                return;
-            }
-
-            runCommand(entry, event, control.value, { saveSelection: control.type === 'color' });
-        });
-
-        html.on(toolbarElement, 'input', function (event) {
-            var control = event.target.closest('input');
-            var entry;
-
-            if (!control) {
-                return;
-            }
-
-            entry = view.getEntryForElement(control);
-
-            if (!entry) {
-                return;
-            }
-
-            runCommand(entry, event, control.value, { saveSelection: true });
-            control.__wysiwygLastInputValue = control.value;
+        toolbarController = createToolbarController({
+            createContext: createContext,
+            restoreSelection: restoreSelection,
+            saveSelection: saveSelection,
+            sync: sync,
+            toolbarElement: toolbarElement,
+            view: view
         });
 
         html.on(document, 'selectionchange', function () {

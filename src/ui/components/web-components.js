@@ -1,6 +1,6 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('../core/html-utility'));
+        module.exports = factory(require('../../core/html-utility'));
     } else {
         root.WysiwygWebComponents = factory(root.WysiwygHtmlUtility);
     }
