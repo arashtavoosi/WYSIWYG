@@ -48,8 +48,10 @@ describe('Ravan', () => {
         const toolbarElement = document.getElementById('toolbar');
         const wrapperElement = document.getElementById('editor-wrapper');
         const instance = Ravan.mount({
-            editorElement: '#editor-wrapper',
-            toolbarElement: '#toolbar'
+            elements: {
+                wrapper: '#editor-wrapper',
+                toolbar: '#toolbar'
+            }
         });
 
         expect(instance.toolbarElement).toBe(toolbarElement);
@@ -67,11 +69,32 @@ describe('Ravan', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Text</p></div>';
 
         const editorElement = document.getElementById('editor');
-        const instance = createEditorAdapter({ editorElement: editorElement });
+        const instance = createEditorAdapter({ elements: { editor: editorElement } });
 
         expect(instance.toolbarElement).toBe(editorElement.previousElementSibling);
         expect(instance.toolbarElement.className).toBe('');
         expect(instance.toolbarElement.hasAttribute('class')).toBe(false);
         expect(instance.toolbarElement.hasAttribute('editor-toolbar')).toBe(true);
+    });
+
+    test('uses explicitly configured editor and toolbar elements', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor-wrapper"><div id="editor"><p>Before</p></div></div>'
+        ].join('');
+
+        const instance = Ravan.mount('#editor-wrapper', {
+            elements: {
+                editor: '#editor',
+                toolbar: '#toolbar'
+            },
+            editor: {
+                initialHtml: '<p>Configured</p>'
+            }
+        });
+
+        expect(instance.editorElement).toBe(document.getElementById('editor'));
+        expect(instance.toolbarElement).toBe(document.getElementById('toolbar'));
+        expect(instance.editorElement.innerHTML).toBe('<p>Configured</p>');
     });
 });

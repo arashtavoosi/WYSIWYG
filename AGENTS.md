@@ -127,8 +127,11 @@ Bridges toolbar interactions to the core API.
 2. `src/ui/toolbar-view.js`
 Reflects editor state back into the toolbar and status area.
 
-3. `src/ui/toolbar-config.js`
-Small toolbar metadata such as prompt labels and defaults.
+3. `src/ui/toolbar-schema.js`
+Default toolbar command and rendering metadata.
+
+4. `src/editor-config.js`
+Normalizes editor configuration into element, editor, toolbar, asset, media, code-view, find/replace, and dialog sections.
 
 ### Demo
 
@@ -323,6 +326,7 @@ Active test files:
 4. `tests/block-structure.test.js`
 5. `tests/embed-content.test.js`
 6. `tests/selection-state.test.js`
+7. `tests/editor-config.test.js`
 
 Current coverage includes:
 
@@ -364,7 +368,7 @@ There are row, column, header-row, and table-removal commands, but no advanced m
 4. Line-height currently applies to the current block, not a multi-block selection range.
 
 5. The UI adapter still contains command routing logic.
-Only small toolbar metadata lives in `src/ui/toolbar-config.js`.
+The toolbar schema and command definitions live in `src/ui/toolbar-schema.js`; editor-wide settings are normalized by `src/editor-config.js`.
 
 6. The demo uses `window.prompt` for link, image, and table inputs.
 This is acceptable for now, but it is not the intended long-term UX.
@@ -413,8 +417,9 @@ Future agents should read these first before making changes:
 5. `src/core/linking.js`
 6. `src/core/embed-content.js`
 7. `src/ui/editor-adapter.js`
-8. `src/ui/toolbar-config.js`
-9. `src/ui/toolbar-view.js`
-10. `demos/ravan.html`
-11. `tests/editor-core.test.js`
-12. `docs/plan-ravan.prompt.md`
+8. `src/ui/toolbar-schema.js`
+9. `src/editor-config.js`
+10. `src/ui/toolbar-view.js`
+11. `demos/ravan.html`
+12. `tests/editor-core.test.js`
+13. `docs/plan-ravan.prompt.md`

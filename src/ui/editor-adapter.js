@@ -3,7 +3,7 @@
         module.exports = factory(
             require('../core/editor-core'),
             require('./toolbar-view'),
-            require('./toolbar-config'),
+            require('../editor-config'),
             require('../core/html-utility'),
             require('./code-view')
         );
@@ -11,12 +11,12 @@
         root.createEditorAdapter = factory(
             root.createEditorCore,
             root.createToolbarView,
-            root.WysiwygToolbarConfig,
+            root.RavanEditorConfig,
             root.WysiwygHtmlUtility,
             root.WysiwygCodeView
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createToolbarView, toolbarConfig, html, codeView) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createToolbarView, editorConfig, html, codeView) {
     function createToolbarElement(editorElement) {
         var documentRef = editorElement && editorElement.ownerDocument;
         var toolbarElement;
@@ -55,12 +55,12 @@
         return null;
     }
 
-    function createEditorAdapter(config) {
-        var configOverrides = config.toolbarConfig || {};
-        var toolbarSettings = Object.assign({}, toolbarConfig, configOverrides);
-        var editorElement = config.editorElement;
-        var toolbarElement = config.toolbarElement || findAdjacentToolbar(editorElement) || createToolbarElement(editorElement);
-        var editor = createEditorCore(editorElement, config.editorOptions);
+    function createEditorAdapter(input) {
+        var config = editorConfig.normalize(input);
+        var elements = config.elements;
+        var editorElement = elements.editor;
+        var toolbarElement = elements.toolbar || findAdjacentToolbar(editorElement) || createToolbarElement(editorElement);
+        var editor = createEditorCore(editorElement, config.editor);
         var savedRange = null;
         var mediaToolsPopup = null;
         var tableToolsPopup = null;
@@ -78,14 +78,6 @@
         var view;
 
         toolbarElement.setAttribute('editor-toolbar', '');
-
-        toolbarSettings.prompts = Object.assign({}, toolbarConfig.prompts, configOverrides.prompts || {});
-        toolbarSettings.fileBrowser = Object.assign({}, toolbarConfig.fileBrowser, configOverrides.fileBrowser || {});
-        if (configOverrides.fileBrowser && configOverrides.fileBrowser.supportedExtensions && typeof configOverrides.fileBrowser.supportedExtensions === 'object' && !Array.isArray(configOverrides.fileBrowser.supportedExtensions)) {
-            toolbarSettings.fileBrowser.supportedExtensions = Object.assign({}, toolbarConfig.fileBrowser.supportedExtensions, configOverrides.fileBrowser.supportedExtensions);
-        }
-        toolbarSettings.codeView = Object.assign({}, toolbarConfig.codeView, configOverrides.htmlView || {}, configOverrides.codeView || {});
-        toolbarSettings.toolbar = config.toolbar || toolbarSettings.toolbar;
 
         function selectionIsInEditor(selection) {
             var range;
@@ -121,7 +113,7 @@
         }
 
         function getCodeViewSettings() {
-            var settings = toolbarSettings.codeView || {};
+            var settings = config.codeView || {};
 
             return {
                 mode: settings.mode === 'only' ? 'only' : 'after',
@@ -213,6 +205,10 @@
         }
 
         function toggleCodeView() {
+            if (!config.codeView.enabled) {
+                return false;
+            }
+
             return codeViewOpen ? closeCodeView() : openCodeView();
         }
 
@@ -331,7 +327,7 @@
             var input;
             var targetInput;
             var resolved = false;
-            var prompt = toolbarSettings.prompts.link;
+            var prompt = config.dialogs.prompts.link;
             var targetLabel = prompt.targetLabel || 'Link target';
             var targetValue = targetFallback === undefined || targetFallback === null ? (prompt.targetFallback || '') : targetFallback;
 
@@ -599,7 +595,7 @@
             var title;
             var browser;
             var resolved = false;
-            var settings = toolbarSettings.fileBrowser || {};
+            var settings = config.media.fileBrowser || {};
             var requestedType = typeof type === 'string' ? type : '';
             var selectedType;
             var prompt;
@@ -615,7 +611,7 @@
             }
 
             selectedType = currentMedia && currentMedia.type || requestedType;
-            prompt = (requestedType && toolbarSettings.prompts[requestedType]) || toolbarSettings.prompts.media || {
+            prompt = (requestedType && config.dialogs.prompts[requestedType]) || config.dialogs.prompts.media || {
                 label: 'Media URL',
                 fallback: 'https://'
             };
@@ -647,8 +643,8 @@
             browser.filters = filters;
             browser.filterPlacement = 'external';
             browser.activeFilters = selectedType ? [selectedType] : [];
-            browser.iconSpritePath = toolbarSettings.iconSpritePath || '';
-            browser.iconPrefix = toolbarSettings.iconPrefix || 'wysiwyg-icon-';
+            browser.iconSpritePath = config.assets.icons.url || '';
+            browser.iconPrefix = config.assets.icons.prefix || 'wysiwyg-icon-';
             browser.viewMode = settings.viewMode || 'thumbnail';
             renderMediaFilterButtons(filterContainer, browser, filters);
 
@@ -812,7 +808,7 @@
         function createIcon(iconId, className) {
             var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-            var href = (toolbarSettings.iconSpritePath || '') + '#' + (toolbarSettings.iconPrefix || 'wysiwyg-icon-') + iconId;
+            var href = (config.assets.icons.url || '') + '#' + (config.assets.icons.prefix || 'wysiwyg-icon-') + iconId;
 
             svg.classList.add(className || 'wysiwyg-table-tool-icon');
             svg.setAttribute('aria-hidden', 'true');
@@ -1527,7 +1523,7 @@
                 showTablePicker: showTablePicker,
                 clearFormatting: clearFormatting,
                 toggleCodeView: toggleCodeView,
-                settings: toolbarSettings
+                config: config
             };
         }
 
@@ -1584,7 +1580,7 @@
                 selectMedia: selectInsertedMedia,
                 showTablePicker: showTablePicker,
                 toggleCodeView: toggleCodeView,
-                settings: toolbarSettings
+                config: config
             });
             syncCodeView();
 
@@ -1636,8 +1632,9 @@
             sync();
         }
 
-        view = createToolbarView(toolbarElement, config.statusElement, {
-            toolbar: toolbarSettings.toolbar,
+        view = createToolbarView(toolbarElement, config.elements.status, {
+            items: config.toolbar.items,
+            icons: config.assets.icons,
             context: {
                 editor: editor,
                 toolbarElement: toolbarElement,
@@ -1653,7 +1650,7 @@
                 selectMedia: selectInsertedMedia,
                 showTablePicker: showTablePicker,
                 toggleCodeView: toggleCodeView,
-                settings: toolbarSettings
+                config: config
             }
         });
 

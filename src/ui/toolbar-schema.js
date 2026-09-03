@@ -2,7 +2,7 @@
     if (typeof module === 'object' && module.exports) {
         module.exports = factory();
     } else {
-        root.WysiwygToolbarConfig = factory();
+        root.RavanToolbarSchema = factory();
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     function inlineCommand(name) {
@@ -71,7 +71,7 @@
         var file = value && typeof value === 'object' ? value : null;
         var source = file ? file.url || file.path || file.src || file.name : value;
         var extension = String(file && file.extension || source || '').toLowerCase().match(/\.[^.]+(?=\?|#|$)/);
-        var supported = context.settings.fileBrowser && context.settings.fileBrowser.supportedExtensions;
+        var supported = context.config.media.fileBrowser && context.config.media.fileBrowser.supportedExtensions;
         var types = ['image', 'video', 'audio'];
 
         if (file && types.indexOf(file.mediaType || file.type) !== -1) {
@@ -109,7 +109,7 @@
     function mediaCommand() {
         return modalCommand(function (context) {
             var selected = context.state.media || null;
-            var prompt = context.settings.prompts.media || {
+            var prompt = context.config.dialogs.prompts.media || {
                 label: 'Media URL',
                 fallback: 'https://'
             };
@@ -158,34 +158,7 @@
     });
 
     return {
-        headingLevel: 2,
-        imageAttributes: ['src', 'alt', 'title', 'width', 'height', 'filePath'],
-        indentStep: 24,
-        iconPrefix: 'wysiwyg-icon-',
-        iconSpritePath: '',
-        fileBrowser: {
-            endpoint: '',
-            path: '/',
-            supportedExtensions: {
-                image: '.jpg,.jpeg,.png,.gif,.webp,.svg',
-                video: '.mp4,.webm,.ogv,.mov,.m4v',
-                audio: '.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac'
-            }
-        },
-        codeView: {
-            mode: 'after',
-            editable: false,
-            live: false
-        },
-        findReplace: false,
-        prompts: {
-            image: { label: 'Image URL', fallback: 'https://' },
-            media: { label: 'Media URL', fallback: 'https://' },
-            link: { label: 'Link URL', fallback: 'https://', targetLabel: 'Link target', targetFallback: '' },
-            tableCols: { label: 'Table columns', fallback: '2' },
-            tableRows: { label: 'Table rows', fallback: '2' }
-        },
-        toolbar: {
+        items: {
             history: {
                 title: 'History',
                 priority: 10,
@@ -437,7 +410,7 @@
                         priority: 10,
                         active: function (state) { return !!state.link; },
                         onCommand: function (context) {
-                            var prompts = context.settings.prompts;
+                            var prompts = context.config.dialogs.prompts;
                             var currentLink = context.state.link;
                             var fallback = currentLink ? currentLink.href : prompts.link.fallback;
                             var target = currentLink ? currentLink.target : (prompts.link.targetFallback || '');
@@ -542,7 +515,7 @@
                                 });
                             }
 
-                            prompts = context.settings.prompts;
+                            prompts = context.config.dialogs.prompts;
                             rows = Number(promptValue(context, prompts.tableRows)) || 2;
                             cols = Number(promptValue(context, prompts.tableCols)) || 2;
 
@@ -573,7 +546,7 @@
                         title: 'Find and Replace',
                         iconId: 'find-replace', icon: 'Find',
                         priority: 10,
-                        hide: function (context) { return !context.settings.findReplace; },
+                        hide: function (context) { return !context.config.findReplace.enabled; },
                         onCommand: function (context) {
                             context.showFindReplaceModal();
                         }
@@ -588,6 +561,7 @@
                         title: 'HTML',
                         iconId: 'code', icon: '<>',
                         priority: 10,
+                        hide: function (context) { return !context.config.codeView.enabled; },
                         active: function (state) { return !!state.codeView; },
                         onCommand: function (context) {
                             context.toggleCodeView();

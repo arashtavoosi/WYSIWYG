@@ -103,11 +103,11 @@
         return element;
     }
 
-    function createSvgIcon(node, settings) {
+    function createSvgIcon(node, icons) {
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-        var iconId = (settings.iconPrefix || 'wysiwyg-icon-') + node.iconId;
-        var spritePath = settings.iconSpritePath || '';
+        var iconId = (icons.prefix || 'wysiwyg-icon-') + node.iconId;
+        var spritePath = icons.url || '';
         var href = spritePath + '#' + iconId;
 
         svg.classList.add('toolbar-button-icon');
@@ -120,9 +120,9 @@
         return svg;
     }
 
-    function appendNodeContent(element, node, settings) {
+    function appendNodeContent(element, node, icons) {
         if (node.iconId) {
-            element.appendChild(createSvgIcon(node, settings || {}));
+            element.appendChild(createSvgIcon(node, icons || {}));
             return;
         }
 
@@ -143,17 +143,17 @@
         }
     }
 
-    function renderButton(node, id, settings) {
+    function renderButton(node, id, icons) {
         var button = createElement('button', 'toolbar-button');
 
         button.type = 'button';
         applyCommonAttributes(button, node, id, 'button');
-        appendNodeContent(button, node, settings);
+        appendNodeContent(button, node, icons);
 
         return button;
     }
 
-    function appendControlIcon(wrapper, node, settings) {
+    function appendControlIcon(wrapper, node, icons) {
         var icon;
 
         if (!node.iconId) {
@@ -161,11 +161,11 @@
         }
 
         icon = createElement('span', 'toolbar-control-icon');
-        icon.appendChild(createSvgIcon(node, settings || {}));
+        icon.appendChild(createSvgIcon(node, icons || {}));
         wrapper.appendChild(icon);
     }
 
-    function renderDropdown(node, id, settings) {
+    function renderDropdown(node, id, icons) {
         var wrapper = createElement('label', 'toolbar-control toolbar-dropdown');
         var label = createElement('span', 'toolbar-control-label');
         var select = document.createElement('select');
@@ -181,14 +181,14 @@
             select.appendChild(optionElement);
         });
 
-        appendControlIcon(wrapper, node, settings);
+        appendControlIcon(wrapper, node, icons);
         wrapper.appendChild(label);
         wrapper.appendChild(select);
 
         return wrapper;
     }
 
-    function renderColorPicker(node, id, settings) {
+    function renderColorPicker(node, id, icons) {
         var wrapper = createElement('label', 'toolbar-control toolbar-color');
         var label = createElement('span', 'toolbar-control-label');
         var input = document.createElement('input');
@@ -198,7 +198,7 @@
         input.value = node.fallback || '#000000';
         applyCommonAttributes(input, node, id, 'colorpicker');
 
-        appendControlIcon(wrapper, node, settings);
+        appendControlIcon(wrapper, node, icons);
         wrapper.appendChild(label);
         wrapper.appendChild(input);
 
@@ -306,7 +306,7 @@
         }
 
         if (state.link) {
-            path.push('Link' +(state.link.href ? '(' + state.link.href + ') ' : ''));
+            path.push(state.link.href ? '(' + state.link.href + ') Link' : 'Link');
         }
 
         element.textContent = path.length ? path.join(' › ') : 'Editor';
@@ -320,7 +320,8 @@
     function createToolbarView(toolbarElement, statusElement, options) {
         var entries = {};
         var counter = 0;
-        var toolbar = (options || {}).toolbar || {};
+        var toolbar = (options || {}).items || {};
+        var icons = (options || {}).icons || {};
         var renderContext = (options || {}).context || {};
 
         function register(node, element, control, type, key) {
@@ -344,7 +345,6 @@
             var id;
             var element;
             var children = [];
-            var settings = renderContext.settings || {};
 
             if (resolveRenderValue(node.hide, Object.assign({}, renderContext, {
                 node: node,
@@ -400,11 +400,11 @@
                     applyCommonAttributes(element, node, id, type);
                 }
             } else if (type === 'dropdown') {
-                element = renderDropdown(node, id, settings);
+                element = renderDropdown(node, id, icons);
             } else if (type === 'colorpicker') {
-                element = renderColorPicker(node, id, settings);
+                element = renderColorPicker(node, id, icons);
             } else {
-                element = renderButton(node, id, settings);
+                element = renderButton(node, id, icons);
             }
 
             register(node, element, element.querySelector ? (element.querySelector('[data-toolbar-id="' + id + '"]') || element) : element, type, key);

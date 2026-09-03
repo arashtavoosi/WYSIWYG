@@ -10,7 +10,7 @@ describe('toolbar status breadcrumb', () => {
 
         const toolbar = document.getElementById('toolbar');
         const status = document.getElementById('status');
-        const view = createToolbarView(toolbar, status, { toolbar: {} });
+        const view = createToolbarView(toolbar, status, { items: {} });
 
         view.sync({
             block: 'p',
@@ -31,7 +31,7 @@ describe('toolbar status breadcrumb', () => {
         const view = createToolbarView(
             document.getElementById('toolbar'),
             document.getElementById('status'),
-            { toolbar: {} }
+            { items: {} }
         );
 
         view.sync({});
@@ -45,7 +45,7 @@ describe('toolbar status breadcrumb', () => {
         const view = createToolbarView(
             document.getElementById('toolbar'),
             document.getElementById('status'),
-            { toolbar: {} }
+            { items: {} }
         );
 
         view.sync({ block: 'p', quote: true });
@@ -59,7 +59,7 @@ describe('toolbar status breadcrumb', () => {
         const view = createToolbarView(
             document.getElementById('toolbar'),
             document.getElementById('status'),
-            { toolbar: {} }
+            { items: {} }
         );
 
         view.sync({ block: 'pre', codeBlock: { code: 'const answer = 42;', language: 'js' } });

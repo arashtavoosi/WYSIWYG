@@ -7,7 +7,8 @@ Small-footprint browser editor with a UI-agnostic core.
 - `src/core/editor-core.js`: public core API.
 - `src/core/*`: shared HTML utilities, selection formatting, block structure, linking, embeds, state, and markup normalization.
 - `src/ravan.js`: branded full-editor facade.
-- `src/ui/*`: toolbar wiring, toolbar metadata, toolbar state rendering, the slim HTML code view, and small UI web components.
+- `src/ui/*`: toolbar wiring, toolbar command schema, toolbar state rendering, the slim HTML code view, and small UI web components.
+- `src/editor-config.js`: normalizes the public editor configuration into its feature-owned sections.
 - `build/entries/*`: release bundle entry points.
 - `scripts/build.mjs`: esbuild bundling and minification script.
 - `demos/ravan.html`: no-build demo shell.
@@ -34,11 +35,14 @@ Main methods:
 
 ## Ravan Full Editor API
 
-For normal browser usage, use the branded `Ravan.mount` facade. The mount target is an editor wrapper. Ravan wraps its existing contents in a classless `[editor-content]` element and creates an `[editor-toolbar]` before it when `toolbarElement` is omitted:
+For normal browser usage, use the branded `Ravan.mount` facade. The mount target is an editor wrapper. Ravan wraps its existing contents in a classless `[editor-content]` element and creates an `[editor-toolbar]` before it when `elements.toolbar` is omitted:
 
 ```js
 const instance = Ravan.mount('#editor-wrapper', {
-  toolbarConfig: {
+  elements: {
+    status: document.querySelector('#status')
+  },
+  media: {
     fileBrowser: {
       endpoint: '/files'
     }
@@ -46,7 +50,24 @@ const instance = Ravan.mount('#editor-wrapper', {
 });
 ```
 
-When `toolbarElement` is supplied, Ravan adds the `[editor-toolbar]` attribute without moving that element. The lower-level `createEditorAdapter` and `createEditorCore` APIs remain available for custom integrations. Existing `wysiwyg-*` icon and custom-element names are retained as internal compatibility contracts for now.
+When `elements.toolbar` is supplied, Ravan adds the `[editor-toolbar]` attribute without moving that element. The lower-level `createEditorAdapter` and `createEditorCore` APIs remain available for custom integrations. Existing `wysiwyg-*` icon and custom-element names are retained as internal compatibility contracts for now.
+
+Editor configuration is grouped by ownership rather than by toolbar origin:
+
+```js
+Ravan.mount('#editor-wrapper', {
+  elements: { toolbar: '#toolbar', status: '#status' },
+  editor: { historyLimit: 50, indentStep: 24 },
+  toolbar: { items: {/* custom toolbar nodes */} },
+  assets: { icons: { url: '/assets/toolbar-icons.svg', prefix: 'wysiwyg-icon-' } },
+  media: { fileBrowser: { endpoint: '/files', path: '/' } },
+  codeView: { enabled: true, mode: 'after', editable: false, live: false },
+  findReplace: { enabled: false },
+  dialogs: { prompts: {/* link, media, and table prompt overrides */} }
+});
+```
+
+Every section is optional. `toolbar.items` replaces the default command tree, while `media.fileBrowser`, `codeView`, `findReplace`, and `dialogs.prompts` configure the corresponding UI behavior directly.
 
 ## UI Web Components
 
@@ -71,7 +92,7 @@ The default Media toolbar command opens `<wysiwyg-file-browser>` inside `<wysiwy
 
 ```js
 Ravan.mount(editorWrapperElement, {
-  toolbarConfig: {
+  media: {
     fileBrowser: {
       endpoint: '/files',
       path: '/',
@@ -127,20 +148,18 @@ Include `src/ui/toolbar.css` when using the generated toolbar and its status are
 <div editor-toolbar></div>
 ```
 
-Pass one `statusElement` to render the current context as a compact breadcrumb, such as `Table › Row 2 › Cell 3 › Bold`. Links include their URL in parentheses before `Link`.
+Pass `elements.status` to render the current context as a compact breadcrumb, such as `Table › Row 2 › Cell 3 › Bold`. Links include their URL in parentheses before `Link`.
 
 ## HTML Code View
 
-The default toolbar includes an HTML button. Configure its source view through `toolbarConfig.codeView`:
+The default toolbar includes an HTML button. Configure its source view through `codeView`:
 
 ```js
 Ravan.mount(editorWrapperElement, {
-  toolbarConfig: {
-    codeView: {
-      mode: 'after',  // 'after' or 'only'
-      editable: true,
-      live: true
-    }
+  codeView: {
+    mode: 'after',  // 'after' or 'only'
+    editable: true,
+    live: true
   }
 });
 ```
@@ -155,7 +174,7 @@ Enable the optional modal-based Find and Replace tool with:
 
 ```js
 Ravan.mount(editorWrapperElement, {
-  toolbarConfig: { findReplace: true }
+  findReplace: { enabled: true }
 });
 ```
 

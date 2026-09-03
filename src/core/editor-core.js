@@ -611,7 +611,10 @@
 
             adjustIndent: function (direction, selection) {
                 return performMutation(function () {
-                    blockStructure.adjustIndent(direction, selection, { root: rootNode });
+                    blockStructure.adjustIndent(direction, selection, {
+                        root: rootNode,
+                        indentStep: config.indentStep
+                    });
                     return api;
                 });
             },

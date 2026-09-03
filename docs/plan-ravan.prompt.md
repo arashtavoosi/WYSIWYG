@@ -165,8 +165,8 @@ Own link creation, update, and removal. Links are distinct enough from generic i
 8. `ui/editor-adapter.js`
 Own all UI wiring. This module should receive the editor root, toolbar root, and core instance; bind click handlers; map toolbar actions to semantic tags; subscribe to `selectionchange`; and update active button state. It must not contain wrapping, unwrapping, or normalization logic.
 
-9. `ui/toolbar-config.js`
-Own the command registry for the toolbar. Define a small data structure such as bold -> `strong`, italic -> `em`, underline -> `u`, clear -> `clear`. This keeps the adapter declarative and keeps command meaning out of the demo page.
+9. `ui/toolbar-schema.js`
+Own the default command and rendering registry for the toolbar. Define a small data structure such as bold -> `strong`, italic -> `em`, underline -> `u`, clear -> `clear`. This keeps the adapter declarative and keeps command meaning out of the demo page.
 
 10. `ui/toolbar-view.js`
 Own DOM class toggling for toolbar state only, for example active or disabled buttons. This keeps button presentation separate from event binding and from editor behavior.
@@ -223,8 +223,8 @@ Purpose: handle images and tables without polluting inline formatting code.
 Migration source: new implementation
 First implementation: insert image and insert basic table.
 
-8. Create `ui/toolbar-config.js`.
-Purpose: define the command registry in declarative form.
+8. Create `ui/toolbar-schema.js`.
+Purpose: define the command and rendering registry in declarative form.
 First implementation: include bold, italic, underline, color, fontFamily, lineHeight, heading, quote, ul, ol, link, image, table, hr, br, and clear.
 
 9. Create `ui/toolbar-view.js`.

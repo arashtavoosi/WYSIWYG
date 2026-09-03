@@ -91,25 +91,33 @@
     <script src="../dist/ravan.min.js"></script>
     <script>
         Ravan.mount('#editor-wrapper', {
-            toolbarConfig: {
-                iconSpritePath: '../src/ui/toolbar-icons.svg',
-                codeView: {
-                    mode: 'after',
-                    editable: true,
-                    live: true
-                },
-                findReplace: true,
+            assets: {
+                icons: {
+                    url: '../src/ui/toolbar-icons.svg'
+                }
+            },
+            codeView: {
+                mode: 'after',
+                editable: true,
+                live: true
+            },
+            findReplace: {
+                enabled: true
+            },
+            media: {
                 fileBrowser: {
                     endpoint: '/files',
                     path: '/',
                     supportedExtensions: {
-                        image: '.jpg,.png,.svg',
+                        image: '.jpg,.jpeg,.png,.gif,.webp,.svg',
                         video: '.mp4,.webm,.ogv,.mov,.m4v',
                         audio: '.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac'
                     }
                 }
             },
-            statusElement: document.getElementById('statusBreadcrumb')
+            elements: {
+                status: document.getElementById('statusBreadcrumb')
+            }
         });
     </script>
 </body>

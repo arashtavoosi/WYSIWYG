@@ -13,10 +13,13 @@ describe('editor adapter', () => {
         ].join('');
 
         createEditorAdapter({
-            editorElement: document.getElementById('editor'),
-            toolbarElement: document.getElementById('toolbar'),
+            elements: {
+                editor: document.getElementById('editor'),
+                toolbar: document.getElementById('toolbar')
+            },
             toolbar: {
-                group: {
+                items: {
+                    group: {
                     title: 'Group',
                     children: {
                         plainButton: {
@@ -39,6 +42,7 @@ describe('editor adapter', () => {
                             onCommand: function () {}
                         }
                     }
+                    }
                 }
             }
         });
@@ -56,10 +60,13 @@ describe('editor adapter', () => {
         ].join('');
 
         createEditorAdapter({
-            editorElement: document.getElementById('editor'),
-            toolbarElement: document.getElementById('toolbar'),
+            elements: {
+                editor: document.getElementById('editor'),
+                toolbar: document.getElementById('toolbar')
+            },
             toolbar: {
-                lateGroup: {
+                items: {
+                    lateGroup: {
                     title: 'Late',
                     priority: 20,
                     children: {
@@ -105,6 +112,7 @@ describe('editor adapter', () => {
                             onCommand: function () {}
                         }
                     }
+                    }
                 }
             }
         });
@@ -127,10 +135,14 @@ describe('editor adapter', () => {
         ].join('');
 
         createEditorAdapter({
-            editorElement: document.getElementById('editor'),
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
-                iconSpritePath: '/assets/toolbar-icons.svg'
+            elements: {
+                editor: document.getElementById('editor'),
+                toolbar: document.getElementById('toolbar')
+            },
+            assets: {
+                icons: {
+                    url: '/assets/toolbar-icons.svg'
+                }
             }
         });
 
@@ -158,10 +170,13 @@ describe('editor adapter', () => {
         const selection = window.getSelection();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
             toolbar: {
-                group: {
+                items: {
+                    group: {
                     children: {
                         custom: {
                             title: 'Custom',
@@ -169,6 +184,7 @@ describe('editor adapter', () => {
                                 const button = document.createElement('button');
 
                                 expect(context.editor).toBeTruthy();
+                                expect(context.config).toBeTruthy();
                                 button.type = 'button';
                                 button.textContent = 'Custom';
 
@@ -179,6 +195,7 @@ describe('editor adapter', () => {
                             },
                             onCommand: function () {}
                         }
+                    }
                     }
                 }
             }
@@ -208,8 +225,10 @@ describe('editor adapter', () => {
         const selection = window.getSelection();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.setStart(textNode, 0);
@@ -239,8 +258,10 @@ describe('editor adapter', () => {
         const selection = window.getSelection();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.setStart(textNode, textNode.textContent.indexOf('beta') + 2);
@@ -273,8 +294,10 @@ describe('editor adapter', () => {
         const cell = document.getElementById('cell');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -306,8 +329,10 @@ describe('editor adapter', () => {
         const row = document.getElementById('row');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -341,8 +366,10 @@ describe('editor adapter', () => {
         const startOffset = textNode.textContent.indexOf(selectedText);
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         const colorControl = document.querySelector('input[title="Text color"]');
@@ -380,8 +407,10 @@ describe('editor adapter', () => {
         const startOffset = textNode.textContent.indexOf(selectedText);
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         const colorControl = document.querySelector('input[title="Text color"]');
@@ -417,8 +446,10 @@ describe('editor adapter', () => {
         const startOffset = textNode.textContent.indexOf(selectedText);
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         const colorControl = document.querySelector('input[title="Text color"]');
@@ -448,8 +479,10 @@ describe('editor adapter', () => {
         ].join('');
 
         createEditorAdapter({
-            editorElement: document.getElementById('editor'),
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: document.getElementById('editor'),
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
@@ -468,8 +501,10 @@ describe('editor adapter', () => {
         const editorElement = document.getElementById('editor');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         const undoButton = document.querySelector('button[title="Undo"]');
@@ -501,8 +536,10 @@ describe('editor adapter', () => {
 
         const editorElement = document.getElementById('editor');
         const adapter = createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
         const button = document.querySelector('button[title="HTML"]');
 
@@ -539,14 +576,14 @@ describe('editor adapter', () => {
 
         const editorElement = document.getElementById('editor');
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
-                codeView: {
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            codeView: {
                     mode: 'only',
                     editable: true,
                     live: true
-                }
             }
         });
 
@@ -584,6 +621,25 @@ describe('editor adapter', () => {
         expect(input.value).toBe('<p');
     });
 
+    test('can disable optional source and find-and-replace controls', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Text</p></div>'
+        ].join('');
+
+        createEditorAdapter({
+            elements: {
+                editor: document.getElementById('editor'),
+                toolbar: document.getElementById('toolbar')
+            },
+            codeView: false,
+            findReplace: false
+        });
+
+        expect(document.querySelector('button[title="HTML"]')).toBeNull();
+        expect(document.querySelector('button[title="Find and Replace"]')).toBeNull();
+    });
+
     test('refreshes live source after beautifying and editing the visual content', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
@@ -592,14 +648,14 @@ describe('editor adapter', () => {
 
         const editorElement = document.getElementById('editor');
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
-                codeView: {
-                    mode: 'after',
-                    editable: true,
-                    live: true
-                }
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            codeView: {
+                mode: 'after',
+                editable: true,
+                live: true
             }
         });
 
@@ -625,13 +681,13 @@ describe('editor adapter', () => {
 
         const editorElement = document.getElementById('editor');
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
-                codeView: {
-                    editable: true,
-                    live: false
-                }
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            codeView: {
+                editable: true,
+                live: false
             }
         });
 
@@ -664,8 +720,10 @@ describe('editor adapter', () => {
         const startOffset = textNode.textContent.indexOf(selectedText);
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.setStart(textNode, startOffset);
@@ -711,9 +769,11 @@ describe('editor adapter', () => {
         const selection = window.getSelection();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            media: {
                 fileBrowser: {
                     supportedExtensions: {
                         image: '.png',
@@ -843,9 +903,11 @@ describe('editor adapter', () => {
         const editorElement = document.getElementById('editor');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            media: {
                 fileBrowser: {
                     supportedExtensions: { image: '.png', video: '.mp4', audio: '.mp3' },
                     items: [{ type: 'file', name: 'sound.mp3', path: '/sound.mp3', url: '/media/sound.mp3', extension: '.mp3', mime: 'audio/mpeg' }]
@@ -879,8 +941,10 @@ describe('editor adapter', () => {
         const selection = window.getSelection();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.selectNodeContents(paragraph);
@@ -915,9 +979,11 @@ describe('editor adapter', () => {
         const selection = window.getSelection();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            statusElement: document.getElementById('status')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar'),
+                status: document.getElementById('status')
+            }
         });
 
         range.setStart(codeText, 6);
@@ -961,9 +1027,11 @@ describe('editor adapter', () => {
         window.prompt = jest.fn();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            media: {
                 fileBrowser: {
                     path: '/assets',
                     supportedExtensions: '.png',
@@ -1013,9 +1081,11 @@ describe('editor adapter', () => {
         const image = editorElement.querySelector('img');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            media: {
                 fileBrowser: {
                     path: '/assets',
                     supportedExtensions: '.png',
@@ -1062,8 +1132,10 @@ describe('editor adapter', () => {
         const image = editorElement.querySelector('img');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1115,8 +1187,10 @@ describe('editor adapter', () => {
         const audio = editorElement.querySelector('audio');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1212,8 +1286,10 @@ describe('editor adapter', () => {
         const audio = editorElement.querySelector('audio');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1247,8 +1323,10 @@ describe('editor adapter', () => {
         const tables = Array.from(editorElement.querySelectorAll('table'));
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1284,8 +1362,10 @@ describe('editor adapter', () => {
         const cell = editorElement.querySelector('td');
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1326,9 +1406,11 @@ describe('editor adapter', () => {
             });
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar'),
-            toolbarConfig: {
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            media: {
                 fileBrowser: { endpoint: '/files', path: '/' }
             }
         });
@@ -1366,8 +1448,10 @@ describe('editor adapter', () => {
         window.prompt = jest.fn();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.selectNodeContents(paragraph);
@@ -1415,8 +1499,10 @@ describe('editor adapter', () => {
         const selection = window.getSelection();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.setStart(textNode, 0);
@@ -1469,8 +1555,10 @@ describe('editor adapter', () => {
         const editorElement = document.getElementById('editor');
         const cell = editorElement.querySelectorAll('tbody td')[1];
         const adapter = createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1506,8 +1594,10 @@ describe('editor adapter', () => {
         };
 
         const adapter = createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1541,8 +1631,10 @@ describe('editor adapter', () => {
         const dropRange = document.createRange();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1606,8 +1698,10 @@ describe('editor adapter', () => {
         const range = document.createRange();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1660,8 +1754,10 @@ describe('editor adapter', () => {
         };
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.selectNodeContents(firstCell);
@@ -1702,8 +1798,10 @@ describe('editor adapter', () => {
         };
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1747,8 +1845,10 @@ describe('editor adapter', () => {
         });
 
         const adapter = createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1846,8 +1946,10 @@ describe('editor adapter', () => {
         });
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         editorElement.focus();
@@ -1901,8 +2003,10 @@ describe('editor adapter', () => {
         const range = document.createRange();
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.selectNodeContents(cells[0]);
@@ -1981,8 +2085,10 @@ describe('editor adapter', () => {
         });
 
         createEditorAdapter({
-            editorElement: editorElement,
-            toolbarElement: document.getElementById('toolbar')
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
         });
 
         range.selectNodeContents(cell);

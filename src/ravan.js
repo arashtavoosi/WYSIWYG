@@ -4,22 +4,24 @@
             require('./core/editor-core'),
             require('./ui/editor-adapter'),
             require('./ui/web-components'),
-            require('./core/html-utility')
+            require('./core/html-utility'),
+            require('./editor-config')
         );
     } else {
         root.Ravan = factory(
             root.createEditorCore,
             root.createEditorAdapter,
             root.WysiwygWebComponents,
-            root.WysiwygHtmlUtility
+            root.WysiwygHtmlUtility,
+            root.RavanEditorConfig
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createEditorAdapter, webComponents, html) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (createEditorCore, createEditorAdapter, webComponents, html, editorConfig) {
     function documentFor(value, config) {
         var element = value && value.nodeType === 1 ? value : null;
 
-        if (config && config.document) {
-            return config.document;
+        if (config && config.elements && config.elements.document) {
+            return config.elements.document;
         }
 
         if (element && element.ownerDocument) {
@@ -62,7 +64,7 @@
     function normalizeArguments(target, options) {
         if (target && target.nodeType !== 1 && typeof target === 'object' && !Array.isArray(target)) {
             return {
-                target: target.wrapperElement || target.container || target.editorElement || target.element,
+                target: target.elements && target.elements.wrapper,
                 options: target
             };
         }
@@ -107,10 +109,16 @@
         return contentElement;
     }
 
-    function ensureContentElement(wrapperElement, toolbarElement, documentRef) {
-        var contentElement = findDirectChild(wrapperElement, function (element) {
-            return hasAttribute(element, 'editor-content');
-        });
+    function ensureContentElement(wrapperElement, toolbarElement, editorValue, documentRef) {
+        var contentElement = editorValue
+            ? resolveElement(editorValue, documentRef, 'editor element')
+            : findDirectChild(wrapperElement, function (element) {
+                return hasAttribute(element, 'editor-content');
+            });
+
+        if (contentElement && !wrapperElement.contains(contentElement)) {
+            throw new Error('Ravan.mount requires the editor element to be inside the wrapper');
+        }
 
         if (!contentElement) {
             contentElement = createContentElement(documentRef);
@@ -150,36 +158,37 @@
 
     function mount(target, options) {
         var args = normalizeArguments(target, options);
-        var config = args.options;
-        var wrapperValue = args.target || config.wrapperElement || config.container || config.editorElement;
-        var documentRef = documentFor(wrapperValue, config);
-        var wrapperElement = resolveElement(wrapperValue, documentRef, 'editor wrapper');
         var adapterConfig;
         var toolbarElement;
         var contentElement;
         var instance;
+        var config;
+        var wrapperValue;
+        var documentRef;
+        var wrapperElement;
 
-        if (!createEditorCore || !createEditorAdapter) {
+        if (!createEditorCore || !createEditorAdapter || !editorConfig) {
             throw new Error('Ravan dependencies are not available');
         }
 
-        toolbarElement = ensureToolbarElement(wrapperElement, config.toolbarElement, documentRef);
-        contentElement = ensureContentElement(wrapperElement, toolbarElement, documentRef);
+        config = editorConfig.normalize(args.options);
+        wrapperValue = args.target || config.elements.wrapper;
+        documentRef = documentFor(wrapperValue, config);
+        wrapperElement = resolveElement(wrapperValue, documentRef, 'editor wrapper');
+        toolbarElement = ensureToolbarElement(wrapperElement, config.elements.toolbar, documentRef);
+        contentElement = ensureContentElement(wrapperElement, toolbarElement, config.elements.editor, documentRef);
 
-        if (!config.toolbarElement) {
+        if (!config.elements.toolbar) {
             wrapperElement.insertBefore(toolbarElement, contentElement);
         }
 
         adapterConfig = Object.assign({}, config, {
-            editorElement: contentElement,
-            toolbarElement: toolbarElement
+            elements: Object.assign({}, config.elements, {
+                wrapper: wrapperElement,
+                editor: contentElement,
+                toolbar: toolbarElement
+            })
         });
-
-        delete adapterConfig.document;
-        delete adapterConfig.wrapperElement;
-        delete adapterConfig.container;
-        delete adapterConfig.content;
-        delete adapterConfig.element;
 
         instance = createEditorAdapter(adapterConfig);
         instance.wrapperElement = wrapperElement;

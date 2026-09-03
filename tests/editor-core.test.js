@@ -529,12 +529,15 @@ describe('editor core', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Aligned text</p></div>';
 
         const editorElement = document.getElementById('editor');
-        const editor = createEditorCore(editorElement);
+        const editor = createEditorCore(editorElement, { indentStep: 36 });
         const textNode = editorElement.querySelector('p').firstChild;
         const selection = selectCollapsed(textNode, 3);
 
         editor.setInlineStyle('textAlign', 'center', selection);
         editor.adjustIndent('indent', selection);
+
+        expect(editorElement.innerHTML).toBe('<p style="text-align: center; margin-left: 36px;">Aligned text</p>');
+
         editor.adjustIndent('outdent', selection);
 
         expect(editorElement.innerHTML).toBe('<p style="text-align: center;">Aligned text</p>');
