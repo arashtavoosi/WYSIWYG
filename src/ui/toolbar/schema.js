@@ -236,6 +236,24 @@
                         onCommand: function (context) {
                             context.editor.setInlineStyle('textAlign', 'justify');
                         }
+                    },
+                    ltr: {
+                        title: 'Left to right',
+                        icon: 'LTR',
+                        priority: 50,
+                        active: function (state) { return state.direction === 'ltr' || !state.direction; },
+                        onCommand: function (context) {
+                            context.editor.setBlockStyle('direction', 'ltr');
+                        }
+                    },
+                    rtl: {
+                        title: 'Right to left',
+                        icon: 'RTL',
+                        priority: 60,
+                        active: function (state) { return state.direction === 'rtl'; },
+                        onCommand: function (context) {
+                            context.editor.setBlockStyle('direction', 'rtl');
+                        }
                     }
                 }
             },

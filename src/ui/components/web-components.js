@@ -41,7 +41,7 @@
 
         WysiwygModalElement = customElements.get('wysiwyg-modal') || class extends HTMLElement {
             static get observedAttributes() {
-                return ['header-template', 'content-template', 'footer-template', 'show-close-button'];
+                return ['header-template', 'content-template', 'footer-template', 'show-close-button', 'no-backdrop'];
             }
 
             constructor() {
@@ -193,6 +193,7 @@
                     return;
                 }
 
+                this._shade.hidden = this.hasAttribute('no-backdrop');
                 this._renderRegion('header', 'header');
                 this._renderRegion('content', '');
                 this._renderRegion('footer', 'footer');
@@ -204,6 +205,7 @@
         html.defineBooleanAttributeProperty(WysiwygModalElement.prototype, 'clickOutsideToClose', 'click-outside-to-close');
         html.defineBooleanAttributeProperty(WysiwygModalElement.prototype, 'moveable', 'moveable');
         html.defineBooleanAttributeProperty(WysiwygModalElement.prototype, 'resizable', 'resizable');
+        html.defineBooleanAttributeProperty(WysiwygModalElement.prototype, 'noBackdrop', 'no-backdrop');
 
         WysiwygPopupElement = customElements.get('wysiwyg-popup') || class extends HTMLElement {
             static get observedAttributes() {

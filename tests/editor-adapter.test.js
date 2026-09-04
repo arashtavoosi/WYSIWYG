@@ -316,6 +316,232 @@ describe('editor adapter', () => {
         expect(alignRight.getAttribute('aria-pressed')).toBe('true');
     });
 
+    test('direction buttons set and reflect the current block direction', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Directional text</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
+        });
+
+        range.setStart(textNode, 5);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        const rtlButton = document.querySelector('button[title="Right to left"]');
+        const ltrButton = document.querySelector('button[title="Left to right"]');
+
+        expect(ltrButton.getAttribute('aria-pressed')).toBe('true');
+
+        rtlButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.querySelector('p').style.direction).toBe('rtl');
+        expect(rtlButton.getAttribute('aria-pressed')).toBe('true');
+        expect(ltrButton.getAttribute('aria-pressed')).toBe('false');
+
+        ltrButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(editorElement.querySelector('p').style.direction).toBe('');
+        expect(editorElement.querySelector('p').hasAttribute('style')).toBe(false);
+        expect(ltrButton.getAttribute('aria-pressed')).toBe('true');
+        expect(rtlButton.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('direction buttons set and reflect a selected cell direction', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td id="cell"><p>Cell text</p></td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const cell = document.getElementById('cell');
+
+        createEditorAdapter({
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
+        });
+
+        editorElement.focus();
+        cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+        const rtlButton = document.querySelector('button[title="Right to left"]');
+
+        rtlButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(cell.style.direction).toBe('rtl');
+        expect(rtlButton.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    test('direction state follows an explicit cell direction from inside a child block', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<table><tbody><tr><td id="cell" style="direction: rtl"><p>Cell text</p></td></tr></tbody></table>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = document.querySelector('#cell p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
+        });
+
+        range.setStart(textNode, 2);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(document.querySelector('button[title="Right to left"]').getAttribute('aria-pressed')).toBe('true');
+        expect(document.querySelector('button[title="Left to right"]').getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('applies a root-level style to a neutral wrapper', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<p>Before</p>',
+            '<table><tbody><tr><td><br></td></tr></tbody></table>',
+            '<p>After</p>',
+            '</div>',
+            '<div id="status"></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            elements: {
+                editor: editorElement,
+                status: document.getElementById('status'),
+                toolbar: document.getElementById('toolbar')
+            }
+        });
+
+        range.setStart(editorElement, 2);
+        range.collapse(true);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(document.getElementById('status').textContent).toBe('Editor');
+
+        const font = document.querySelector('select[title="Font"]');
+
+        font.value = "'Courier New', monospace";
+        font.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(editorElement.children).toHaveLength(1);
+        expect(editorElement.firstElementChild.tagName).toBe('DIV');
+        expect(editorElement.firstElementChild.style.fontFamily).toBe("'Courier New', monospace");
+        expect(editorElement.firstElementChild.querySelector('table')).not.toBeNull();
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.firstElementChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
+
+    test('reflects selected font, size, and line-height styles in the toolbar', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true">',
+            '<p style="line-height: 1.8"><span style="font-family: Helvetica Neue, Arial, sans-serif; font-size: 24px">Styled text</span></p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('span').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        createEditorAdapter({
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
+        });
+
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, textNode.textContent.length);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        expect(document.querySelector('select[title="Font"]').value).toBe("'Helvetica Neue', Arial, sans-serif");
+        expect(document.querySelector('select[title="Size"]').value).toBe('24px');
+        expect(document.querySelector('select[title="Line"]').value).toBe('1.8');
+    });
+
+    test('preserves the selection across sequential style dropdown commands', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Style this text.</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const textNode = editorElement.querySelector('p').firstChild;
+        const range = document.createRange();
+        const selection = window.getSelection();
+        const font = 'select[title="Font"]';
+        const size = 'select[title="Size"]';
+        const line = 'select[title="Line"]';
+
+        createEditorAdapter({
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            }
+        });
+
+        range.setStart(textNode, 0);
+        range.setEnd(textNode, textNode.textContent.length);
+        editorElement.focus();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+
+        document.querySelector(font).value = "'Courier New', monospace";
+        document.querySelector(font).dispatchEvent(new Event('change', { bubbles: true }));
+        document.querySelector(size).value = '24px';
+        document.querySelector(size).dispatchEvent(new Event('change', { bubbles: true }));
+        document.querySelector(line).value = '1.8';
+        document.querySelector(line).dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(editorElement.innerHTML).toBe('<p style="line-height: 1.8;"><span style="font-family: \'Courier New\', monospace; font-size: 24px;">Style this text.</span></p>');
+        expect(document.querySelector(font).value).toBe("'Courier New', monospace");
+        expect(document.querySelector(size).value).toBe('24px');
+        expect(document.querySelector(line).value).toBe('1.8');
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).toString()).toBe('Style this text.');
+    });
+
     test('clear formatting removes styles from selected cells and rows', () => {
         document.body.innerHTML = [
             '<div id="toolbar"></div>',
@@ -638,6 +864,58 @@ describe('editor adapter', () => {
 
         expect(document.querySelector('button[title="HTML"]')).toBeNull();
         expect(document.querySelector('button[title="Find and Replace"]')).toBeNull();
+    });
+
+    test('opens find and replace without a backdrop', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Find this text.</p></div>'
+        ].join('');
+
+        createEditorAdapter({
+            elements: {
+                editor: document.getElementById('editor'),
+                toolbar: document.getElementById('toolbar')
+            },
+            findReplace: true
+        });
+
+        document.querySelector('button[title="Find and Replace"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const modal = document.querySelector('wysiwyg-modal');
+
+        expect(modal.noBackdrop).toBe(true);
+        expect(modal.shadowRoot.querySelector('.shade').hidden).toBe(true);
+    });
+
+    test('keeps the found match visibly selected while the modal stays open', () => {
+        document.body.innerHTML = [
+            '<div id="toolbar"></div>',
+            '<div id="editor" contenteditable="true"><p>Find this text.</p></div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+
+        createEditorAdapter({
+            elements: {
+                editor: editorElement,
+                toolbar: document.getElementById('toolbar')
+            },
+            findReplace: true
+        });
+
+        document.querySelector('button[title="Find and Replace"]').click();
+
+        const modal = document.querySelector('wysiwyg-modal');
+        const findInput = modal.querySelector('[data-field="find"]');
+        const form = modal.querySelector('form');
+
+        findInput.value = 'this';
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+        expect(document.activeElement).toBe(editorElement);
+        expect(window.getSelection().toString()).toBe('this');
+        expect(modal.open).toBe(true);
     });
 
     test('refreshes live source after beautifying and editing the visual content', () => {

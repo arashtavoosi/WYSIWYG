@@ -44,6 +44,19 @@
         return map[name] || name;
     }
 
+    function isBlockBoundary(range) {
+        var container;
+        var child;
+
+        if (!range || range.startContainer.nodeType !== Node.ELEMENT_NODE || !range.collapsed) {
+            return false;
+        }
+
+        container = range.startContainer;
+        child = container.childNodes[range.startOffset] || container.childNodes[range.startOffset - 1];
+        return !child || child.nodeType !== Node.TEXT_NODE;
+    }
+
     function createEditorCore(rootNode, options) {
         var config = options || {};
         var selectionManager;
@@ -55,6 +68,27 @@
 
         selectionManager = createSelection(rootNode);
         history = createHistory(rootNode, selectionManager, { limit: config.historyLimit });
+
+        function shouldApplyStyleToBlock(selection) {
+            var currentSelection = selectionManager.getCurrent(selection);
+            var range;
+            var element;
+            var block;
+
+            if (!currentSelection || currentSelection.rangeCount === 0) {
+                return false;
+            }
+
+            range = currentSelection.getRangeAt(0);
+            element = html.getElement(range.startContainer);
+            block = html.getClosestTag(
+                element,
+                ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'td', 'th'],
+                rootNode
+            );
+
+            return !block || isBlockBoundary(range);
+        }
 
         function performMutation(callback) {
             var before = rootNode.innerHTML;
@@ -280,7 +314,7 @@
             setInlineStyle: function (propertyName, value, selection) {
                 var styleObj = {};
 
-                if (propertyName === 'lineHeight' || propertyName === 'textAlign') {
+                if (propertyName === 'lineHeight' || propertyName === 'textAlign' || shouldApplyStyleToBlock(selection)) {
                     return api.setBlockStyle(propertyName, value, selection);
                 }
 

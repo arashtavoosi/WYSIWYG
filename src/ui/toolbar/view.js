@@ -43,6 +43,10 @@
         return value;
     }
 
+    function normalizeDropdownValue(value) {
+        return String(value || '').replace(/["']/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
     function priorityFor(node) {
         var priority = node && Number(node.priority);
 
@@ -212,7 +216,7 @@
 
     function updateDropdown(element, node, context) {
         var value = resolveValue(node.value, context);
-        var hasValue;
+        var option;
 
         setControlDisabled(element, resolveValue(node.disabled, context));
 
@@ -220,12 +224,14 @@
             return;
         }
 
-        hasValue = Array.from(element.options).some(function (option) {
-            return option.value === value;
+        option = Array.from(element.options).find(function (item) {
+            return normalizeDropdownValue(item.value) === normalizeDropdownValue(value);
         });
 
-        if (hasValue) {
-            element.value = value;
+        if (option) {
+            element.value = option.value;
+        } else {
+            element.selectedIndex = -1;
         }
     }
 
@@ -274,6 +280,10 @@
             }
         });
 
+        if (state.block === 'div') {
+            path.push(formatBlock(state.block));
+        }
+
         if (state.table) {
             table = 'Table';
             if (state.table.rowIndex !== null && state.table.rowIndex !== undefined) {
@@ -295,7 +305,7 @@
 
         if (state.codeBlock) {
             path.push('Code block');
-        } else if (state.block) {
+        } else if (state.block && state.block !== 'div') {
             path.push(formatBlock(state.block));
         }
 

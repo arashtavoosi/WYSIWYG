@@ -543,6 +543,128 @@ describe('editor core', () => {
         expect(editorElement.innerHTML).toBe('<p style="text-align: center;">Aligned text</p>');
     });
 
+    test('sets block direction and reports it in active state', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Directional text</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('p').firstChild;
+        const selection = selectCollapsed(textNode, 5);
+
+        editor.setBlockStyle('direction', 'rtl', selection);
+
+        expect(editorElement.querySelector('p').style.direction).toBe('rtl');
+        expect(editor.getActiveFormats(selection).direction).toBe('rtl');
+
+        editor.setBlockStyle('direction', 'ltr', selection);
+
+        expect(editorElement.querySelector('p').style.direction).toBe('');
+        expect(editorElement.querySelector('p').hasAttribute('style')).toBe(false);
+    });
+
+    test('uses a neutral wrapper for block styles at the editor root', () => {
+        document.body.innerHTML = [
+            '<div id="editor" contenteditable="true">',
+            '<p>Before</p>',
+            '<table><tbody><tr><td><br></td></tr></tbody></table>',
+            '<p>After</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.selectNodeContents(editorElement);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.setBlockStyle('direction', 'rtl', selection);
+
+        expect(editorElement.children).toHaveLength(1);
+        expect(editorElement.firstElementChild.tagName).toBe('DIV');
+        expect(editorElement.firstElementChild.style.direction).toBe('rtl');
+        expect(editorElement.firstElementChild.querySelector('table')).not.toBeNull();
+    });
+
+    test('uses the neutral wrapper for inline styles at the editor root', () => {
+        document.body.innerHTML = [
+            '<div id="editor" contenteditable="true">',
+            '<p>Before</p>',
+            '<table><tbody><tr><td><br></td></tr></tbody></table>',
+            '<p>After</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.selectNodeContents(editorElement);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.setInlineStyle('fontFamily', "'Courier New', monospace", selection);
+        editor.setInlineStyle('fontSize', '24px', selection);
+        editor.setInlineStyle('color', '#ff0000', selection);
+        editor.setInlineStyle('backgroundColor', '#ffff00', selection);
+        editor.setInlineStyle('lineHeight', '1.8', selection);
+
+        expect(editorElement.children).toHaveLength(1);
+        expect(editorElement.firstElementChild.tagName).toBe('DIV');
+        expect(editorElement.firstElementChild.style.fontFamily).toBe("'Courier New', monospace");
+        expect(editorElement.firstElementChild.style.fontSize).toBe('24px');
+        expect(editorElement.firstElementChild.style.color).toBe('rgb(255, 0, 0)');
+        expect(editorElement.firstElementChild.style.backgroundColor).toBe('rgb(255, 255, 0)');
+        expect(editorElement.firstElementChild.style.lineHeight).toBe('1.8');
+        expect(editorElement.firstElementChild.querySelector('table')).not.toBeNull();
+    });
+
+    test('preserves the cursor position when wrapping root content for a style', () => {
+        document.body.innerHTML = [
+            '<div id="editor" contenteditable="true">',
+            '<p>Before</p>',
+            '<table><tbody><tr><td><br></td></tr></tbody></table>',
+            '<p>After</p>',
+            '</div>'
+        ].join('');
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.setStart(editorElement, 2);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        editor.setInlineStyle('fontSize', '24px', selection);
+
+        expect(selection.rangeCount).toBe(1);
+        expect(selection.getRangeAt(0).collapsed).toBe(true);
+        expect(selection.getRangeAt(0).startContainer).toBe(editorElement.firstElementChild);
+        expect(selection.getRangeAt(0).startOffset).toBe(2);
+    });
+
+    test('removes a redundant direction style inherited from the parent', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true" style="direction: rtl"><p>Directional text</p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const textNode = editorElement.querySelector('p').firstChild;
+        const selection = selectCollapsed(textNode, 5);
+
+        editor.setBlockStyle('direction', 'rtl', selection);
+
+        expect(editorElement.querySelector('p').style.direction).toBe('');
+        expect(editorElement.querySelector('p').hasAttribute('style')).toBe(false);
+    });
+
     test('tracks bounded undo and redo snapshots', () => {
         document.body.innerHTML = '<div id="editor" contenteditable="true"><p>Alpha beta.</p></div>';
 

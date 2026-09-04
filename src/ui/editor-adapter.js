@@ -371,6 +371,7 @@
             modal.showCloseButton = true;
             modal.clickOutsideToClose = true;
             modal.moveable = true;
+            modal.noBackdrop = true;
             modal.innerHTML = [
                 '<strong slot="header">Find and Replace</strong>',
                 '<form class="wysiwyg-link-form"><label><span>Find</span><input data-field="find" type="search"></label><label><span>Replace with</span><input data-field="replace" type="text"></label></form>',
@@ -388,7 +389,7 @@
                 restoreSelection();
                 status.textContent = editor.findText(findInput.value) ? 'Match found' : 'No match';
                 saveSelection();
-                findInput.focus();
+                restoreSelection();
             }
 
             function replace(all) {
@@ -409,7 +410,7 @@
 
                 saveSelection();
                 sync();
-                findInput.focus();
+                restoreSelection();
             }
 
             html.on(form, 'submit', function (event) {

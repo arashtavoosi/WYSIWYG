@@ -29,6 +29,7 @@ describe('web components', () => {
 
         modal.show();
         expect(modal.open).toBe(true);
+        expect(modal.shadowRoot.querySelector('.shade').hidden).toBe(false);
         expect(modal.shadowRoot.querySelector('style').textContent).toContain('z-index:2000');
         expect(modal.shadowRoot.querySelector('style').textContent).toContain('min-width:min(420px,calc(100vw - 32px))');
 

@@ -109,4 +109,24 @@ describe('selection state', () => {
             rowIndex: 1
         });
     });
+
+    test('reads styles from the boundary child when a selection starts on its block', () => {
+        document.body.innerHTML = '<div id="editor" contenteditable="true"><p style="line-height: 1.8"><span style="font-family: Helvetica Neue, Arial, sans-serif; font-size: 24px">Styled</span></p></div>';
+
+        const editorElement = document.getElementById('editor');
+        const editor = createEditorCore(editorElement);
+        const paragraph = editorElement.querySelector('p');
+        const range = document.createRange();
+        const selection = window.getSelection();
+
+        range.selectNodeContents(paragraph);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        expect(editor.getActiveFormats(selection)).toEqual(expect.objectContaining({
+            fontFamily: 'Helvetica Neue, Arial, sans-serif',
+            fontSize: '24px',
+            lineHeight: '1.8'
+        }));
+    });
 });

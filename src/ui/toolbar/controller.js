@@ -83,7 +83,7 @@
                 return;
             }
 
-            runCommand(entry, event, control.value, { saveSelection: control.type === 'color' });
+            runCommand(entry, event, control.value, { saveSelection: control.type === 'color' || control.tagName === 'SELECT' });
         }
 
         function handleInput(event) {

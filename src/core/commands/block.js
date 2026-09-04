@@ -31,17 +31,23 @@
         });
     }
 
-    function ensureCurrentBlock(rootNode, range) {
+    function ensureCurrentBlock(rootNode, range, tagName) {
         var block = html.getClosestTag(html.getElement(range.startContainer), BLOCK_TAGS, rootNode);
         var cell = html.getClosestTag(html.getElement(range.startContainer), ['td', 'th'], rootNode);
         var container = cell || rootNode;
+        var startContainer = range.startContainer;
+        var endContainer = range.endContainer;
+        var startOffset = range.startOffset;
+        var endOffset = range.endOffset;
+        var startInContainer = startContainer === container;
+        var endInContainer = endContainer === container;
         var paragraph;
 
         if (block && block !== rootNode) {
             return block;
         }
 
-        paragraph = document.createElement('p');
+        paragraph = document.createElement(tagName || 'p');
 
         if (container.childNodes.length === 0) {
             paragraph.appendChild(document.createElement('br'));
@@ -50,8 +56,17 @@
         }
 
         container.appendChild(paragraph);
-        range.selectNodeContents(paragraph);
-        range.collapse(true);
+
+        if (startInContainer || endInContainer) {
+            range.setStart(
+                startInContainer ? paragraph : startContainer,
+                startInContainer ? Math.min(startOffset, paragraph.childNodes.length) : startOffset
+            );
+            range.setEnd(
+                endInContainer ? paragraph : endContainer,
+                endInContainer ? Math.min(endOffset, paragraph.childNodes.length) : endOffset
+            );
+        }
 
         return paragraph;
     }
@@ -61,7 +76,34 @@
             html.getElement(range.startContainer),
             BLOCK_TAGS.concat(['td', 'th']),
             rootNode
-        ) || ensureCurrentBlock(rootNode, range);
+        ) || ensureCurrentBlock(rootNode, range, 'div');
+    }
+
+    function getInheritedDirection(element) {
+        var parent = element && element.parentElement;
+        var computed;
+        var direction;
+
+        while (parent) {
+            computed = window.getComputedStyle(parent).direction;
+            if (computed) {
+                return computed.toLowerCase();
+            }
+
+            direction = parent.style && parent.style.direction;
+            if (direction) {
+                return direction.toLowerCase();
+            }
+
+            direction = parent.getAttribute && parent.getAttribute('dir');
+            if (direction === 'ltr' || direction === 'rtl') {
+                return direction;
+            }
+
+            parent = parent.parentElement;
+        }
+
+        return 'ltr';
     }
 
     function setBlock(type, selection, options) {
@@ -143,7 +185,16 @@
 
     function setBlockStyle(propertyName, value, selection, options) {
         return withSelectionTarget(selection, options, getCurrentStyleTarget, function (block) {
-            block.style[propertyName] = value;
+            if (propertyName === 'direction' && String(value || '').toLowerCase() === getInheritedDirection(block)) {
+                block.style.removeProperty('direction');
+
+                if (!block.getAttribute('style')) {
+                    block.removeAttribute('style');
+                }
+            } else {
+                block.style[propertyName] = value;
+            }
+
             return block;
         });
     }

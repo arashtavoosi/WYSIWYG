@@ -13,11 +13,50 @@
         return element.style[propertyName] || window.getComputedStyle(element)[propertyName] || '';
     }
 
+    function getBoundaryElement(range, fallback) {
+        var container = range && range.startContainer;
+        var child;
+
+        if (!container || container.nodeType !== Node.ELEMENT_NODE) {
+            return fallback;
+        }
+
+        child = container.childNodes[range.startOffset] || container.childNodes[range.startOffset - 1];
+        return child && child.nodeType === Node.ELEMENT_NODE ? child : fallback;
+    }
+
+    function getDirectionValue(startElement, targetElement, rootNode) {
+        var element = startElement;
+        var direction;
+
+        while (element) {
+            direction = element.style && element.style.direction;
+            if (direction === 'ltr' || direction === 'rtl') {
+                return direction;
+            }
+
+            direction = element.getAttribute && element.getAttribute('dir');
+            if (direction === 'ltr' || direction === 'rtl') {
+                return direction;
+            }
+
+            if (element === rootNode) {
+                break;
+            }
+
+            element = element.parentElement;
+        }
+
+        return getInlineStyleValue(targetElement, 'direction') || getInlineStyleValue(rootNode, 'direction') || 'ltr';
+    }
+
     function getActiveFormats(selection, rootNode) {
         var currentSelection = html.getCurrentSelection(selection);
         var range;
         var startElement;
+        var styleElement;
         var blockElement;
+        var styleBlockElement;
         var listElement;
         var linkElement;
         var mediaElement;
@@ -42,6 +81,7 @@
                 collapsed: true,
                 codeBlock: false,
                 color: '',
+                direction: '',
                 fontFamily: '',
                 fontSize: '',
                 highlightColor: '',
@@ -66,6 +106,7 @@
 
         range = currentSelection.getRangeAt(0);
         startElement = html.getElement(range.startContainer);
+        styleElement = getBoundaryElement(range, startElement);
         codeBlockElement = html.getSelectedElement(range, 'pre') || html.getClosestTag(startElement, 'pre', rootNode);
         if (codeBlockElement && rootNode && !rootNode.contains(codeBlockElement)) {
             codeBlockElement = null;
@@ -93,6 +134,7 @@
         imageElement = mediaType === 'image' ? mediaElement : null;
         quoteElement = html.getClosestTag(startElement, 'blockquote', rootNode);
         cellElement = html.getClosestTag(startElement, ['td', 'th'], rootNode);
+        styleBlockElement = blockElement || cellElement || html.getClosestTag(styleElement, ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'], rootNode) || styleElement;
         tableElement = html.getSelectedElement(range, 'table') || html.getClosestTag(startElement, 'table', rootNode);
 
         state = {
@@ -102,10 +144,11 @@
             canUndo: false,
             collapsed: range.collapsed,
             codeBlock: codeBlockState,
-            color: getInlineStyleValue(startElement, 'color'),
-            fontFamily: getInlineStyleValue(startElement, 'fontFamily'),
-            fontSize: getInlineStyleValue(startElement, 'fontSize'),
-            highlightColor: getInlineStyleValue(startElement, 'backgroundColor'),
+            color: getInlineStyleValue(styleElement, 'color'),
+            direction: getDirectionValue(startElement, blockElement || cellElement || startElement, rootNode),
+            fontFamily: getInlineStyleValue(styleElement, 'fontFamily'),
+            fontSize: getInlineStyleValue(styleElement, 'fontSize'),
+            highlightColor: getInlineStyleValue(styleElement, 'backgroundColor'),
             headingLevel: blockElement && /^H[1-6]$/.test(blockElement.tagName) ? Number(blockElement.tagName.charAt(1)) : null,
             image: imageElement ? {
                 alt: imageElement.getAttribute('alt') || '',
@@ -116,7 +159,7 @@
                 width: imageElement.getAttribute('width') || ''
             } : false,
             italic: !!html.getClosestTag(startElement, ['em', 'i'], rootNode),
-            lineHeight: getInlineStyleValue(blockElement || cellElement || startElement, 'lineHeight'),
+            lineHeight: getInlineStyleValue(styleBlockElement, 'lineHeight'),
             link: linkElement ? {
                 href: linkElement.getAttribute('href') || '',
                 target: linkElement.getAttribute('target') || '',
