@@ -22,8 +22,8 @@
             return rootNode.contains(range.commonAncestorContainer);
         }
 
-        function getBookmark(selection) {
-            return html.getSelectionBookmark(getCurrent(selection), rootNode);
+        function getBookmark(selection, exact) {
+            return html.getSelectionBookmark(getCurrent(selection), rootNode, exact);
         }
 
         function restoreBookmark(bookmark, selection) {

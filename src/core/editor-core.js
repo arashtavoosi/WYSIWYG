@@ -12,7 +12,8 @@
             require('./commands/code-block'),
             require('./selection'),
             require('./history'),
-            require('./html-utility')
+            require('./html-utility'),
+            require('./clipboard')
         );
     } else {
         root.createEditorCore = factory(
@@ -27,10 +28,11 @@
             root.WysiwygCodeBlockCommands,
             root.WysiwygSelection,
             root.createEditorHistory,
-            root.WysiwygHtmlUtility
+            root.WysiwygHtmlUtility,
+            root.WysiwygClipboard
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (inlineCommands, normalization, state, linkCommands, blockCommands, listCommands, mediaCommands, tableCommands, codeBlockCommands, createSelection, createHistory, html) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (inlineCommands, normalization, state, linkCommands, blockCommands, listCommands, mediaCommands, tableCommands, codeBlockCommands, createSelection, createHistory, html, clipboard) {
     function normalizeInlineCommand(name) {
         var map = {
             bold: 'strong',
@@ -91,6 +93,7 @@
         }
 
         function performMutation(callback) {
+            history.record();
             var before = rootNode.innerHTML;
             var result = callback();
 
@@ -102,6 +105,7 @@
         }
 
         function performSelectionMutation(callback, selection) {
+            history.record();
             var before = rootNode.innerHTML;
             var bookmark = selectionManager.getBookmark(selection);
             var result = callback();
@@ -263,6 +267,15 @@
 
             normalize: normalize,
 
+            prepareInput: function (inputType) {
+                history.prepareInput(inputType);
+            },
+
+            recordInput: function (inputType) {
+                history.recordInput(inputType);
+                return api;
+            },
+
             recordSnapshot: function () {
                 history.record();
                 return api;
@@ -282,6 +295,12 @@
 
             replaceText: replaceText,
 
+            insertPaste: function (data, selection) {
+                return performMutation(function () {
+                    return clipboard.insert(rootNode, data || {}, selectionManager.getInsertionSelection(selection));
+                });
+            },
+
             undo: function () {
                 history.undo();
                 return api;
@@ -295,13 +314,13 @@
             },
 
             setBlock: function (type, options, selection) {
-                return performMutation(function () {
+                return performSelectionMutation(function () {
                     blockCommands.setBlock(type, selection, {
                         level: options && options.level,
                         root: rootNode
                     });
                     return api;
-                });
+                }, selection);
             },
 
             setBlockStyle: function (propertyName, value, selection) {
@@ -503,20 +522,20 @@
             },
 
             toggleBlock: function (type, selection) {
-                return performMutation(function () {
+                return performSelectionMutation(function () {
                     blockCommands.toggleBlock(type, selection, { root: rootNode });
                     return api;
-                });
+                }, selection);
             },
 
             adjustIndent: function (direction, selection) {
-                return performMutation(function () {
+                return performSelectionMutation(function () {
                     blockCommands.adjustIndent(direction, selection, {
                         root: rootNode,
                         indentStep: config.indentStep
                     });
                     return api;
-                });
+                }, selection);
             },
 
             toggleList: function (type, selection) {

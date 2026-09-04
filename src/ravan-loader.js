@@ -10,6 +10,7 @@
         'core/selection.js',
         'core/commands/inline.js',
         'core/normalization.js',
+        'core/clipboard.js',
         'core/state.js',
         'core/commands/link.js',
         'core/commands/block.js',

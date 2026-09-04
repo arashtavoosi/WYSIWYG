@@ -1,4 +1,18 @@
 import * as esbuild from 'esbuild';
+import { gzipSync } from 'node:zlib';
+import { readFile } from 'node:fs/promises';
+
+// The lite graph omits optional UI implementations entirely. Core commands and
+// native prompt fallbacks remain available in both distributions.
+const liteUI = {
+    name: 'lite-ui',
+    setup(build) {
+        build.onResolve({ filter: /\/(code-view|web-components)$/ }, args => ({
+            path: args.path, namespace: 'optional-ui'
+        }));
+        build.onLoad({ filter: /.*/, namespace: 'optional-ui' }, () => ({ contents: 'module.exports = null;' }));
+    }
+};
 
 const builds = [
     {
@@ -10,6 +24,12 @@ const builds = [
         entryPoint: 'build/entries/full.js',
         globalName: 'Ravan',
         outfile: 'dist/ravan.min.js'
+    },
+    {
+        entryPoint: 'build/entries/full.js',
+        globalName: 'Ravan',
+        outfile: 'dist/ravan-lite.min.js',
+        plugins: [liteUI]
     },
     {
         bundle: false,
@@ -32,6 +52,7 @@ const sourceEntries = [
     'src/core/selection.js',
     'src/core/commands/inline.js',
     'src/core/normalization.js',
+    'src/core/clipboard.js',
     'src/core/state.js',
     'src/core/commands/link.js',
     'src/core/commands/block.js',
@@ -63,6 +84,7 @@ await Promise.all(builds.map(function (build) {
         minify: true,
         outfile: build.outfile,
         platform: 'browser',
+        plugins: build.plugins,
         sourcemap: true,
         target: ['es2019']
     });
@@ -87,3 +109,8 @@ await Promise.all(builds.map(function (build) {
         target: ['es2019']
     })
 ])));
+
+for (const path of ['dist/ravan-core.min.js', 'dist/ravan-lite.min.js', 'dist/ravan.min.js']) {
+    const contents = await readFile(path);
+    console.log(`${path}: ${contents.length} bytes; ${gzipSync(contents).length} bytes gzip`);
+}

@@ -6,7 +6,8 @@ Small-footprint browser editor with a UI-agnostic core.
 
 - `src/core/editor-core.js`: public core API.
 - `src/core/commands/*`: inline, block, list, link, media, table, and code-block mutations.
-- `src/core/history.js`: snapshot history with undo and redo.
+- `src/core/history.js`: bounded snapshot history with grouped typing, composition boundaries, and undo/redo.
+- `src/core/clipboard.js`: supported-markup paste cleanup and plain-text insertion.
 - `src/core/selection.js`: editor-scoped ranges and bookmarks.
 - `src/core/normalization.js` and `src/core/state.js`: markup cleanup and read-only selection state.
 - `src/ravan.js`: branded full-editor facade.
@@ -20,7 +21,7 @@ Small-footprint browser editor with a UI-agnostic core.
 - `build/entries/*`: release bundle entry points.
 - `scripts/build.mjs`: esbuild bundling and minification script.
 - `demos/ravan.html`: source-module demo shell using minified source modules.
-- `demos/ravan-bundled.html`: demo that loads `dist/ravan.min.js`.
+- `demos/ravan-bundled.html`: lite bundle demo; add `?full=1` for the full bundle.
 - `tests/*`: Jest/jsdom coverage.
 
 ## Core API
@@ -40,6 +41,8 @@ Main methods:
 - images: `insertImage`, `updateImage`, `removeImage`, `toggleImageFullSize`, `setImageStyle`, `setImageLayout`
 - tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `toggleTableFullSize`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
+- clipboard: `insertPaste({ html, text, plainText }, selection)`
+- history: `undo`, `redo`, `recordSnapshot`, `prepareInput`, `recordInput`
 
 ## Ravan Full Editor API
 
@@ -71,11 +74,22 @@ Ravan.mount('#editor-wrapper', {
   media: { fileBrowser: { endpoint: '/files', path: '/' } },
   codeView: { enabled: true, mode: 'after', editable: false, live: false },
   findReplace: { enabled: false },
+  paste: { plainText: false },
   dialogs: { prompts: {/* link, media, and table prompt overrides */} }
 });
 ```
 
 Every section is optional. `toolbar.items` replaces the default command tree, while `media.fileBrowser`, `codeView`, `findReplace`, and `dialogs.prompts` configure the corresponding UI behavior directly.
+
+## Editing and lifecycle
+
+Headings, paragraph conversion, alignment, and line height apply across selected blocks. List commands affect selected items, or only the current item for a caret selection; unselected list segments and their numbering are retained. A selection ending at the beginning of the next paragraph excludes that paragraph.
+
+Typing and repeated Backspace/Delete are grouped while the input type and caret remain continuous, with a one-second idle boundary. Toolbar commands, paste, and IME composition are separate undo steps. Ctrl/Cmd+Z, Ctrl+Y, Cmd+Shift+Z, and cancelable native history input use the same bounded snapshot history. Integrations using only the core can call `prepareInput(inputType)` before a native edit and `recordInput(inputType)` afterward; `recordSnapshot()` remains an explicit separate step.
+
+Rich-text paste keeps supported semantic tags and presentation styles, removes imported classes/IDs and unsupported markup, and inserts as one undo step. Set `paste: { plainText: true }` to always insert clipboard text with line breaks. This clipboard policy does not change the trusted-HTML contract of `setHtml()` or the source editor.
+
+Call `instance.destroy()` before removing or remounting an editor. It cancels pending dialogs and removes listeners, overlays, and code view while retaining the toolbar and edited content DOM. Calling it twice is safe; mount again to reconnect the editor. Unsaved non-live source-view edits are discarded on destroy.
 
 ## UI Web Components
 
@@ -133,11 +147,16 @@ npm run build
 This creates:
 
 - `dist/ravan-core.min.js`: core-only IIFE exposing `createEditorCore`.
-- `dist/ravan.min.js`: full-editor IIFE exposing `Ravan`.
+- `dist/ravan-lite.min.js`: smaller editor exposing `Ravan`, excluding custom elements and HTML code view.
+- `dist/ravan.min.js`: full editor exposing `Ravan`, including those optional UI features.
 - `dist/ravan-loader.min.js`: minified loader that preserves source-module and bundle loading.
 - `dist/src/`: minified source-module tree with the same paths as `src/`.
 - `dist/editor-content.min.css` and `dist/toolbar.min.css`: minified editor styles.
 - `.map` sidecars for every generated asset.
+
+For the smallest ready-made UI, load `ravan-lite.min.js`. It retains all core editing commands and the standard toolbar; link, media, code-block, and table insertion use native prompts. File browsing, resize overlays, table context tools, modal Find/Replace, and HTML code view require the full bundle. Load one bundle per page; configuration flags do not remove bytes from an already downloaded bundle. Source-module loading remains the option for selecting individual optional UI modules.
+
+The build prints raw and gzip JavaScript sizes to make footprint changes visible.
 
 The source modules remain available for development and debugging. The package `main` continues to point to the core API.
 
@@ -225,7 +244,7 @@ npm run build
 npm run demo
 ```
 
-Open either demo. `ravan.html` loads source modules through the minified loader; `ravan-bundled.html` loads the minified full-editor bundle through the same loader.
+Open either demo. `ravan.html` loads source modules through the minified loader; `ravan-bundled.html` loads the lite bundle through the same loader; its Full editor link selects the full bundle.
 
 The demo server exposes `/files?path=...` from `demos/mock-files.json`. Its nested folders, supported and unsupported files, sample images, and short Media-folder MP4/MP3 files exercise breadcrumbs, navigation, extension filtering, list view, thumbnail view, and file selection.
 
@@ -241,4 +260,6 @@ Run:
 
 ```sh
 npm test -- --runInBand
+npm run build
+npm run test:dist
 ```

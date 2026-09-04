@@ -5,78 +5,38 @@
         root.WysiwygBlockCommands = factory(root.WysiwygHtmlUtility);
     }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function (html) {
-    var BLOCK_TAGS = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote'];
-
-    function moveChildren(source, target) {
-        while (source.firstChild) {
-            target.appendChild(source.firstChild);
-        }
-    }
-
     function withSelectionRange(selection, callback) {
         var currentSelection = html.getCurrentSelection(selection);
-
-        if (!currentSelection || currentSelection.rangeCount === 0) {
-            return false;
-        }
-
+        if (!currentSelection || !currentSelection.rangeCount) { return false; }
         return callback(currentSelection.getRangeAt(0), currentSelection);
     }
 
     function withSelectionTarget(selection, options, getTarget, callback) {
         var config = options || {};
-
         return withSelectionRange(selection, function (range, currentSelection) {
+            if (!config.root.contains(range.commonAncestorContainer)) { return false; }
             return callback(getTarget(config.root, range), config, currentSelection);
         });
     }
 
-    function ensureCurrentBlock(rootNode, range, tagName) {
-        var block = html.getClosestTag(html.getElement(range.startContainer), BLOCK_TAGS, rootNode);
-        var cell = html.getClosestTag(html.getElement(range.startContainer), ['td', 'th'], rootNode);
-        var container = cell || rootNode;
-        var startContainer = range.startContainer;
-        var endContainer = range.endContainer;
-        var startOffset = range.startOffset;
-        var endOffset = range.endOffset;
-        var startInContainer = startContainer === container;
-        var endInContainer = endContainer === container;
-        var paragraph;
-
-        if (block && block !== rootNode) {
-            return block;
-        }
-
-        paragraph = document.createElement(tagName || 'p');
-
-        if (container.childNodes.length === 0) {
-            paragraph.appendChild(document.createElement('br'));
-        } else {
-            moveChildren(container, paragraph);
-        }
-
-        container.appendChild(paragraph);
-
-        if (startInContainer || endInContainer) {
-            range.setStart(
-                startInContainer ? paragraph : startContainer,
-                startInContainer ? Math.min(startOffset, paragraph.childNodes.length) : startOffset
-            );
-            range.setEnd(
-                endInContainer ? paragraph : endContainer,
-                endInContainer ? Math.min(endOffset, paragraph.childNodes.length) : endOffset
-            );
-        }
-
-        return paragraph;
-    }
-
-    function getCurrentStyleTarget(rootNode, range) {
-        return html.getClosestTag(
-            html.getElement(range.startContainer),
-            BLOCK_TAGS.concat(['td', 'th']),
-            rootNode
-        ) || ensureCurrentBlock(rootNode, range, 'div');
+    function withBlocks(selection, options, callback, style) {
+        var config = options || {};
+        return withSelectionRange(selection, function (range) {
+            if (!config.root.contains(range.commonAncestorContainer)) { return false; }
+            var blocks = html.getSelectedBlocks(config.root, range);
+            if (style && !blocks.length && range.startContainer === config.root) {
+                var wrapper = document.createElement('div');
+                var start = range.startOffset;
+                var end = range.endOffset;
+                while (config.root.firstChild) { wrapper.appendChild(config.root.firstChild); }
+                config.root.appendChild(wrapper);
+                range.setStart(wrapper, start);
+                range.setEnd(wrapper, end);
+                blocks = [wrapper];
+            }
+            if (!blocks.length) { blocks = [html.ensureBlock(config.root, range)]; }
+            return blocks.map(function (block) { return callback(block, config); });
+        });
     }
 
     function getInheritedDirection(element) {
@@ -107,7 +67,7 @@
     }
 
     function setBlock(type, selection, options) {
-        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
+        return withBlocks(selection, options, function (block, config) {
             var targetTag;
 
             if (type === 'heading') {
@@ -118,15 +78,30 @@
                 targetTag = type;
             }
 
-            block = html.replaceTag(block, targetTag);
-            html.placeCaretInside(block);
+            if (/^(LI|TD|TH|BLOCKQUOTE)$/.test(block.tagName) ||
+                (block.tagName === 'DIV' && block.querySelector('p,div,h1,h2,h3,h4,h5,h6,ul,ol,table,blockquote,pre'))) {
+                var content = null;
+                Array.from(block.childNodes).forEach(function (child) {
+                    if (/^(P|DIV|H[1-6]|UL|OL|TABLE|BLOCKQUOTE|PRE|HR)$/.test(child.nodeName)) {
+                        content = null;
+                    } else {
+                        if (!content) {
+                            content = document.createElement(targetTag);
+                            block.insertBefore(content, child);
+                        }
+                        content.appendChild(child);
+                    }
+                });
+            } else {
+                block = html.replaceTag(block, targetTag);
+            }
 
             return block;
         });
     }
 
     function toggleBlock(type, selection, options) {
-        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
+        return withSelectionTarget(selection, options, html.ensureBlock, function (block, config) {
             var wrapper;
 
             if (type !== 'blockquote') {
@@ -137,14 +112,12 @@
 
             if (wrapper) {
                 html.unwrapNode(wrapper);
-                html.placeCaretInside(block);
                 return true;
             }
 
             wrapper = document.createElement('blockquote');
             block.parentNode.insertBefore(wrapper, block);
             wrapper.appendChild(block);
-            html.placeCaretInside(block);
 
             return true;
         });
@@ -163,7 +136,7 @@
     }
 
     function insertRule(selection, options) {
-        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block) {
+        return withSelectionTarget(selection, options, html.ensureBlock, function (block) {
             var hr = document.createElement('hr');
             var paragraph = document.createElement('p');
 
@@ -184,7 +157,7 @@
     }
 
     function setBlockStyle(propertyName, value, selection, options) {
-        return withSelectionTarget(selection, options, getCurrentStyleTarget, function (block) {
+        return withBlocks(selection, options, function (block) {
             if (propertyName === 'direction' && String(value || '').toLowerCase() === getInheritedDirection(block)) {
                 block.style.removeProperty('direction');
 
@@ -196,11 +169,11 @@
             }
 
             return block;
-        });
+        }, true);
     }
 
     function clearBlockStyle(propertyName, selection, options) {
-        return withSelectionTarget(selection, options, getCurrentStyleTarget, function (block) {
+        return withBlocks(selection, options, function (block) {
             block.style.removeProperty(propertyName.replace(/[A-Z]/g, function (letter) {
                 return '-' + letter.toLowerCase();
             }));
@@ -210,11 +183,11 @@
             }
 
             return block;
-        });
+        }, true);
     }
 
     function adjustIndent(direction, selection, options) {
-        return withSelectionTarget(selection, options, ensureCurrentBlock, function (block, config) {
+        return withBlocks(selection, options, function (block, config) {
             var currentValue = parseInt(block.style.marginLeft || '0', 10) || 0;
             var step = Number(config.indentStep) || 24;
             var nextValue = direction === 'outdent' ? Math.max(0, currentValue - step) : currentValue + step;

@@ -27,6 +27,7 @@
                 }
             }
         },
+        paste: { plainText: false },
         codeView: {
             enabled: true,
             mode: 'after',
@@ -126,6 +127,7 @@
             media: {
                 fileBrowser: mergeObjects(DEFAULTS.media.fileBrowser, media.fileBrowser)
             },
+            paste: mergeObjects(DEFAULTS.paste, source.paste),
             codeView: normalizeEnabledSection(source.codeView, DEFAULTS.codeView, true),
             findReplace: normalizeEnabledSection(source.findReplace, DEFAULTS.findReplace, false),
             dialogs: {

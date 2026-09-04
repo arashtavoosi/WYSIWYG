@@ -10,7 +10,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "demo": "node demos/mock-server.js",
-    "test": "jest"
+    "test": "jest",
+    "test:dist": "node scripts/check-dist.cjs"
   },
   "keywords": [],
   "author": "",

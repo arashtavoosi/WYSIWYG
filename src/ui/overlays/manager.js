@@ -10,6 +10,22 @@
         var documentRef = config.document || document;
         var windowRef = documentRef.defaultView || window;
 
+        var owned = new Map();
+
+        function track(element, cancel) {
+            owned.set(element, cancel || null);
+            return element;
+        }
+
+        function destroy() {
+            owned.forEach(function (cancel, element) {
+                if (cancel) { cancel(); }
+                else if (element.close) { element.close(); }
+                remove(element);
+            });
+            owned.clear();
+        }
+
         function customElementsForDocument() {
             return windowRef.customElements || (typeof customElements !== 'undefined' ? customElements : null);
         }
@@ -32,10 +48,11 @@
                 element[name] = properties[name];
             });
             (documentRef.body || documentRef.documentElement).appendChild(element);
-            return element;
+            return track(element);
         }
 
         function remove(element) {
+            owned.delete(element);
             if (element && element.parentNode) {
                 element.parentNode.removeChild(element);
             }
@@ -43,6 +60,8 @@
 
         return {
             canCreate: canCreate,
+            track: track,
+            destroy: destroy,
             create: create,
             remove: remove
         };

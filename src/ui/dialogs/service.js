@@ -10,6 +10,8 @@
         var documentRef = config.document || document;
         var windowRef = documentRef.defaultView || window;
 
+        var pending = new Set();
+
         function prompt(label, fallback) {
             return windowRef.prompt(label, fallback);
         }
@@ -42,11 +44,15 @@
                     }
 
                     resolved = true;
+                    pending.delete(cancel);
                     modal.close();
                     modal.remove();
                     config.restoreSelection();
                     resolve(value);
                 }
+
+                function cancel() { finish(null); }
+                pending.add(cancel);
 
                 function submit() {
                     var value = read(modal);
@@ -78,6 +84,7 @@
 
         return {
             prompt: prompt,
+            destroy: function () { pending.forEach(function (cancel) { cancel(); }); },
             showInsertModal: showInsertModal
         };
     }

@@ -63,11 +63,30 @@
 
     function createEditorAdapter(input) {
         var config = editorConfig.normalize(input);
+        config.codeView.enabled = config.codeView.enabled && !!codeView;
         var elements = config.elements;
         var editorElement = elements.editor;
         var toolbarElement = elements.toolbar || findAdjacentToolbar(editorElement) || createToolbarElement(editorElement);
         var editor = createEditorCore(editorElement, config.editor);
         var savedRange = null;
+        var destroyed = false;
+        var composing = false;
+        var listeners = [];
+
+        function on(target, type, handler, options) {
+            html.on(target, type, handler, options);
+            if (target === document || target === editorElement) {
+                listeners.push([target, type, handler, options]);
+            }
+        }
+
+        function off(target, type, handler, options) {
+            html.off(target, type, handler, options);
+            listeners = listeners.filter(function (entry) {
+                return entry[0] !== target || entry[1] !== type || entry[2] !== handler;
+            });
+        }
+
         var mediaToolsPopup = null;
         var tableToolsPopup = null;
         var resizeOverlay = null;
@@ -95,6 +114,8 @@
             document: editorElement.ownerDocument || document
         });
 
+        config.findReplace.enabled = config.findReplace.enabled && overlays.canCreate('wysiwyg-modal');
+
         function selectionIsInEditor(selection) {
             var range;
 
@@ -108,6 +129,7 @@
         }
 
         function saveSelection() {
+            if (destroyed) { return; }
             var selection = window.getSelection();
 
             if (selectionIsInEditor(selection)) {
@@ -116,6 +138,7 @@
         }
 
         function restoreSelection() {
+            if (destroyed) { return; }
             var selection;
 
             if (!savedRange) {
@@ -221,6 +244,7 @@
         }
 
         function toggleCodeView() {
+            if (destroyed) { return false; }
             if (!config.codeView.enabled) {
                 return false;
             }
@@ -303,7 +327,7 @@
                 '<form class="wysiwyg-link-form"><label><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"></span><input type="url"></label><label><span></span><select data-field="target"><option value="">No target</option><option value="_self">Same tab or window</option><option value="_blank">New tab or window</option><option value="_parent">Parent frame</option><option value="_top">Top frame</option></select></label></form>',
                 '<span slot="footer"><button type="button" data-action="cancel">Cancel</button> <button type="button" data-action="apply">Apply</button></span>'
             ].join('');
-            document.body.appendChild(modal);
+            document.body.appendChild(overlays.track(modal));
 
             title = modal.querySelector('[slot="header"]');
             form = modal.querySelector('form');
@@ -324,22 +348,22 @@
 
                     resolved = true;
                     modal.close();
-                    modal.remove();
+                    overlays.remove(modal);
                     restoreSelection();
                     resolve(value);
                 }
 
-                html.on(modal, 'close', function () {
+                on(modal, 'close', function () {
                     finish(null);
                 });
-                html.on(form, 'submit', function (event) {
+                on(form, 'submit', function (event) {
                     event.preventDefault();
                     finish({ href: input.value, target: targetInput.value });
                 });
-                html.on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
+                on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
                     finish(null);
                 });
-                html.on(modal.querySelector('[data-action="apply"]'), 'click', function () {
+                on(modal.querySelector('[data-action="apply"]'), 'click', function () {
                     finish({ href: input.value, target: targetInput.value });
                 });
 
@@ -377,7 +401,7 @@
                 '<form class="wysiwyg-link-form"><label><span>Find</span><input data-field="find" type="search"></label><label><span>Replace with</span><input data-field="replace" type="text"></label></form>',
                 '<span slot="footer"><span data-field="status" aria-live="polite"></span> <button type="button" data-action="replace-all">Replace all</button> <button type="button" data-action="replace">Replace</button> <button type="submit" form="wysiwyg-find-replace-form">Find next</button></span>'
             ].join('');
-            document.body.appendChild(modal);
+            document.body.appendChild(overlays.track(modal));
             findReplaceModal = modal;
             form = modal.querySelector('form');
             form.id = 'wysiwyg-find-replace-form';
@@ -413,24 +437,24 @@
                 restoreSelection();
             }
 
-            html.on(form, 'submit', function (event) {
+            on(form, 'submit', function (event) {
                 event.preventDefault();
                 findNext();
             });
-            html.on(modal.querySelector('[data-action="replace"]'), 'click', function () {
+            on(modal.querySelector('[data-action="replace"]'), 'click', function () {
                 replace(false);
             });
-            html.on(modal.querySelector('[data-action="replace-all"]'), 'click', function () {
+            on(modal.querySelector('[data-action="replace-all"]'), 'click', function () {
                 replace(true);
             });
-            html.on(modal, 'close', function () {
+            on(modal, 'close', function () {
                 if (closing) {
                     return;
                 }
 
                 closing = true;
                 findReplaceModal = null;
-                modal.remove();
+                overlays.remove(modal);
                 restoreSelection();
             });
 
@@ -530,7 +554,7 @@
                     button.textContent = filter.label || filter.value;
                 }
 
-                html.on(button, 'click', function (event) {
+                on(button, 'click', function (event) {
                     event.preventDefault();
                     browser.toggleFilter(filter.value);
                     syncMediaFilterButtons(container, browser);
@@ -584,7 +608,7 @@
                 '<wysiwyg-file-browser></wysiwyg-file-browser>',
                 '<span slot="footer" style="align-items:center;justify-content:space-between;width:100%"><span class="media-filters" role="group" aria-label="Filter files" style="display:flex;gap:4px"></span><button type="button" data-action="cancel">Cancel</button></span>'
             ].join('');
-            document.body.appendChild(modal);
+            document.body.appendChild(overlays.track(modal));
 
             title = modal.querySelector('[slot="header"]');
             browser = modal.querySelector('wysiwyg-file-browser');
@@ -622,18 +646,18 @@
 
                     resolved = true;
                     modal.close();
-                    modal.remove();
+                    overlays.remove(modal);
                     restoreSelection();
                     resolve(value);
                 }
 
-                html.on(modal, 'close', function () {
+                on(modal, 'close', function () {
                     finish(null);
                 });
-                html.on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
+                on(modal.querySelector('[data-action="cancel"]'), 'click', function () {
                     finish(null);
                 });
-                html.on(browser, 'file-select', function (event) {
+                on(browser, 'file-select', function (event) {
                     var file = event.detail.file;
                     var activeFilters = browser.activeFilters || [];
 
@@ -676,7 +700,7 @@
                 '<div class="wysiwyg-table-picker-label">1x1 Table</div>',
                 '<div class="wysiwyg-table-picker-grid"></div>'
             ].join('');
-            document.body.appendChild(popup);
+            document.body.appendChild(overlays.track(popup));
 
             label = popup.querySelector('.wysiwyg-table-picker-label');
             grid = popup.querySelector('.wysiwyg-table-picker-grid');
@@ -695,6 +719,8 @@
             });
 
             return new Promise(function (resolve) {
+                overlays.track(popup, function () { finish(null); });
+
                 function setSize(rows, cols) {
                     label.textContent = cols + 'x' + rows + ' Table';
                     Array.from(grid.children).forEach(function (cell) {
@@ -708,9 +734,9 @@
                     }
 
                     resolved = true;
-                    html.off(document, 'click', outside);
-                    html.off(document, 'keydown', keydown);
-                    popup.remove();
+                    off(document, 'click', outside);
+                    off(document, 'keydown', keydown);
+                    overlays.remove(popup);
                     restoreSelection();
                     resolve(value);
                 }
@@ -731,14 +757,14 @@
                     }
                 }
 
-                html.on(grid, 'mouseover', function (event) {
+                on(grid, 'mouseover', function (event) {
                     var cell = cellFromEvent(event);
 
                     if (cell) {
                         setSize(Number(cell.getAttribute('data-row')), Number(cell.getAttribute('data-col')));
                     }
                 });
-                html.on(grid, 'click', function (event) {
+                on(grid, 'click', function (event) {
                     var cell = cellFromEvent(event);
 
                     if (cell) {
@@ -748,8 +774,8 @@
                         });
                     }
                 });
-                html.on(document, 'click', outside);
-                html.on(document, 'keydown', keydown);
+                on(document, 'click', outside);
+                on(document, 'keydown', keydown);
 
                 popup.showFor(anchor);
                 setSize(1, 1);
@@ -998,7 +1024,7 @@
             }
 
             tableSelectionOverlay = overlays.create('wysiwyg-table-selection');
-            html.on(tableSelectionOverlay, 'table-select', function (event) {
+            on(tableSelectionOverlay, 'table-select', function (event) {
                 selectTableMode(event.detail.mode);
             });
             return tableSelectionOverlay;
@@ -1027,14 +1053,14 @@
             }
 
             resizeOverlay = overlays.create('wysiwyg-resize-overlay', { boundary: editorElement });
-            html.on(resizeOverlay, 'move-start', function () {
+            on(resizeOverlay, 'move-start', function () {
                 movingResizeTarget = true;
             });
-            html.on(resizeOverlay, 'resize-end', function () {
+            on(resizeOverlay, 'resize-end', function () {
                 editor.recordSnapshot();
                 sync();
             });
-            html.on(resizeOverlay, 'move-end', function (event) {
+            on(resizeOverlay, 'move-end', function (event) {
                 activeResizeTarget = event.detail.target;
 
                 if (isMediaElement(activeResizeTarget)) {
@@ -1083,9 +1109,9 @@
 
         function closeTableTools() {
             if (tableToolsPopup) {
-                tableToolsPopup.remove();
+                overlays.remove(tableToolsPopup);
                 tableToolsPopup = null;
-                html.off(document, 'keydown', closeTableToolsOnEscape);
+                off(document, 'keydown', closeTableToolsOnEscape);
             }
         }
 
@@ -1160,7 +1186,7 @@
                 '</style>',
                 '<div class="wysiwyg-table-tools"></div>'
             ].join('');
-            document.body.appendChild(tableToolsPopup);
+            document.body.appendChild(overlays.track(tableToolsPopup));
             tools = tableToolsPopup.querySelector('.wysiwyg-table-tools');
             actionMap = {
                 rowBefore: ['rowBefore', 'Row before', 'row-before', function () { editor.insertTableRow('before'); }],
@@ -1197,7 +1223,7 @@
                 tools.appendChild(button);
             });
 
-            html.on(tableToolsPopup, 'click', function (event) {
+            on(tableToolsPopup, 'click', function (event) {
                 var button = event.target.closest && event.target.closest('[data-action]');
                 var action;
                 var previousMode;
@@ -1231,7 +1257,7 @@
                     sync();
                 }
             });
-            html.on(document, 'keydown', closeTableToolsOnEscape);
+            on(document, 'keydown', closeTableToolsOnEscape);
             tableToolsPopup.showFor(anchor);
             return true;
         }
@@ -1249,9 +1275,9 @@
 
         function closeMediaTools() {
             if (mediaToolsPopup) {
-                mediaToolsPopup.remove();
+                overlays.remove(mediaToolsPopup);
                 mediaToolsPopup = null;
-                html.off(document, 'keydown', closeMediaToolsOnEscape);
+                off(document, 'keydown', closeMediaToolsOnEscape);
             }
         }
 
@@ -1368,8 +1394,8 @@
                 mediaToolsPopup.querySelector('[data-action="fullSize"]').appendChild(document.createTextNode('Full-size'));
                 mediaToolsPopup.querySelector('[data-action="fullWidth"]').appendChild(createIcon('image-full-size', 'wysiwyg-media-tool-icon'));
                 mediaToolsPopup.querySelector('[data-action="fullWidth"]').appendChild(document.createTextNode('Full-width'));
-                document.body.appendChild(mediaToolsPopup);
-                html.on(mediaToolsPopup, 'click', function (event) {
+                document.body.appendChild(overlays.track(mediaToolsPopup));
+                on(mediaToolsPopup, 'click', function (event) {
                     var button = event.target.closest && event.target.closest('[data-action]');
                     var action = button && button.getAttribute('data-action');
                     var target = getMediaToolTarget();
@@ -1384,7 +1410,7 @@
                     saveSelection();
                     sync();
                 });
-                html.on(mediaToolsPopup, 'change', function (event) {
+                on(mediaToolsPopup, 'change', function (event) {
                     var control = event.target.closest && event.target.closest('[data-style],[data-media-attribute]');
                     var target;
                     var type;
@@ -1425,7 +1451,7 @@
                     saveSelection();
                     sync();
                 });
-                html.on(document, 'keydown', closeMediaToolsOnEscape);
+                on(document, 'keydown', closeMediaToolsOnEscape);
             }
 
             syncMediaToolControls(media);
@@ -1509,6 +1535,7 @@
         }
 
         function sync() {
+            if (destroyed) { return; }
             var state = editor.getActiveFormats();
 
             state.codeView = codeViewOpen;
@@ -1580,7 +1607,7 @@
             view: view
         });
 
-        html.on(document, 'selectionchange', function () {
+        on(document, 'selectionchange', function () {
             if (document.activeElement === editorElement || editorElement.contains(document.activeElement)) {
                 saveSelection();
 
@@ -1592,13 +1619,13 @@
             }
         });
 
-        html.on(editorElement, 'mousedown', function (event) {
+        on(editorElement, 'mousedown', function (event) {
             var cell = event.target.closest && event.target.closest('th,td');
 
             expandingTableSelection = !!(cell && (event.ctrlKey || event.metaKey) && tableSelection && tableSelection.table === html.getClosestTag(cell, 'table'));
         });
 
-        html.on(editorElement, 'mousedown', function (event) {
+        on(editorElement, 'mousedown', function (event) {
             var media = getMediaFromEvent(event);
 
             if (selectMediaElement(media)) {
@@ -1607,7 +1634,7 @@
             }
         }, true);
 
-        html.on(editorElement, 'focus', function (event) {
+        on(editorElement, 'focus', function (event) {
             var media = getMediaFromEvent(event);
 
             if (selectMediaElement(media)) {
@@ -1616,7 +1643,7 @@
             }
         }, true);
 
-        html.on(editorElement, 'mouseup', function (event) {
+        on(editorElement, 'mouseup', function (event) {
             var media = getMediaFromEvent(event);
             var link = event.target.closest && event.target.closest('a');
             var cell = event.target.closest && event.target.closest('th,td');
@@ -1657,7 +1684,7 @@
             sync();
         });
 
-        html.on(document, 'keydown', function (event) {
+        on(document, 'keydown', function (event) {
             var target;
 
             if (event.defaultPrevented || ['Delete', 'Backspace'].indexOf(event.key) === -1) {
@@ -1676,12 +1703,12 @@
             sync();
         }, true);
 
-        html.on(document, 'mouseup', function () {
+        on(document, 'mouseup', function () {
             expandingTableSelection = false;
             movingResizeTarget = false;
         });
 
-        html.on(editorElement, 'keyup', function () {
+        on(editorElement, 'keyup', function () {
             activeResizeTarget = null;
             saveSelection();
 
@@ -1692,17 +1719,87 @@
             sync();
         });
 
-        html.on(editorElement, 'input', function () {
+        function historyAction(event, action) {
+            event.preventDefault();
+            editor[action]();
             activeResizeTarget = null;
+            clearTableSelection();
             saveSelection();
-            editor.recordSnapshot();
+            sync();
+        }
+
+        on(editorElement, 'keydown', function (event) {
+            if (event.defaultPrevented || event.isComposing || composing || event.altKey || !(event.metaKey || event.ctrlKey)) { return; }
+            var key = event.key.toLowerCase();
+            if (key === 'z' || (key === 'y' && !event.shiftKey)) {
+                historyAction(event, key === 'y' || event.shiftKey ? 'redo' : 'undo');
+            }
+        });
+
+        on(editorElement, 'beforeinput', function (event) {
+            if (event.defaultPrevented || composing) { return; }
+            if (/^history(Undo|Redo)$/.test(event.inputType) && event.cancelable) {
+                historyAction(event, event.inputType === 'historyUndo' ? 'undo' : 'redo');
+            } else {
+                editor.prepareInput(event.inputType);
+            }
+        });
+
+        on(editorElement, 'paste', function (event) {
+            if (event.defaultPrevented || !event.clipboardData) { return; }
+            var data = event.clipboardData;
+            var markup = data.getData('text/html');
+            var text = data.getData('text/plain');
+            if (!markup && !text) { return; }
+            event.preventDefault();
+            editor.insertPaste({ html: markup, text: text, plainText: config.paste.plainText });
+            saveSelection();
             sync();
         });
+
+        on(editorElement, 'compositionstart', function () {
+            editor.prepareInput('composition');
+            composing = true;
+        });
+        on(editorElement, 'compositionend', function () {
+            composing = false;
+            editor.recordInput('composition');
+            saveSelection();
+            sync();
+        });
+
+        on(editorElement, 'input', function (event) {
+            if (composing || event.isComposing) { return; }
+            activeResizeTarget = null;
+            saveSelection();
+            editor.recordInput(event.inputType);
+            sync();
+        });
+
+        function destroy() {
+            if (destroyed) { return; }
+            destroyed = true;
+            toolbarController.destroy();
+            dialogs.destroy();
+            closeTableTools();
+            closeMediaTools();
+            overlays.destroy();
+            listeners.forEach(function (entry) { html.off.apply(null, entry); });
+            listeners = [];
+            if (codeViewElement) {
+                codeViewElement.removeEventListener('code-input', handleCodeViewInput);
+                codeViewElement.remove();
+            }
+            if (isCodeViewOnly()) { editorElement.hidden = editorWasHidden; }
+            savedRange = tableSelection = activeResizeTarget = null;
+            if (composing) { editor.recordInput('composition'); }
+        }
 
         editor.normalize();
         sync();
 
         return {
+            destroy: destroy,
             editor: editor,
             sync: sync,
             editorElement: editorElement,

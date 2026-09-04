@@ -305,6 +305,73 @@
         return nodes;
     }
 
+    // Collect the blocks that actually contain selected content; touching the next
+    // block at offset zero does not select it.
+    function getSelectedBlocks(rootNode, range) {
+        var tags = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'td', 'th', 'pre'];
+        var blocks = [];
+        var walker;
+        var node;
+
+        if (!rootNode || !range || !rootNode.contains(range.commonAncestorContainer)) {
+            return blocks;
+        }
+        if (range.collapsed) {
+            node = getClosestTag(getElement(range.startContainer), tags, rootNode);
+            return node ? [node] : [];
+        }
+        walker = rootNode.ownerDocument.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+        while ((node = walker.nextNode())) {
+            if (node.nodeType === Node.ELEMENT_NODE && node.firstChild) {
+                continue;
+            }
+            var extent = rootNode.ownerDocument.createRange();
+            extent.selectNodeContents(node);
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                extent.selectNode(node);
+            }
+            if (range.compareBoundaryPoints(1, extent) <= 0 || range.compareBoundaryPoints(3, extent) >= 0) {
+                continue;
+            }
+            var block = getClosestTag(getElement(node), tags, rootNode);
+            if (block && blocks.indexOf(block) < 0) {
+                blocks.push(block);
+            }
+        }
+        return blocks;
+    }
+
+    function ensureBlock(rootNode, range, tagName) {
+        var block = getClosestTag(getElement(range.startContainer), ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'pre'], rootNode);
+        var container = getClosestTag(getElement(range.startContainer), ['td', 'th'], rootNode) || rootNode;
+        if (block) {
+            return block;
+        }
+        block = rootNode.ownerDocument.createElement(tagName || 'p');
+        var child = range.startContainer === container ? container.childNodes[range.startOffset] : range.startContainer;
+        while (child && child.parentNode !== container) {
+            child = child.parentNode;
+        }
+        var structural = /^(P|DIV|H[1-6]|UL|OL|TABLE|BLOCKQUOTE|PRE|HR)$/;
+        if (child && structural.test(child.nodeName)) {
+            container.insertBefore(block, child);
+        } else {
+            while (child && child.previousSibling && !structural.test(child.previousSibling.nodeName)) {
+                child = child.previousSibling;
+            }
+            container.insertBefore(block, child || null);
+            while (child && !structural.test(child.nodeName)) {
+                var next = child.nextSibling;
+                block.appendChild(child);
+                child = next;
+            }
+        }
+        if (!block.firstChild) {
+            block.appendChild(rootNode.ownerDocument.createElement('br'));
+        }
+        return block;
+    }
+
     function isWordCharacter(character) {
         return /[\p{L}\p{M}\p{N}_\u200C\u200D]/u.test(character || '');
     }
@@ -469,7 +536,7 @@
         return { node: rootNode, offset: 0 };
     }
 
-    function getSelectionBookmark(selection, rootNode) {
+    function getSelectionBookmark(selection, rootNode, exact) {
         var currentSelection = getCurrentSelection(selection);
         var range;
         var startOffset;
@@ -497,11 +564,26 @@
         anchorOffset = getTextOffset(rootNode, currentSelection.anchorNode, currentSelection.anchorOffset);
         focusOffset = getTextOffset(rootNode, currentSelection.focusNode, currentSelection.focusOffset);
 
-        return {
+        function pathTo(node) {
+            var path = [];
+            while (node !== rootNode) {
+                path.unshift(Array.prototype.indexOf.call(node.parentNode.childNodes, node));
+                node = node.parentNode;
+            }
+            return path;
+        }
+        var bookmark = {
             backward: anchorOffset !== null && focusOffset !== null && anchorOffset > focusOffset,
             endOffset: endOffset,
             startOffset: startOffset
         };
+        if (exact) {
+            bookmark.startPath = pathTo(range.startContainer);
+            bookmark.endPath = pathTo(range.endContainer);
+            bookmark.startNodeOffset = range.startOffset;
+            bookmark.endNodeOffset = range.endOffset;
+        }
+        return bookmark;
     }
 
     function restoreSelectionBookmark(bookmark, selection, rootNode) {
@@ -514,8 +596,18 @@
             return false;
         }
 
-        start = getTextPosition(rootNode, bookmark.startOffset, 'forward');
-        end = bookmark.startOffset === bookmark.endOffset ? start : getTextPosition(rootNode, bookmark.endOffset, 'backward');
+        function positionAt(path, offset) {
+            var node = rootNode;
+            (path || []).forEach(function (index) { node = node && node.childNodes[index]; });
+            var length = node && (node.nodeType === Node.TEXT_NODE ? node.length : node.childNodes.length);
+            return node && offset <= length ? { node: node, offset: offset } : null;
+        }
+        start = bookmark.startPath && positionAt(bookmark.startPath, bookmark.startNodeOffset);
+        end = bookmark.endPath && positionAt(bookmark.endPath, bookmark.endNodeOffset);
+        if (!start || !end) {
+            start = getTextPosition(rootNode, bookmark.startOffset, 'forward');
+            end = bookmark.startOffset === bookmark.endOffset ? start : getTextPosition(rootNode, bookmark.endOffset, 'backward');
+        }
 
         if (!start || !end) {
             return false;
@@ -670,6 +762,8 @@
         getSelectedElement: getSelectedElement,
         getSelectedTable: getSelectedTable,
         getSelectedNodes: getSelectedNodes,
+        getSelectedBlocks: getSelectedBlocks,
+        ensureBlock: ensureBlock,
         getTemplateFromAttribute: getTemplateFromAttribute,
         moveSelectionAfterNode: moveSelectionAfterNode,
         moveSelectionToNodeStart: moveSelectionToNodeStart,

@@ -155,7 +155,7 @@ describe('editor core', () => {
 
         editor.toggleList('ul', selection);
 
-        expect(editorElement.innerHTML).toBe('<ul><li>First item</li><li>Second item</li></ul>');
+        expect(editorElement.innerHTML).toBe('<ul><li>First item</li></ul><ol start="2"><li>Second item</li></ol>');
         expect(selection.rangeCount).toBe(1);
         expect(selection.getRangeAt(0).collapsed).toBe(true);
         expect(selection.getRangeAt(0).startContainer).toBe(editorElement.querySelector('li').firstChild);
