@@ -198,6 +198,8 @@
             bundleUrl: settings.bundleUrl || source.bundleUrl || 'dist/ravan.min.js',
             codeView: settings.codeView,
             components: settings.components,
+            minified: isEnabled(settings.minified, isEnabled(source.minified, false)),
+            minifiedBaseUrl: settings.minifiedBaseUrl || source.minifiedBaseUrl || 'dist/src/',
             mode: settings.mode || source.mode || 'source'
         };
     }
@@ -213,6 +215,7 @@
     function load(config, options) {
         var settings = getRuntimeConfig(config || {}, options);
         var documentRef = (options && options.document) || root.document;
+        var baseUrl;
         var urls;
 
         if (root.Ravan && !(options && options.force)) {
@@ -222,8 +225,9 @@
         if (settings.mode === 'bundle') {
             urls = [settings.bundleUrl];
         } else {
+            baseUrl = settings.minified ? settings.minifiedBaseUrl : settings.baseUrl;
             urls = sourceModules(config || {}, settings).map(function (path) {
-                return joinUrl(settings.baseUrl, path);
+                return joinUrl(baseUrl, path);
             });
         }
 

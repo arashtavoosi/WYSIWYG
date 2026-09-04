@@ -101,7 +101,7 @@
                 }
             },
             codeView: {
-                mode: 'after',
+                mode: 'only',
                 editable: true,
                 live: true
             },
@@ -124,7 +124,9 @@
             }
         }, {
             mode: 'source',
-            baseUrl: '../src/'
+            baseUrl: '../src/',
+            minified: true,
+            minifiedBaseUrl: '../dist/src/'
         });
     </script>
 </body>

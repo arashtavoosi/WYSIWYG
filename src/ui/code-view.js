@@ -187,7 +187,7 @@
         var focused = false;
 
         style.textContent = [
-            '.wysiwyg-code-view{margin:12px 0;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#0f172a;box-shadow:0 8px 20px rgba(15,23,42,.12)}',
+            '.wysiwyg-code-view{border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#0f172a;box-shadow:0 8px 20px rgba(15,23,42,.12)}',
             '.wysiwyg-code-view-tools{display:flex;justify-content:flex-end;gap:6px;padding:5px 8px;border-bottom:1px solid rgba(148,163,184,.25)}',
             '.wysiwyg-code-view-tools button{border:1px solid #475569;border-radius:4px;padding:4px 8px;background:#1e293b;color:#e2e8f0;font:600 11px/1.2 ui-sans-serif,system-ui,sans-serif;cursor:pointer}',
             '.wysiwyg-code-view-tools button:hover{background:#334155}',

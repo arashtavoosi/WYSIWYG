@@ -38,6 +38,7 @@ Ravan keeps the editor behavior UI-agnostic and composes the full browser editor
 - `build/entries/core.js` exposes the core-only bundle.
 - `build/entries/full.js` exposes the full `Ravan` bundle.
 - `scripts/build.mjs` also emits the minified `dist/ravan-loader.min.js` used by both demos.
+- `scripts/build.mjs` emits a minified source-module mirror under `dist/src/`; set the loader's `minified` flag and `minifiedBaseUrl` to load it.
 - `scripts/build.mjs` emits minified `dist/editor-content.min.css` and `dist/toolbar.min.css` for the demo styles.
 
 The public configuration is grouped by ownership: `elements`, `editor`, `toolbar`, `assets`, `media`, `codeView`, `findReplace`, and `dialogs`. `toolbar` contains the command tree only; it is not a catch-all settings object.

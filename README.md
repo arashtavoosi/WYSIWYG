@@ -19,7 +19,7 @@ Small-footprint browser editor with a UI-agnostic core.
 - `src/editor-config.js`: normalizes the public editor configuration into its feature-owned sections.
 - `build/entries/*`: release bundle entry points.
 - `scripts/build.mjs`: esbuild bundling and minification script.
-- `demos/ravan.html`: source-module demo shell using the minified loader.
+- `demos/ravan.html`: source-module demo shell using minified source modules.
 - `demos/ravan-bundled.html`: demo that loads `dist/ravan.min.js`.
 - `tests/*`: Jest/jsdom coverage.
 
@@ -135,8 +135,9 @@ This creates:
 - `dist/ravan-core.min.js`: core-only IIFE exposing `createEditorCore`.
 - `dist/ravan.min.js`: full-editor IIFE exposing `Ravan`.
 - `dist/ravan-loader.min.js`: minified loader that preserves source-module and bundle loading.
+- `dist/src/`: minified source-module tree with the same paths as `src/`.
 - `dist/editor-content.min.css` and `dist/toolbar.min.css`: minified editor styles.
-- `.map` sidecars for all five outputs.
+- `.map` sidecars for every generated asset.
 
 The source modules remain available for development and debugging. The package `main` continues to point to the core API.
 
@@ -152,12 +153,14 @@ The source modules remain available for development and debugging. The package `
     findReplace: { enabled: true }
   }, {
     mode: 'source',
-    baseUrl: '../src/'
+    baseUrl: '../src/',
+    minified: true,
+    minifiedBaseUrl: '../dist/src/'
   });
 </script>
 ```
 
-The loader always includes the core command modules and selects optional code-view and custom-element modules from `codeView`, `findReplace`, media settings, and the configured toolbar items. Use `mode: 'bundle'` with `bundleUrl` when the minified distribution is preferred.
+The loader always includes the core command modules and selects optional code-view and custom-element modules from `codeView`, `findReplace`, media settings, and the configured toolbar items. Set `minified: true` to load the individually minified source modules from `minifiedBaseUrl`; omit it to use `baseUrl`. Use `mode: 'bundle'` with `bundleUrl` when the single minified full-editor bundle is preferred.
 
 Loader settings may also be placed under `loader` in the configuration passed to `RavanLoader.mount`; they are consumed by the loader and are not editor behavior settings.
 
