@@ -577,9 +577,15 @@
             endOffset: endOffset,
             startOffset: startOffset
         };
-        if (exact) {
+        if (exact === true) {
             bookmark.startPath = pathTo(range.startContainer);
             bookmark.endPath = pathTo(range.endContainer);
+            bookmark.startNodeOffset = range.startOffset;
+            bookmark.endNodeOffset = range.endOffset;
+        }
+        if (exact === 'live' && range.startContainer.nodeType === Node.TEXT_NODE && range.endContainer.nodeType === Node.TEXT_NODE) {
+            bookmark.startNode = range.startContainer;
+            bookmark.endNode = range.endContainer;
             bookmark.startNodeOffset = range.startOffset;
             bookmark.endNodeOffset = range.endOffset;
         }
@@ -602,8 +608,14 @@
             var length = node && (node.nodeType === Node.TEXT_NODE ? node.length : node.childNodes.length);
             return node && offset <= length ? { node: node, offset: offset } : null;
         }
-        start = bookmark.startPath && positionAt(bookmark.startPath, bookmark.startNodeOffset);
-        end = bookmark.endPath && positionAt(bookmark.endPath, bookmark.endNodeOffset);
+        if (bookmark.startNode && bookmark.endNode && rootNode.contains(bookmark.startNode) && rootNode.contains(bookmark.endNode) &&
+            bookmark.startNodeOffset <= bookmark.startNode.length && bookmark.endNodeOffset <= bookmark.endNode.length) {
+            start = { node: bookmark.startNode, offset: bookmark.startNodeOffset };
+            end = { node: bookmark.endNode, offset: bookmark.endNodeOffset };
+        } else {
+            start = bookmark.startPath && positionAt(bookmark.startPath, bookmark.startNodeOffset);
+            end = bookmark.endPath && positionAt(bookmark.endPath, bookmark.endNodeOffset);
+        }
         if (!start || !end) {
             start = getTextPosition(rootNode, bookmark.startOffset, 'forward');
             end = bookmark.startOffset === bookmark.endOffset ? start : getTextPosition(rootNode, bookmark.endOffset, 'backward');

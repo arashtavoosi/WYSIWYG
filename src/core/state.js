@@ -50,6 +50,27 @@
         return getInlineStyleValue(targetElement, 'direction') || getInlineStyleValue(rootNode, 'direction') || 'ltr';
     }
 
+    function getElementPath(selection, rootNode) {
+        var current = html.getCurrentSelection(selection);
+        var path = rootNode ? [rootNode] : [];
+        if (!rootNode || !current || !current.rangeCount) { return path; }
+        var range = current.getRangeAt(0);
+        if (!rootNode.contains(range.commonAncestorContainer)) { return path; }
+        var element = html.getElement(range.commonAncestorContainer);
+        // A range enclosing exactly one element (including a selected image).
+        if (!range.collapsed && range.startContainer === range.endContainer &&
+            range.startContainer.nodeType === 1 && range.endOffset === range.startOffset + 1) {
+            var child = range.startContainer.childNodes[range.startOffset];
+            if (child.nodeType === 1) { element = child; }
+        }
+        var ancestors = [];
+        while (element && element !== rootNode) {
+            ancestors.unshift(element);
+            element = element.parentElement;
+        }
+        return path.concat(ancestors);
+    }
+
     function getActiveFormats(selection, rootNode) {
         var currentSelection = html.getCurrentSelection(selection);
         var range;
@@ -72,8 +93,9 @@
         var codeBlockState;
         var state;
 
-        if (!currentSelection || currentSelection.rangeCount === 0) {
+        if (!currentSelection || currentSelection.rangeCount === 0 || (rootNode && !rootNode.contains(currentSelection.getRangeAt(0).commonAncestorContainer))) {
             return {
+                elementPath: rootNode ? [rootNode] : [],
                 block: null,
                 bold: false,
                 canRedo: false,
@@ -138,6 +160,7 @@
         tableElement = html.getSelectedElement(range, 'table') || html.getClosestTag(startElement, 'table', rootNode);
 
         state = {
+            elementPath: getElementPath(currentSelection, rootNode),
             block: blockElement ? blockElement.tagName.toLowerCase() : null,
             bold: !!html.getClosestTag(startElement, ['strong', 'b'], rootNode),
             canRedo: false,
@@ -186,6 +209,7 @@
     }
 
     return {
+        getElementPath: getElementPath,
         getActiveFormats: getActiveFormats
     };
 }));

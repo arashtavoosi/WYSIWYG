@@ -14,14 +14,14 @@ class LocalResources extends ResourceLoader {
 (async () => {
     const loader = await fs.readFile(path.join(root, 'dist/ravan-loader.min.js'), 'utf8');
     for (const mode of ['source', 'minified', 'lite', 'full']) {
-        const dom = new JSDOM('<div id="editor"><p>One</p><p>Two</p></div>', {
+        const dom = new JSDOM('<div id="editor"><p>One</p><p>Two</p></div><div id="status"></div>', {
             url: 'https://ravan.test/', runScripts: 'dangerously', resources: new LocalResources(), pretendToBeVisual: true
         });
         try {
             const w = dom.window;
             w.eval(loader);
             const bundled = mode === 'lite' || mode === 'full';
-            const instance = await w.RavanLoader.mount('#editor', { findReplace: true }, {
+            const instance = await w.RavanLoader.mount('#editor', { findReplace: true, elements: { status: '#status' } }, {
                 mode: bundled ? 'bundle' : 'source',
                 baseUrl: '/src/', minified: mode === 'minified', minifiedBaseUrl: '/dist/src/',
                 bundleUrl: mode === 'lite' ? '/dist/ravan-lite.min.js' : '/dist/ravan.min.js'
@@ -37,8 +37,16 @@ class LocalResources extends ResourceLoader {
             assert.equal(instance.editor.getHtml(), '<ul><li>One</li><li>Two</li></ul>');
             instance.editor.undo();
             assert.equal(instance.editor.getHtml(), '<p>One</p><p>Two</p>');
+            instance.sync();
+            const status = w.document.getElementById('status');
+            assert.ok(status.textContent.startsWith('Root'));
+            status.querySelector('button').click();
+            const menu = w.document.querySelector('.status-element-menu');
+            assert.equal(menu.tagName, mode === 'lite' ? 'DIV' : 'WYSIWYG-POPUP');
+            assert.equal(menu.querySelector('[data-element-action="remove"]').disabled, true);
             instance.destroy();
-            console.log(mode + ': mount, optional UI, selection, undo, and teardown passed');
+            assert.equal(w.document.querySelector('.status-element-menu'), null);
+            console.log(mode + ': mount, optional UI, selection, undo, breadcrumb menu, and teardown passed');
         } finally {
             dom.window.close();
         }

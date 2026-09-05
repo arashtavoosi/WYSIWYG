@@ -13,7 +13,8 @@
             require('./selection'),
             require('./history'),
             require('./html-utility'),
-            require('./clipboard')
+            require('./clipboard'),
+            require('./commands/element')
         );
     } else {
         root.createEditorCore = factory(
@@ -29,10 +30,11 @@
             root.WysiwygSelection,
             root.createEditorHistory,
             root.WysiwygHtmlUtility,
-            root.WysiwygClipboard
+            root.WysiwygClipboard,
+            root.WysiwygElementCommands
         );
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function (inlineCommands, normalization, state, linkCommands, blockCommands, listCommands, mediaCommands, tableCommands, codeBlockCommands, createSelection, createHistory, html, clipboard) {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (inlineCommands, normalization, state, linkCommands, blockCommands, listCommands, mediaCommands, tableCommands, codeBlockCommands, createSelection, createHistory, html, clipboard, elementCommands) {
     function normalizeInlineCommand(name) {
         var map = {
             bold: 'strong',
@@ -64,7 +66,7 @@
         var selectionManager;
         var history;
 
-        if (!inlineCommands || !normalization || !state || !linkCommands || !blockCommands || !listCommands || !mediaCommands || !tableCommands || !codeBlockCommands || !createSelection || !createHistory || !html) {
+        if (!inlineCommands || !normalization || !state || !linkCommands || !blockCommands || !listCommands || !mediaCommands || !tableCommands || !codeBlockCommands || !createSelection || !createHistory || !html || !clipboard || !elementCommands) {
             throw new Error('Editor core dependencies are not available');
         }
 
@@ -248,6 +250,16 @@
 
             canUndo: function () {
                 return history.canUndo();
+            },
+
+            getElementCapabilities: function (element) {
+                return elementCommands.capabilities(element, rootNode);
+            },
+
+            actOnElement: function (element, action, selection) {
+                if (elementCommands.capabilities(element, rootNode)[action] !== true) { return false; }
+                var apply = function () { return elementCommands.apply(element, action, selection, rootNode); };
+                return /^(select|start|end)$/.test(action) ? apply() : performMutation(apply);
             },
 
             getHtml: function () {

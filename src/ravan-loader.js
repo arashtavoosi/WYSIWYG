@@ -18,16 +18,18 @@
         'core/commands/media.js',
         'core/commands/table.js',
         'core/commands/code-block.js',
+        'core/commands/element.js',
         'core/history.js',
         'core/editor-core.js'
     ];
     var UI_MODULES = [
         'ui/toolbar/schema.js',
         'editor-config.js',
+        'ui/overlays/manager.js',
+        'ui/breadcrumb.js',
         'ui/toolbar/view.js',
         'ui/toolbar/controller.js',
         'ui/dialogs/service.js',
-        'ui/overlays/manager.js',
         'ui/editor-adapter.js',
         'ravan.js'
     ];

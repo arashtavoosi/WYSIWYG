@@ -13,6 +13,7 @@ Small-footprint browser editor with a UI-agnostic core.
 - `src/ravan.js`: branded full-editor facade.
 - `src/ravan-loader.js`: optional source/bundle loader that chooses the runtime files from the editor configuration.
 - `src/ui/toolbar/*`: declarative schema, toolbar view, and event controller.
+- `src/ui/breadcrumb.js`: DOM-path breadcrumb and element action menus.
 - `src/ui/dialogs/*`: reusable dialog services.
 - `src/ui/overlays/*`: reusable overlay creation and lifecycle helpers.
 - `src/ui/components/*`: no-build custom elements.
@@ -41,6 +42,7 @@ Main methods:
 - images: `insertImage`, `updateImage`, `removeImage`, `toggleImageFullSize`, `setImageStyle`, `setImageLayout`
 - tables: `insertTable`, `insertTableRow`, `removeTableRow`, `insertTableColumn`, `removeTableColumn`, `mergeTableCells`, `unmergeTableCell`, `toggleTableHeaderRow`, `toggleTableFullSize`, `removeTable`
 - state/content: `getActiveFormats`, `getHtml`, `setHtml`, `normalize`
+- element actions: `getElementCapabilities(element)`, `actOnElement(element, action, selection)`
 - clipboard: `insertPaste({ html, text, plainText }, selection)`
 - history: `undo`, `redo`, `recordSnapshot`, `prepareInput`, `recordInput`
 
@@ -201,7 +203,19 @@ Include `src/ui/toolbar.css` when using the generated toolbar and its status are
 <div editor-toolbar></div>
 ```
 
-Pass `elements.status` to render the current context as a compact breadcrumb, such as `Table › Row 2 › Cell 3 › Bold`. Links include their URL in parentheses before `Link`.
+Pass `elements.status` to render a clickable element path that always begins with `Root`, for example `Root › Quote › Paragraph › Italic › Bold`. The path follows real DOM ancestors, including repeated containers, nested lists, table sections, links, and inline elements. It uses the common ancestor for a selection spanning multiple branches, and includes a directly selected image or other element. Links include their URL in parentheses before `Link`.
+
+Each breadcrumb opens a keyboard-accessible menu:
+
+- **Select contents** selects the element's content for subsequent toolbar formatting (media and other void elements are selected as nodes).
+- **Place cursor at start/end** moves the caret to an element boundary.
+- **Remove and promote children** unwraps the element while preserving its children.
+- **Delete element and contents** removes the whole subtree.
+- **Clear element styles** removes only that element's inline `style` attribute.
+
+Root cannot be removed, unwrapped, or have its host styles cleared. Required list/table containers cannot be unwrapped. Mutations are single undo steps; selection and cursor movement do not create history entries. Menus support arrow keys, Home/End, Escape, and outside-click dismissal and are cleaned up by `destroy()`. Both lite and full distributions support breadcrumb menus; the full distribution reuses the existing popup component.
+
+The core exposes the current path as DOM elements in `getActiveFormats(selection).elementPath`. `getElementCapabilities(element)` reports supported actions; `actOnElement(element, action, selection)` accepts `select`, `start`, `end`, `unwrap`, `remove`, or `clearStyle` and rejects stale elements, elements outside the editor, and disallowed actions.
 
 ## HTML Code View
 

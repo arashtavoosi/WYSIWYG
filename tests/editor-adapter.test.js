@@ -450,7 +450,7 @@ describe('editor adapter', () => {
         selection.addRange(range);
         document.dispatchEvent(new Event('selectionchange'));
 
-        expect(document.getElementById('status').textContent).toBe('Editor');
+        expect(document.getElementById('status').textContent).toBe('Root');
 
         const font = document.querySelector('select[title="Font"]');
 
@@ -1274,7 +1274,7 @@ describe('editor adapter', () => {
         const button = document.querySelector('button[title="Code block"]');
 
         expect(button.getAttribute('aria-pressed')).toBe('true');
-        expect(document.getElementById('status').textContent).toBe('Code block');
+        expect(document.getElementById('status').textContent).toBe('Root › Code block › Code');
 
         button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 

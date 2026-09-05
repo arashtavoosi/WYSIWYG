@@ -5,83 +5,28 @@
 const createToolbarView = require('../src/ui/toolbar/view');
 
 describe('toolbar status breadcrumb', () => {
-    test('renders structural context and active inline formats in one value', () => {
-        document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div>';
-
-        const toolbar = document.getElementById('toolbar');
+    test('renders the actual element path with Root and clickable ancestors', () => {
+        document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div><div id="root"><blockquote><p><a href="https://example.com"><em><strong>Text</strong></em></a></p></blockquote></div>';
+        const root = document.getElementById('root');
+        const editor = require('../src/core/editor-core')(root);
+        const range = document.createRange();
+        range.setStart(root.querySelector('strong').firstChild, 1); range.collapse(true);
+        window.getSelection().removeAllRanges(); window.getSelection().addRange(range);
         const status = document.getElementById('status');
-        const view = createToolbarView(toolbar, status, { items: {} });
-
-        view.sync({
-            block: 'p',
-            bold: true,
-            italic: true,
-            link: { href: 'https://example.com' },
-            list: null,
-            table: { cellIndex: 2, rowIndex: 1 }
-        });
-
-        expect(status.textContent).toBe('Table › Row 2 › Cell 3 › Paragraph › (https://example.com) Link · bold, italic');
-        expect(status.title).toBe('https://example.com');
+        const view = createToolbarView(document.getElementById('toolbar'), status, { items: {}, context: { editor } });
+        view.sync(editor.getActiveFormats());
+        expect(status.textContent).toBe('Root › Quote › Paragraph › (https://example.com) Link › Italic › Bold');
+        expect(status.querySelectorAll('button')).toHaveLength(6);
+        expect(status.lastChild.getAttribute('aria-current')).toBe('location');
+        view.destroy();
     });
 
-    test('shows the editor label when there is no active context', () => {
+    test('always shows Root without a selection', () => {
         document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div>';
-
-        const view = createToolbarView(
-            document.getElementById('toolbar'),
-            document.getElementById('status'),
-            { items: {} }
-        );
-
+        const view = createToolbarView(document.getElementById('toolbar'), document.getElementById('status'), { items: {} });
         view.sync({});
-
-        expect(document.getElementById('status').textContent).toBe('Editor');
-    });
-
-    test('includes quote context for a paragraph inside a blockquote', () => {
-        document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div>';
-
-        const view = createToolbarView(
-            document.getElementById('toolbar'),
-            document.getElementById('status'),
-            { items: {} }
-        );
-
-        view.sync({ block: 'p', quote: true });
-
-        expect(document.getElementById('status').textContent).toBe('Quote › Paragraph');
-    });
-
-    test('includes code block context', () => {
-        document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div>';
-
-        const view = createToolbarView(
-            document.getElementById('toolbar'),
-            document.getElementById('status'),
-            { items: {} }
-        );
-
-        view.sync({ block: 'pre', codeBlock: { code: 'const answer = 42;', language: 'js' } });
-
-        expect(document.getElementById('status').textContent).toBe('Code block');
-    });
-
-    test('places an outer div before table context', () => {
-        document.body.innerHTML = '<div id="toolbar"></div><div id="status"></div>';
-
-        const view = createToolbarView(
-            document.getElementById('toolbar'),
-            document.getElementById('status'),
-            { items: {} }
-        );
-
-        view.sync({
-            block: 'div',
-            table: { cellIndex: 1, rowIndex: 2 }
-        });
-
-        expect(document.getElementById('status').textContent).toBe('div › Table › Row 3 › Cell 2');
+        expect(document.getElementById('status').textContent).toBe('Root');
+        view.destroy();
     });
 
     test('matches equivalent font-family values and clears unmatched dropdown values', () => {

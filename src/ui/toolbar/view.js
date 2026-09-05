@@ -1,10 +1,10 @@
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory(require('../breadcrumb'));
     } else {
-        root.createToolbarView = factory();
+        root.createToolbarView = factory(root.createRavanBreadcrumb);
     }
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (createBreadcrumb) {
     function normalizeColorValue(color, fallback) {
         var match;
 
@@ -254,85 +254,13 @@
         }
     }
 
-    function formatBlock(block) {
-        var labels = {
-            blockquote: 'Quote',
-            pre: 'Code block',
-            li: 'List item',
-            p: 'Paragraph'
-        };
-
-        return labels[block] || (/^h[1-6]$/.test(block) ? block.toUpperCase() : block);
-    }
-
-    function updateBreadcrumb(element, state) {
-        var path = [];
-        var active = [];
-        var table;
-
-        if (!element) {
-            return;
-        }
-
-        ['bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript'].forEach(function (name) {
-            if (state[name]) {
-                active.push(name);
-            }
-        });
-
-        if (state.block === 'div') {
-            path.push(formatBlock(state.block));
-        }
-
-        if (state.table) {
-            table = 'Table';
-            if (state.table.rowIndex !== null && state.table.rowIndex !== undefined) {
-                table += ' › Row ' + (state.table.rowIndex + 1);
-            }
-            if (state.table.cellIndex !== null && state.table.cellIndex !== undefined) {
-                table += ' › Cell ' + (state.table.cellIndex + 1);
-            }
-            path.push(table);
-        }
-
-        if (state.list) {
-            path.push(state.list === 'ol' ? 'Numbered list' : 'Bulleted list');
-        }
-
-        if (state.quote && state.block !== 'blockquote') {
-            path.push('Quote');
-        }
-
-        if (state.codeBlock) {
-            path.push('Code block');
-        } else if (state.block && state.block !== 'div') {
-            path.push(formatBlock(state.block));
-        }
-
-        if (state.image) {
-            path.push('Image');
-        } else if (state.media) {
-            path.push(state.media.type.charAt(0).toUpperCase() + state.media.type.slice(1));
-        }
-
-        if (state.link) {
-            path.push(state.link.href ? '(' + state.link.href + ') Link' : 'Link');
-        }
-
-        element.textContent = path.length ? path.join(' › ') : 'Editor';
-        if (active.length) {
-            element.textContent += (path.length ? ' · ' : '') + active.join(', ');
-        }
-
-        element.title = state.link && state.link.href ? state.link.href : '';
-    }
-
     function createToolbarView(toolbarElement, statusElement, options) {
         var entries = {};
         var counter = 0;
         var toolbar = (options || {}).items || {};
         var icons = (options || {}).icons || {};
         var renderContext = (options || {}).context || {};
+        var breadcrumb = createBreadcrumb(statusElement, renderContext);
 
         function register(node, element, control, type, key) {
             var id = 'toolbar-node-' + (++counter);
@@ -439,6 +367,7 @@
         render();
 
         return {
+            destroy: breadcrumb.destroy,
             sync: function (state, baseContext) {
                 var context = Object.assign({}, baseContext || {}, { state: state });
 
@@ -458,7 +387,7 @@
                     }
                 });
 
-                updateBreadcrumb(statusElement, state);
+                breadcrumb.sync(state.elementPath);
             },
             getEntryForElement: function (element) {
                 var control = element && element.closest ? element.closest('[data-toolbar-id]') : null;

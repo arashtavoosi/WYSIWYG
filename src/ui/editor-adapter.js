@@ -68,6 +68,7 @@
         var editorElement = elements.editor;
         var toolbarElement = elements.toolbar || findAdjacentToolbar(editorElement) || createToolbarElement(editorElement);
         var editor = createEditorCore(editorElement, config.editor);
+        config.elements.status = html.parseSelectorOrElements(config.elements.status, editorElement.ownerDocument)[0] || null;
         var savedRange = null;
         var destroyed = false;
         var composing = false;
@@ -1780,6 +1781,7 @@
             if (destroyed) { return; }
             destroyed = true;
             toolbarController.destroy();
+            view.destroy();
             dialogs.destroy();
             closeTableTools();
             closeMediaTools();

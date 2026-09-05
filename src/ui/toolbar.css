@@ -165,10 +165,81 @@
 
 .status-breadcrumb {
     min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+}
+
+.status-breadcrumb > button {
+    border: 0;
+    border-radius: 3px;
+    padding: 2px 5px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.status-breadcrumb > button::after {
+    content: '▾';
+    margin-inline-start: 4px;
+    opacity: .6;
+}
+
+.status-breadcrumb > button:hover,
+.status-breadcrumb > button[aria-expanded="true"] {
+    background: var(--line, #e5e7eb);
+    color: var(--text, #1f2933);
+}
+
+.status-breadcrumb > button:focus-visible,
+.status-element-menu button:focus-visible {
+    outline: 2px solid var(--accent, #2563eb);
+    outline-offset: -2px;
+}
+
+.status-element-menu {
+    z-index: 10000;
+    font: 13px/1.4 system-ui, sans-serif;
+}
+
+div.status-element-menu,
+wysiwyg-popup.status-element-menu::part(panel) {
+    padding: 4px;
+    border: 1px solid var(--line, #d7dce3);
+    border-radius: 5px;
+    background: var(--panel, #fff);
+    color: var(--text, #1f2933);
+    box-shadow: 0 4px 18px #0002;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    overflow: auto;
+}
+
+.status-element-menu button {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: 3px;
+    padding: 6px 9px;
+    text-align: start;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.status-element-menu button:hover:not(:disabled),
+.status-element-menu button:focus-visible {
+    background: var(--line, #e5e7eb);
+}
+
+.status-element-menu button:disabled { opacity: .45; cursor: default; }
 
 @media (max-width: 640px) {
     .status {
